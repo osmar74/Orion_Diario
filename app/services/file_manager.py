@@ -1,4 +1,5 @@
 import os
+import shutil
 from typing import Dict, List
 from app.config import RED_BASE_PATH
 
@@ -160,3 +161,61 @@ class FileManager:
             "mensajes": mensajes,
             "archivos_encontrados": archivos_encontrados,
         }
+
+    def distribuir_archivos(
+        self,
+        rutas_red: Dict,
+        carpeta_diaria: str,
+        archivos_encontrados: Dict
+    ) -> Dict:
+        """
+        Copia archivos desde las carpetas de red a la estructura local.
+
+        Args:
+            rutas_red: Diccionario con rutas de red (Causales, Discador, Lotes).
+            carpeta_diaria: Ruta local de la carpeta diaria raíz.
+            archivos_encontrados: Diccionario con listas de nombres de archivo
+                                  por subcarpeta.
+
+        Returns:
+            Dict con success, copiados y errores.
+        """
+        copiados = []
+        errores = []
+
+        destinos = {
+            'Causales': os.path.join(carpeta_diaria, 'Causales'),
+            'Lotes': os.path.join(carpeta_diaria, 'Lotes'),
+            # Discador va a la raíz
+            'Discador': carpeta_diaria
+        }
+
+        for categoria in ['Causales', 'Lotes', 'Discador']:
+            if categoria not in rutas_red or categoria not in archivos_encontrados:
+                errores.append(f"Faltan datos de {categoria} para distribuir.")
+                continue
+
+            origen_dir = rutas_red[categoria]
+            destino_dir = destinos[categoria]
+            archivos = archivos_encontrados[categoria]
+
+            if not archivos:
+                errores.append(f"No hay archivos que copiar en {categoria}.")
+                continue
+
+            for archivo in archivos:
+                origen = os.path.join(origen_dir, archivo)
+                destino = os.path.join(destino_dir, archivo)
+                try:
+                    shutil.copy2(origen, destino)
+                    copiados.append(destino)
+                except OSError as e:
+                    errores.append(f"Error copiando {archivo}: {e}")
+
+        success = len(errores) == 0
+        return {
+            'success': success,
+            'copiados': copiados,
+            'errores': errores
+        }
+

@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, render_template
 from app.services.file_manager import FileManager
 from app.config import DATA_DIR
@@ -47,3 +48,36 @@ def test_red():
         return html
     else:
         return f"<h2>Error ❌</h2><p>{resultado['error']}</p>"
+    
+
+@main_bp.route('/test-distribuir')
+def test_distribuir():
+    """Ruta temporal para probar la distribución de archivos."""
+    fm = FileManager(DATA_DIR)
+    # Usamos la misma fecha de ejemplo
+    fecha = '202605_06'
+    resultado_verif = fm.verificar_red_y_carpetas(fecha)
+
+    if not resultado_verif['success']:
+        return f"<h2>Error previo ❌</h2><p>{resultado_verif['error']}</p>"
+
+    # Si la verificación hubiera tenido éxito, procederíamos
+    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    resultado_dist = fm.distribuir_archivos(
+        resultado_verif['rutas_validadas'],
+        carpeta_diaria,
+        resultado_verif['archivos_encontrados']
+    )
+
+    if resultado_dist['success']:
+        html = "<h2>Distribución completada ✅</h2><ul>"
+        for f in resultado_dist['copiados']:
+            html += f"<li>{f}</li>"
+        html += "</ul>"
+        return html
+    else:
+        html = f"<h2>Distribución con errores ⚠️</h2><ul>"
+        for e in resultado_dist['errores']:
+            html += f"<li>{e}</li>"
+        html += "</ul>"
+        return html
