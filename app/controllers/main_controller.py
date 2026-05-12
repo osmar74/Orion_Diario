@@ -86,7 +86,7 @@ def test_distribuir():
 @main_bp.route("/test-ocr")
 def test_ocr():
     """Ruta temporal para probar Tesseract OCR con una imagen generada."""
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
     import pytesseract
 
     # Configurar la ruta de Tesseract
@@ -168,3 +168,62 @@ def test_ocr_real():
     {render_resultado('Imagen 1 (solo Orion)', totales1)}
     {render_resultado('Imagen 2 (ambos)', totales2)}
     """
+
+
+@main_bp.route("/test-discador")
+def test_discador():
+    """Prueba del DiscadorProcessor con datos simulados."""
+    import pandas as pd
+    from app.services.discador_processor import DiscadorProcessor
+    from app.config import DATA_DIR
+
+    # Crear carpeta de prueba
+    test_dir = os.path.join(DATA_DIR, "test_discador")
+    os.makedirs(test_dir, exist_ok=True)
+
+    # Crear un DataFrame de ejemplo
+    data = {
+        "Lote": ["L001", "L002", "L003", "L004", "L005", "L006"],
+        "Campaña": [
+            "Cobranzas Hogar 121 dias",
+            "Cobranzas Hogar 121 dias",
+            "Cobranzas Hogar 121 dias",
+            "Otra Campaña",
+            "Cobranzas Hogar 121 dias",
+            "Cobranzas Hogar 121 dias",
+        ],
+        "EstadoActualContacto": [
+            "Contactada",
+            "Vencida",
+            "Contactada",
+            "Vencida",
+            "Fallida",
+            "Contactada",
+        ],
+        "TiempoEnCola": ["00:02:30", "-", "00:01:15", "-", "00:05:00", "-"],
+        "Agente": ["Agente1", "-", "Agente2", "-", "Agente3", "-"],
+        "TiempoHablado": ["00:10:00", "-", "00:05:30", "-", "-", "00:20:00"],
+        "DuracionTotal": ["00:12:30", "-", "00:06:45", "-", "00:05:00", "00:25:00"],
+    }
+    df = pd.DataFrame(data)
+    ruta_excel = os.path.join(test_dir, "discador_ejemplo.xlsx")
+    df.to_excel(ruta_excel, index=False)
+
+    # Procesar con un total esperado de 5 (para que no coincida y veamos advertencia)
+    procesador = DiscadorProcessor()
+    resultado = procesador.procesar(
+        ruta_archivo=ruta_excel,
+        total_orion_esperado=5,  # Valor esperado simulado
+        carpeta_salida=test_dir,
+    )
+
+    # Mostrar resultado
+    html = "<h2>Resultado del DiscadorProcessor</h2>"
+    html += f"<p><b>Total esperado (OCR):</b> {resultado['total_esperado']}</p>"
+    html += f"<p><b>Total válidos:</b> {resultado['total_validos']}</p>"
+    html += f"<p><b>Total no válidos:</b> {resultado['total_no_validos']}</p>"
+    html += f"<p><b>Cuadre:</b> {'✅' if resultado['cuadre_ok'] else '❌'}</p>"
+    html += f"<p><b>Mensaje:</b> {resultado['mensaje']}</p>"
+    html += f"<p><b>Archivo limpio:</b> {resultado['ruta_limpio']}</p>"
+    html += f"<p><b>Archivo no válidos:</b> {resultado['ruta_no_validos']}</p>"
+    return html
