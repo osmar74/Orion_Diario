@@ -5,23 +5,23 @@
       <div class="fase-actions">
         <label>Fecha (YYYYMM_DD):</label>
         <input type="text" id="fechaInput" placeholder="202605_12" value="202605_12" style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;" />
-        <button onclick="ejecutarAccion('/accion/crear-carpetas')" id="btn-crear">Crear Carpetas <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/verificar-red')" id="btn-verred">Verificar Red <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/ocr')" id="btn-ocr">Ejecutar OCR <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/crear-carpetas', this)" id="btn-crear">Crear Carpetas <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/verificar-red', this)" id="btn-verred">Verificar Red <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/ocr', this)" id="btn-ocr">Ejecutar OCR <span class="status-icon">⚪</span></button>
       </div>
     </details>
     <details>
       <summary>📤 Fase D: Distribuir</summary>
       <div class="fase-actions">
-        <button onclick="ejecutarAccion('/accion/distribuir')" id="btn-dist">Distribuir Archivos <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/distribuir', this)" id="btn-dist">Distribuir Archivos <span class="status-icon">⚪</span></button>
       </div>
     </details>
     <details>
       <summary>⚙️ Fase F: Procesamiento</summary>
       <div class="fase-actions">
-        <button onclick="ejecutarAccion('/accion/procesar-discador')" id="btn-disc">Procesar Discador <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/procesar-causales')" id="btn-caus">Procesar Causales <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/procesar-lotes')" id="btn-lotes">Procesar Lotes <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/procesar-discador', this)" id="btn-disc">Procesar Discador <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/procesar-causales', this)" id="btn-caus">Procesar Causales <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarAccion('/accion/procesar-lotes', this)" id="btn-lotes">Procesar Lotes <span class="status-icon">⚪</span></button>
       </div>
     </details>
   </div>

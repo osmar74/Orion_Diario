@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Logs del Sistema{% endblock %}
+{% block content %}
+<div class="monitor">
+    <h2>📋 Historial de Logs</h2>
+    <form method="get" action="/logs" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center;">
+        <label>Fase:</label>
+        <select name="fase" style="background:#222; color:#fff; border:1px solid #444; padding:5px;">
+            <option value="">Todas</option>
+            {% for f in fases %}
+                <option value="{{ f }}" {% if fase_actual == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+        </select>
+        <label>Resultado:</label>
+        <select name="resultado" style="background:#222; color:#fff; border:1px solid #444; padding:5px;">
+            <option value="">Todos</option>
+            {% for r in resultados %}
+                <option value="{{ r }}" {% if resultado_actual == r %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" style="background: var(--accent); color:#000; border:none; padding:6px 15px; border-radius:5px; cursor:pointer;">Filtrar</button>
+    </form>
+
+    {% if logs %}
+        <table class="dataframe">
+            <tr><th>ID</th><th>Timestamp</th><th>Fase</th><th>Acción</th><th>Resultado</th><th>Detalle</th></tr>
+            {% for log in logs %}
+                <tr>
+                    <td>{{ log.id }}</td>
+                    <td>{{ log.timestamp }}</td>
+                    <td>{{ log.fase }}</td>
+                    <td>{{ log.accion }}</td>
+                    <td><span class="log-line {{ 'success' if log.resultado == 'éxito' else 'error' if log.resultado == 'error' else 'info' }}">{{ log.resultado }}</span></td>
+                    <td>{{ log.detalle }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No se encontraron logs con los filtros seleccionados.</p>
+    {% endif %}
+</div>
+{% endblock %}

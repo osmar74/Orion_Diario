@@ -668,3 +668,29 @@ def accion_procesar_lotes():
     else:
         html = f"<div class='log-line error'>❌ {res['mensajes']}</div>"
     return html
+
+
+@main_bp.route("/logs")
+def logs():
+    """Página de visualización de logs con filtros."""
+    from app.services.log_service import LogService
+    from app.config import LOG_DB_PATH
+
+    log_srv = LogService(LOG_DB_PATH)
+    fase = request.args.get("fase", None)
+    resultado = request.args.get("resultado", None)
+
+    logs = log_srv.obtener_logs(fase=fase, resultado=resultado, limite=500)
+
+    # Posibles fases y resultados para los selects
+    fases_posibles = ["2.1", "2.2", "2.3", "3.2", "4.1", "4.2", "4.3"]
+    resultados_posibles = ["éxito", "error", "info", "advertencia"]
+
+    return render_template(
+        "logs.html",
+        logs=logs,
+        fase_actual=fase,
+        resultado_actual=resultado,
+        fases=fases_posibles,
+        resultados=resultados_posibles,
+    )
