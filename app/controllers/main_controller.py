@@ -234,7 +234,7 @@ def test_causales():
     """Prueba del CausalesProcessor con datos simulados."""
     import pandas as pd
     from app.config import DATA_DIR
-    from app.services.casuales_processor import CausalesProcessor
+    from app.services.causales_processor import CausalesProcessor
 
     test_dir = os.path.join(DATA_DIR, "test_causales")
     os.makedirs(test_dir, exist_ok=True)
@@ -397,5 +397,79 @@ def test_logging():
             f"<tr><td>{log['id']}</td><td>{log['timestamp']}</td><td>{log['fase']}</td>"
         )
         html += f"<td>{log['accion']}</td><td>{log['resultado']}</td><td>{log['detalle']}</td></tr>"
+    html += "</table>"
+    return html
+
+@main_bp.route('/test-integracion-logging')
+def test_integracion_logging():
+    from app.services.log_service import LogService
+    from app.services.file_manager import FileManager
+    from app.services.ocr_processor import OCRProcessor
+    from app.services.discador_processor import DiscadorProcessor
+    from app.services.causales_processor import CausalesProcessor
+    from app.services.lotes_processor import LotesProcessor
+    from app.config import DATA_DIR, LOG_DB_PATH, TESSERACT_PATH
+    import pandas as pd
+    import os
+
+    log_srv = LogService(LOG_DB_PATH)
+
+    # FileManager
+    fm = FileManager(DATA_DIR, log_service=log_srv)
+    fm.crear_estructura_diaria('202605_12')
+    fm.verificar_red_y_carpetas('202605_06')  # fallará, generará error
+    fm.distribuir_archivos({}, 'fake_dir', {})  # fallará por vacío
+
+    # OCR
+    ocr = OCRProcessor(TESSERACT_PATH, log_service=log_srv)
+    test_dir = os.path.join(DATA_DIR, 'test_images')
+    os.makedirs(test_dir, exist_ok=True)
+    # Crear una mini imagen para probar
+    from PIL import Image, ImageDraw
+    img = Image.new('RGB', (200, 50), color='white')
+    d = ImageDraw.Draw(img)
+    d.text((10, 15), "Total general Orion: 100", fill='black')
+    ruta_img = os.path.join(test_dir, 'temp_ocr.png')
+    img.save(ruta_img)
+    texto = ocr.extraer_texto(ruta_img)
+    ocr.extraer_totales(texto)
+
+    # Discador
+    disc = DiscadorProcessor(log_service=log_srv)
+    disc_dir = os.path.join(DATA_DIR, 'test_discador')
+    os.makedirs(disc_dir, exist_ok=True)
+    df = pd.DataFrame({'Lote': ['L1'], 'Campaña': ['Cobranzas Hogar 121 dias'], 'EstadoActualContacto': ['Contactada'], 'TiempoEnCola': ['-'], 'Agente': ['-'], 'TiempoHablado': ['-'], 'DuracionTotal': ['-']})
+    ruta_disc = os.path.join(disc_dir, 'disc_test.xlsx')
+    df.to_excel(ruta_disc, index=False)
+    disc.procesar(ruta_disc, 1, disc_dir)
+
+    # Causales
+    caus = CausalesProcessor(log_service=log_srv)
+    caus_dir = os.path.join(DATA_DIR, 'test_causales')
+    os.makedirs(caus_dir, exist_ok=True)
+    # creamos archivo simple
+    df_caus = pd.DataFrame({'Campaña': ['Cobranzas Hogar 0-30 días'], 'Tipo de evento': ['Categorización'], 'Usuario': ['1453-Juan']})
+    ruta_caus = os.path.join(caus_dir, 'caus_test.xlsx')
+    df_caus.to_excel(ruta_caus, index=False)
+    caus.procesar(ruta_caus, caus_dir)
+
+    # Lotes
+    lotes = LotesProcessor(log_service=log_srv)
+    lotes_dir = os.path.join(DATA_DIR, 'test_lotes')
+    os.makedirs(lotes_dir, exist_ok=True)
+    df_lote = pd.DataFrame({'Cuenta': ['C1'], 'Cliente': ['Test'], 'phone_number_1': ['9999']})
+    ruta_lote = os.path.join(lotes_dir, 'lote_test.csv')
+    df_lote.to_csv(ruta_lote, index=False)
+    lotes.procesar_carpeta_lotes(lotes_dir, '202605_12')
+
+    # Obtener logs finales
+    logs = log_srv.obtener_logs(limite=50)
+
+    html = "<h2>Integración de Logging - Resultados</h2>"
+    html += f"<p><b>Total logs generados:</b> {len(logs)}</p>"
+    html += "<table border='1' cellpadding='3'>"
+    html += "<tr><th>ID</th><th>Timestamp</th><th>Fase</th><th>Acción</th><th>Resultado</th><th>Detalle</th></tr>"
+    for log in logs:
+        html += f"<tr><td>{log['id']}</td><td>{log['timestamp']}</td><td>{log['fase']}</td><td>{log['accion']}</td><td>{log['resultado']}</td><td>{log['detalle']}</td></tr>"
     html += "</table>"
     return html
