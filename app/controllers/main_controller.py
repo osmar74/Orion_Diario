@@ -1,5 +1,6 @@
 import os
-from flask import Blueprint, render_template
+import pandas as pd
+from flask import Blueprint, render_template, request
 from app.services.file_manager import FileManager
 from app.config import DATA_DIR, TESSERACT_PATH
 
@@ -400,7 +401,8 @@ def test_logging():
     html += "</table>"
     return html
 
-@main_bp.route('/test-integracion-logging')
+
+@main_bp.route("/test-integracion-logging")
 def test_integracion_logging():
     from app.services.log_service import LogService
     from app.services.file_manager import FileManager
@@ -416,51 +418,70 @@ def test_integracion_logging():
 
     # FileManager
     fm = FileManager(DATA_DIR, log_service=log_srv)
-    fm.crear_estructura_diaria('202605_12')
-    fm.verificar_red_y_carpetas('202605_06')  # fallará, generará error
-    fm.distribuir_archivos({}, 'fake_dir', {})  # fallará por vacío
+    fm.crear_estructura_diaria("202605_12")
+    fm.verificar_red_y_carpetas("202605_06")  # fallará, generará error
+    fm.distribuir_archivos({}, "fake_dir", {})  # fallará por vacío
 
     # OCR
     ocr = OCRProcessor(TESSERACT_PATH, log_service=log_srv)
-    test_dir = os.path.join(DATA_DIR, 'test_images')
+    test_dir = os.path.join(DATA_DIR, "test_images")
     os.makedirs(test_dir, exist_ok=True)
     # Crear una mini imagen para probar
     from PIL import Image, ImageDraw
-    img = Image.new('RGB', (200, 50), color='white')
+
+    img = Image.new("RGB", (200, 50), color="white")
     d = ImageDraw.Draw(img)
-    d.text((10, 15), "Total general Orion: 100", fill='black')
-    ruta_img = os.path.join(test_dir, 'temp_ocr.png')
+    d.text((10, 15), "Total general Orion: 100", fill="black")
+    ruta_img = os.path.join(test_dir, "temp_ocr.png")
     img.save(ruta_img)
     texto = ocr.extraer_texto(ruta_img)
     ocr.extraer_totales(texto)
 
     # Discador
     disc = DiscadorProcessor(log_service=log_srv)
-    disc_dir = os.path.join(DATA_DIR, 'test_discador')
+    disc_dir = os.path.join(DATA_DIR, "test_discador")
     os.makedirs(disc_dir, exist_ok=True)
-    df = pd.DataFrame({'Lote': ['L1'], 'Campaña': ['Cobranzas Hogar 121 dias'], 'EstadoActualContacto': ['Contactada'], 'TiempoEnCola': ['-'], 'Agente': ['-'], 'TiempoHablado': ['-'], 'DuracionTotal': ['-']})
-    ruta_disc = os.path.join(disc_dir, 'disc_test.xlsx')
+    df = pd.DataFrame(
+        {
+            "Lote": ["L1"],
+            "Campaña": ["Cobranzas Hogar 121 dias"],
+            "EstadoActualContacto": ["Contactada"],
+            "TiempoEnCola": ["-"],
+            "Agente": ["-"],
+            "TiempoHablado": ["-"],
+            "DuracionTotal": ["-"],
+        }
+    )
+    ruta_disc = os.path.join(disc_dir, "disc_test.xlsx")
     df.to_excel(ruta_disc, index=False)
     disc.procesar(ruta_disc, 1, disc_dir)
 
     # Causales
     caus = CausalesProcessor(log_service=log_srv)
-    caus_dir = os.path.join(DATA_DIR, 'test_causales')
+    caus_dir = os.path.join(DATA_DIR, "test_causales")
     os.makedirs(caus_dir, exist_ok=True)
     # creamos archivo simple
-    df_caus = pd.DataFrame({'Campaña': ['Cobranzas Hogar 0-30 días'], 'Tipo de evento': ['Categorización'], 'Usuario': ['1453-Juan']})
-    ruta_caus = os.path.join(caus_dir, 'caus_test.xlsx')
+    df_caus = pd.DataFrame(
+        {
+            "Campaña": ["Cobranzas Hogar 0-30 días"],
+            "Tipo de evento": ["Categorización"],
+            "Usuario": ["1453-Juan"],
+        }
+    )
+    ruta_caus = os.path.join(caus_dir, "caus_test.xlsx")
     df_caus.to_excel(ruta_caus, index=False)
     caus.procesar(ruta_caus, caus_dir)
 
     # Lotes
     lotes = LotesProcessor(log_service=log_srv)
-    lotes_dir = os.path.join(DATA_DIR, 'test_lotes')
+    lotes_dir = os.path.join(DATA_DIR, "test_lotes")
     os.makedirs(lotes_dir, exist_ok=True)
-    df_lote = pd.DataFrame({'Cuenta': ['C1'], 'Cliente': ['Test'], 'phone_number_1': ['9999']})
-    ruta_lote = os.path.join(lotes_dir, 'lote_test.csv')
+    df_lote = pd.DataFrame(
+        {"Cuenta": ["C1"], "Cliente": ["Test"], "phone_number_1": ["9999"]}
+    )
+    ruta_lote = os.path.join(lotes_dir, "lote_test.csv")
     df_lote.to_csv(ruta_lote, index=False)
-    lotes.procesar_carpeta_lotes(lotes_dir, '202605_12')
+    lotes.procesar_carpeta_lotes(lotes_dir, "202605_12")
 
     # Obtener logs finales
     logs = log_srv.obtener_logs(limite=50)
@@ -472,4 +493,178 @@ def test_integracion_logging():
     for log in logs:
         html += f"<tr><td>{log['id']}</td><td>{log['timestamp']}</td><td>{log['fase']}</td><td>{log['accion']}</td><td>{log['resultado']}</td><td>{log['detalle']}</td></tr>"
     html += "</table>"
+    return html
+
+
+# ---------- Rutas de acción real ----------
+def _obtener_log_service():
+    from app.services.log_service import LogService
+    from app.config import LOG_DB_PATH
+
+    return LogService(LOG_DB_PATH)
+
+
+@main_bp.route("/accion/crear-carpetas")
+def accion_crear_carpetas():
+    fecha = request.args.get("fecha", "202605_12")
+    fm = FileManager(DATA_DIR, log_service=_obtener_log_service())
+    res = fm.crear_estructura_diaria(fecha)
+    if res["success"]:
+        html = f"<div class='log-line success'>✅ Carpetas creadas para {fecha}</div>"
+        html += "<ul>"
+        for k, v in res["rutas"].items():
+            html += f"<li><b>{k}:</b> {v}</li>"
+        html += "</ul>"
+    else:
+        html = f"<div class='log-line error'>❌ {res['error']}</div>"
+    return html
+
+
+@main_bp.route("/accion/verificar-red")
+def accion_verificar_red():
+    fecha = request.args.get("fecha", "202605_06")
+    fm = FileManager(DATA_DIR, log_service=_obtener_log_service())
+    res = fm.verificar_red_y_carpetas(fecha)
+    if res["success"]:
+        html = f"<div class='log-line success'>✅ Red verificada</div>"
+        html += "<ul>" + "".join(f"<li>{m}</li>" for m in res["mensajes"]) + "</ul>"
+        html += "<p><b>Archivos encontrados:</b></p><ul>"
+        for sub, archivos in res["archivos_encontrados"].items():
+            html += f"<li>{sub}: {', '.join(archivos) if archivos else 'Ninguno'}</li>"
+        html += "</ul>"
+    else:
+        html = f"<div class='log-line error'>❌ {res['error']}</div>"
+    return html
+
+
+@main_bp.route("/accion/ocr")
+def accion_ocr():
+    fecha = request.args.get("fecha", "202605_12")
+    from app.services.ocr_processor import OCRProcessor
+
+    ocr = OCRProcessor(TESSERACT_PATH, log_service=_obtener_log_service())
+    # Simulamos: buscar imágenes en data/orion_fecha/Reporte_Imagen
+    carpeta_img = os.path.join(DATA_DIR, f"orion_{fecha}", "Reporte_Imagen")
+    if not os.path.isdir(carpeta_img):
+        return "<div class='log-line error'>❌ No existe la carpeta Reporte_Imagen. Cree las carpetas primero.</div>"
+    imagenes = [
+        f
+        for f in os.listdir(carpeta_img)
+        if f.lower().endswith((".png", ".jpg", ".jpeg"))
+    ]
+    if not imagenes:
+        return "<div class='log-line error'>❌ No hay imágenes en Reporte_Imagen.</div>"
+    totales_finales = {"orion": None, "aister": None}
+    html = ""
+    for img in imagenes:
+        ruta_img = os.path.join(carpeta_img, img)
+        texto = ocr.extraer_texto(ruta_img)
+        totales = ocr.extraer_totales(texto)
+        html += f"<p>{img}: {totales['texto_completo'][:100]}</p>"
+        if totales["orion"]:
+            totales_finales["orion"] = totales["orion"]
+        if totales["aister"]:
+            totales_finales["aister"] = totales["aister"]
+    html += f"<div class='log-line success'>✅ OCR completado. Orion: {totales_finales['orion']} | Aister: {totales_finales['aister']}</div>"
+    # Guardar totales en session o pasarlos al monitor (por ahora los mostramos)
+    return html
+
+
+@main_bp.route("/accion/distribuir")
+def accion_distribuir():
+    fecha = request.args.get("fecha", "202605_12")
+    fm = FileManager(DATA_DIR, log_service=_obtener_log_service())
+    # Necesitamos haber verificado red antes. Por ahora simulamos error controlado.
+    res_verif = fm.verificar_red_y_carpetas(fecha)
+    if not res_verif["success"]:
+        return f"<div class='log-line error'>❌ No se puede distribuir: {res_verif['error']}</div>"
+    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    res_dist = fm.distribuir_archivos(
+        res_verif["rutas_validadas"], carpeta_diaria, res_verif["archivos_encontrados"]
+    )
+    if res_dist["success"]:
+        html = "<div class='log-line success'>✅ Archivos distribuidos correctamente.</div><ul>"
+        for f in res_dist["copiados"]:
+            html += f"<li>{f}</li>"
+        html += "</ul>"
+    else:
+        html = f"<div class='log-line warning'>⚠️ Distribución parcial. Errores: {res_dist['errores']}</div>"
+    return html
+
+
+@main_bp.route("/accion/procesar-discador")
+def accion_procesar_discador():
+    fecha = request.args.get("fecha", "202605_12")
+    total_esperado = request.args.get("total", 0, type=int)
+    from app.services.discador_processor import DiscadorProcessor
+
+    disc = DiscadorProcessor(log_service=_obtener_log_service())
+    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    # Buscar archivo de discador en raíz de carpeta diaria
+    archivos = [
+        f
+        for f in os.listdir(carpeta_diaria)
+        if f.lower().endswith(".xlsx") and "discador" in f.lower()
+    ]
+    if not archivos:
+        return "<div class='log-line error'>❌ No se encontró archivo Discador en la carpeta diaria.</div>"
+    ruta_disc = os.path.join(carpeta_diaria, archivos[0])
+    res = disc.procesar(ruta_disc, total_esperado, carpeta_diaria)
+    if res["success"]:
+        html = f"<div class='log-line success'>✅ Discador procesado. Válidos: {res['total_validos']}, No válidos: {res['total_no_validos']}</div>"
+        html += f"<p>{res['mensaje']}</p>"
+        # preview tabla
+        df = pd.read_excel(res["ruta_limpio"])
+        html += df.head(10).to_html(index=False, classes="dataframe")
+    else:
+        html = f"<div class='log-line error'>❌ {res['mensaje']}</div>"
+    return html
+
+
+@main_bp.route("/accion/procesar-causales")
+def accion_procesar_causales():
+    fecha = request.args.get("fecha", "202605_12")
+    from app.services.causales_processor import CausalesProcessor
+
+    caus = CausalesProcessor(log_service=_obtener_log_service())
+    carpeta_causales = os.path.join(DATA_DIR, f"orion_{fecha}", "Causales")
+    if not os.path.isdir(carpeta_causales):
+        return "<div class='log-line error'>❌ No existe la carpeta Causales.</div>"
+    archivos = [f for f in os.listdir(carpeta_causales) if f.lower().endswith(".xlsx")]
+    if not archivos:
+        return "<div class='log-line error'>❌ No hay archivos en Causales.</div>"
+    ruta_archivo = os.path.join(carpeta_causales, archivos[0])
+    res = caus.procesar(ruta_archivo, carpeta_causales)
+    if res["success"]:
+        html = f"<div class='log-line success'>✅ Causales procesados. Válidos: {res['total_validos']}, No válidos: {res['total_no_validos']}</div>"
+        df = pd.read_excel(res["ruta_limpio"])
+        html += df.head(10).to_html(index=False, classes="dataframe")
+    else:
+        html = f"<div class='log-line error'>❌ {res['mensaje']}</div>"
+    return html
+
+
+@main_bp.route("/accion/procesar-lotes")
+def accion_procesar_lotes():
+    fecha = request.args.get("fecha", "202605_12")
+    from app.services.lotes_processor import LotesProcessor
+
+    lotes = LotesProcessor(log_service=_obtener_log_service())
+    carpeta_lotes = os.path.join(DATA_DIR, f"orion_{fecha}", "Lotes")
+    if not os.path.isdir(carpeta_lotes):
+        return "<div class='log-line error'>❌ No existe la carpeta Lotes.</div>"
+    # Buscar archivo del discador limpio para validación cruzada
+    ruta_disc = os.path.join(
+        DATA_DIR, f"orion_{fecha}", "discador_ejemplo_limpio.xlsx"
+    )  # Ajustar nombre real
+    res = lotes.procesar_carpeta_lotes(
+        carpeta_lotes, fecha, ruta_disc if os.path.isfile(ruta_disc) else None
+    )
+    if res["success"]:
+        html = f"<div class='log-line success'>✅ Lotes procesados. Total filas: {res['total_filas']}</div>"
+        html += res["preview_html"]
+        if res["validacion_cruzada"]:
+            html += f"<p>Validación cruzada: {'OK' if res['validacion_cruzada']['ok'] else 'Fallo'}</p>"
+    else:
+        html = f"<div class='log-line error'>❌ {res['mensajes']}</div>"
     return html
