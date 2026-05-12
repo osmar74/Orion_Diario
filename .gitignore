@@ -1,0 +1,36 @@
+# Entorno virtual
+venv/
+env/
+.venv/
+
+# Bytecode de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de distribución
+*.egg-info/
+dist/
+build/
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de sistema
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Archivos de datos y logs generados (no versionar)
+data/
+logs/
+*.db
+*.sqlite3
+
+# Archivos Excel y CSV de prueba (si decides versionarlos luego, quita esta línea)
+*.xlsx
+*.csv
+*.txt
