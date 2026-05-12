@@ -116,3 +116,55 @@ def test_ocr():
     <p><strong>Texto extraído:</strong> {texto_extraido.strip()}</p>
     <img src="/static/../data/test_images/test_totales.png" width="400" />
     """
+
+
+@main_bp.route("/test-ocr-real")
+def test_ocr_real():
+    from PIL import Image, ImageDraw, ImageFont
+    import os
+    from app.services.ocr_processor import OCRProcessor
+    from app.config import TESSERACT_PATH
+
+    ocr = OCRProcessor(TESSERACT_PATH)
+    test_dir = os.path.join(DATA_DIR, "test_images")
+    os.makedirs(test_dir, exist_ok=True)
+
+    # Intentar cargar Arial, si no, fuente por defecto
+    try:
+        fuente = ImageFont.truetype("arial.ttf", 32)
+    except IOError:
+        fuente = ImageFont.load_default()
+
+    # Imagen 1: solo Orion (fondo blanco, texto negro)
+    img1 = Image.new("RGB", (700, 120), color="white")
+    d1 = ImageDraw.Draw(img1)
+    d1.text((30, 40), "Total general Orion: 1500", fill="black", font=fuente)
+    ruta1 = os.path.join(test_dir, "img_orion.png")
+    img1.save(ruta1)
+
+    # Imagen 2: ambos totales (dos líneas)
+    img2 = Image.new("RGB", (700, 160), color="white")
+    d2 = ImageDraw.Draw(img2)
+    d2.text((30, 20), "Total general Orion: 1500", fill="black", font=fuente)
+    d2.text((30, 80), "Total general Aister: 890", fill="black", font=fuente)
+    ruta2 = os.path.join(test_dir, "img_ambos.png")
+    img2.save(ruta2)
+
+    # Procesar
+    texto1 = ocr.extraer_texto(ruta1)
+    totales1 = ocr.extraer_totales(texto1)
+
+    texto2 = ocr.extraer_texto(ruta2)
+    totales2 = ocr.extraer_totales(texto2)
+
+    def render_resultado(label, totales):
+        html = f"<h3>{label}</h3>"
+        html += f"<p><b>Texto crudo:</b> {totales['texto_completo']}</p>"
+        html += f"<p><b>Orion:</b> {totales['orion']} | <b>Aister:</b> {totales['aister']}</p>"
+        return html
+
+    return f"""
+    <h2>Prueba OCRProcessor con patrones flexibles ✅</h2>
+    {render_resultado('Imagen 1 (solo Orion)', totales1)}
+    {render_resultado('Imagen 2 (ambos)', totales2)}
+    """
