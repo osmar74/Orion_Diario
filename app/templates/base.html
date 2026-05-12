@@ -5,12 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
       {% block title %}
-        Orion
+        Orion Procesos
       {% endblock %}
     </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/deepblack.css') }}" />
   </head>
   <body>
-    {% block content %}
-    {% endblock %}
+    {% include 'partials/header.html' %}
+
+    <div class="main-layout">
+      {% block sidebar %}
+        {% include 'partials/sidebar.html' %}
+      {% endblock %}
+
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+      {% block content %}
+        {% include 'partials/monitor.html' %}
+      {% endblock %}
+    </div>
+
+    <script>
+      function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar')
+        sidebar.classList.toggle('collapsed')
+      }
+    </script>
   </body>
 </html>
