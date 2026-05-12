@@ -39,6 +39,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 15px 0;
+    flex-wrap: wrap;
 }
 
 .header-main h1 {
@@ -49,7 +50,9 @@ body {
 
 .subheader {
     display: flex;
-    gap: 30px;
+    /* align-items: center; */
+    gap: 20px;
+    justify-content: ;
     padding: 10px 0;
     border-radius: 0 0 var(--radius) var(--radius);
 }
@@ -213,4 +216,78 @@ body {
 .monitor table.dataframe td {
     padding: 6px 8px;
     border: 1px solid #333;
+}
+/* Logs table larger font */
+.monitor table.dataframe {
+    font-size: 0.70rem;
+}
+
+/* ---------- BARRA DE PROGRESO ---------- */
+.progress-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.paso {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #555;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.paso.completado {
+    background: #1a3a1a;
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.paso.activo {
+    background: #1a2a3a;
+    border-color: #1e90ff;
+    color: #1e90ff;
+    box-shadow: 0 0 8px rgba(30,144,255,0.3);
+}
+
+/* ---------- BARRA DE PROGRESO EN SUBHEADER ---------- */
+.progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.paso {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #555;
+    padding: 4px 10px;
+    border-radius: 20px;          /* Forma redondeada */
+    font-size: 0.7rem;           /* Letra más pequeña */
+    white-space: nowrap;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.paso.completado {
+    background: #1a3a1a;
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.paso.activo {
+    background: #1a2a3a;
+    border-color: #1e90ff;
+    color: #1e90ff;
+    box-shadow: 0 0 8px rgba(30,144,255,0.3);
+}
+
+.arrow {
+    color: #555;
+    font-size: 0.7rem;
+    margin: 0 2px;
+    user-select: none;
 }

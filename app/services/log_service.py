@@ -17,7 +17,7 @@ class LogService:
     def _init_db(self):
         """Crea la tabla de logs si no existe."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute('''
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS action_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
@@ -27,7 +27,7 @@ class LogService:
                     detalle TEXT,
                     datos_extra TEXT
                 )
-            ''')
+            """)
             conn.commit()
 
     def log(
@@ -35,8 +35,8 @@ class LogService:
         fase: str,
         accion: str,
         resultado: str,
-        detalle: str = '',
-        datos_extra: Optional[str] = None
+        detalle: str = "",
+        datos_extra: Optional[str] = None,
     ):
         """
         Inserta un registro de log.
@@ -50,9 +50,9 @@ class LogService:
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
-                '''INSERT INTO action_log (fase, accion, resultado, detalle, datos_extra)
-                   VALUES (?, ?, ?, ?, ?)''',
-                (fase, accion, resultado, detalle, datos_extra)
+                """INSERT INTO action_log (fase, accion, resultado, detalle, datos_extra)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (fase, accion, resultado, detalle, datos_extra),
             )
             conn.commit()
 
@@ -60,7 +60,7 @@ class LogService:
         self,
         fase: Optional[str] = None,
         resultado: Optional[str] = None,
-        limite: int = 200
+        limite: int = 200,
     ) -> List[Dict]:
         """
         Recupera los logs, con filtros opcionales.

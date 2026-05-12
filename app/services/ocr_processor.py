@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import pytesseract
 from PIL import Image, ImageEnhance, ImageOps
@@ -45,7 +45,7 @@ class OCRProcessor:
         try:
             imagen = Image.open(ruta_imagen)
             imagen = self._preprocesar_imagen(imagen)
-            texto = pytesseract.image_to_string(imagen, lang="spa", config="--psm 4")
+            texto = pytesseract.image_to_string(imagen, lang="spa", config="--psm 6")
             texto_limpio = texto.strip()
             if self.log_service:
                 self.log_service.log(
@@ -102,3 +102,29 @@ class OCRProcessor:
                 )
 
         return totales
+
+    def extraer_totales_generico(self, texto: str) -> List[int]:
+        """
+        Busca 'Total general' (sin distinción de mayúsculas) y devuelve
+        todos los números enteros que aparecen después de esa frase.
+        Si no se encuentra, devuelve lista vacía.
+        """
+        patron = r"Total\s+general\s+(.*?)(?:\n|$)"
+        match = re.search(patron, texto, re.IGNORECASE)
+        if not match:
+            return []
+        resto = match.group(1)
+        # Extraer todos los números (pueden estar separados por espacios o tabs)
+        numeros = re.findall(r"\b\d+\b", resto)
+        return [int(n) for n in numeros]
+    
+    def extraer_numero_cercano(self, texto: str, palabra_clave: str) -> Optional[int]:
+        """
+        Busca un número de al menos 3 dígitos que aparezca después de la palabra clave,
+        en cualquier parte del texto (útil cuando no hay 'Total general').
+        """
+        patron = re.compile(rf'{re.escape(palabra_clave)}.*?(\d{{3,}})', re.IGNORECASE)
+        match = patron.search(texto)
+        if match:
+            return int(match.group(1))
+        return None

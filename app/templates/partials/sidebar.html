@@ -4,10 +4,17 @@
       <summary>📁 Fase A-B: Ingreso y Carpetas</summary>
       <div class="fase-actions">
         <label>Fecha (YYYYMM_DD):</label>
-        <input type="text" id="fechaInput" placeholder="202605_12" value="202605_12" style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;" />
+        <input type="text" id="fechaInput" placeholder="202605_12" value="{{ ultima_fecha }}" style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;" />
         <button onclick="ejecutarAccion('/accion/crear-carpetas', this)" id="btn-crear">Crear Carpetas <span class="status-icon">⚪</span></button>
         <button onclick="ejecutarAccion('/accion/verificar-red', this)" id="btn-verred">Verificar Red <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/ocr', this)" id="btn-ocr">Ejecutar OCR <span class="status-icon">⚪</span></button>
+      </div>
+    </details>
+    <details>
+      <summary>📊 Fase C: OCR y Totales</summary>
+      <div class="fase-actions">
+        <input type="file" id="ocrFiles" accept="image/*" multiple style="color:#aaa; margin-bottom:8px;" />
+        <button onclick="subirOCR()" id="btn-ocr">Subir y Procesar OCR <span class="status-icon">⚪</span></button>
+        <span style="font-size:0.8rem; color:#aaa;">Totales: Orion: <span id="totalOrion">{{ totales_orion }}</span> | Aister: <span id="totalAister">{{ totales_aister }}</span></span>
       </div>
     </details>
     <details>

@@ -1,4 +1,4 @@
 [flake8]
 max-line-length = 120
 # Ignoramos E501 solo si queremos mantenerlo ilimitado:
-ignore = E501, W293
+ignore = E501, W293, W391,E303

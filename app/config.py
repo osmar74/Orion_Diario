@@ -7,9 +7,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 # Unidad de red para archivos Orion (dejar el % literal, Windows lo maneja)
-RED_BASE_PATH = (
-    r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba_carga_diaria_Aster_voip\Orion"
-)
+# Posibles rutas de red (UNC y unidad mapeada)
+RED_BASE_PATHS = [
+    r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
+    r"Z:\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion"
+]
 
 # Ruta del ejecutable de Tesseract-OCR (instalación por defecto en Windows)
 TESSERACT_PATH = r"D:\Programs\Tesseract-OCR\tesseract.exe"

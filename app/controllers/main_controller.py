@@ -1,15 +1,31 @@
 import os
+from werkzeug.utils import secure_filename
+from flask import Blueprint, render_template, request, session
 import pandas as pd
-from flask import Blueprint, render_template, request
 from app.services.file_manager import FileManager
-from app.config import DATA_DIR, TESSERACT_PATH
+from app.config import DATA_DIR, TESSERACT_PATH, LOG_DB_PATH
+from app.services.log_service import LogService
 
 main_bp = Blueprint("main", __name__)
 
 
-@main_bp.route("/")
+@main_bp.route('/')
 def index():
-    return render_template("index.html", titulo="Orion Procesos")
+    # Obtener valores de sesión y convertir None a '--'
+    totales_orion = session.get('totales_orion')
+    totales_aister = session.get('totales_aister')
+    ultima_fecha = session.get('ultima_fecha', '202605_12')
+
+    if totales_orion is None:
+        totales_orion = '--'
+    if totales_aister is None:
+        totales_aister = '--'
+
+    return render_template('index.html',
+                           titulo='Orion Procesos',
+                           totales_orion=totales_orion,
+                           totales_aister=totales_aister,
+                           ultima_fecha=ultima_fecha)
 
 
 @main_bp.route("/test-fase2")
@@ -498,8 +514,8 @@ def test_integracion_logging():
 
 # ---------- Rutas de acción real ----------
 def _obtener_log_service():
-    from app.services.log_service import LogService
-    from app.config import LOG_DB_PATH
+    # from app.services.log_service import LogService
+    # from app.config import LOG_DB_PATH
 
     return LogService(LOG_DB_PATH)
 
@@ -520,16 +536,18 @@ def accion_crear_carpetas():
     return html
 
 
-@main_bp.route("/accion/verificar-red")
+@main_bp.route('/accion/verificar-red')
 def accion_verificar_red():
-    fecha = request.args.get("fecha", "202605_06")
+    fecha = request.args.get('fecha', '202605_06')
     fm = FileManager(DATA_DIR, log_service=_obtener_log_service())
-    res = fm.verificar_red_y_carpetas(fecha)
-    if res["success"]:
+    res = fm.verificar_red_y_carpetas(fecha)  # Sin parámetro, busca automáticamente
+    if res['success']:
+        # Guardar la ruta base exitosa en sesión
+        session['red_base_activa'] = res.get('red_base_usada')
         html = f"<div class='log-line success'>✅ Red verificada</div>"
-        html += "<ul>" + "".join(f"<li>{m}</li>" for m in res["mensajes"]) + "</ul>"
+        html += "<ul>" + "".join(f"<li>{m}</li>" for m in res['mensajes']) + "</ul>"
         html += "<p><b>Archivos encontrados:</b></p><ul>"
-        for sub, archivos in res["archivos_encontrados"].items():
+        for sub, archivos in res['archivos_encontrados'].items():
             html += f"<li>{sub}: {', '.join(archivos) if archivos else 'Ninguno'}</li>"
         html += "</ul>"
     else:
@@ -570,25 +588,38 @@ def accion_ocr():
     return html
 
 
-@main_bp.route("/accion/distribuir")
+@main_bp.route('/accion/distribuir')
 def accion_distribuir():
-    fecha = request.args.get("fecha", "202605_12")
+    fecha = request.args.get('fecha', '202605_12')
     fm = FileManager(DATA_DIR, log_service=_obtener_log_service())
-    # Necesitamos haber verificado red antes. Por ahora simulamos error controlado.
-    res_verif = fm.verificar_red_y_carpetas(fecha)
-    if not res_verif["success"]:
+    red_base = session.get('red_base_activa')
+    if not red_base:
+        return "<div class='log-line error'>❌ Primero debe verificar la red correctamente.</div>"
+
+    # Verificar nuevamente usando la ruta base activa
+    res_verif = fm.verificar_red_y_carpetas(fecha, red_base_path=red_base)
+    if not res_verif['success']:
         return f"<div class='log-line error'>❌ No se puede distribuir: {res_verif['error']}</div>"
+
     carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    os.makedirs(carpeta_diaria, exist_ok=True)  # Asegurar que la carpeta diaria exista
+
     res_dist = fm.distribuir_archivos(
-        res_verif["rutas_validadas"], carpeta_diaria, res_verif["archivos_encontrados"]
+        res_verif['rutas_validadas'],
+        carpeta_diaria,
+        res_verif['archivos_encontrados']
     )
-    if res_dist["success"]:
+
+    if res_dist['success']:
         html = "<div class='log-line success'>✅ Archivos distribuidos correctamente.</div><ul>"
-        for f in res_dist["copiados"]:
-            html += f"<li>{f}</li>"
+        for archivo in res_dist['copiados']:
+            html += f"<li>{archivo}</li>"
         html += "</ul>"
     else:
-        html = f"<div class='log-line warning'>⚠️ Distribución parcial. Errores: {res_dist['errores']}</div>"
+        html = f"<div class='log-line warning'>⚠️ Distribución parcial o con errores.</div><ul>"
+        for error in res_dist.get('errores', []):
+            html += f"<li>{error}</li>"
+        html += "</ul>"
     return html
 
 
@@ -670,27 +701,156 @@ def accion_procesar_lotes():
     return html
 
 
-@main_bp.route("/logs")
+@main_bp.route('/logs')
 def logs():
     """Página de visualización de logs con filtros."""
     from app.services.log_service import LogService
     from app.config import LOG_DB_PATH
 
     log_srv = LogService(LOG_DB_PATH)
-    fase = request.args.get("fase", None)
-    resultado = request.args.get("resultado", None)
+    fase = request.args.get('fase', None)
+    resultado = request.args.get('resultado', None)
 
     logs = log_srv.obtener_logs(fase=fase, resultado=resultado, limite=500)
 
-    # Posibles fases y resultados para los selects
-    fases_posibles = ["2.1", "2.2", "2.3", "3.2", "4.1", "4.2", "4.3"]
-    resultados_posibles = ["éxito", "error", "info", "advertencia"]
+    fases_posibles = ['2.1', '2.2', '2.3', '3.2', '4.1', '4.2', '4.3']
+    resultados_posibles = ['éxito', 'error', 'info', 'advertencia']
+
+    # Obtener totales de la sesión (igual que en index)
+    totales_orion = session.get('totales_orion')
+    totales_aister = session.get('totales_aister')
+    ultima_fecha = session.get('ultima_fecha', '202605_12')
+    if totales_orion is None:
+        totales_orion = '--'
+    if totales_aister is None:
+        totales_aister = '--'
 
     return render_template(
-        "logs.html",
+        'logs.html',
         logs=logs,
         fase_actual=fase,
         resultado_actual=resultado,
         fases=fases_posibles,
         resultados=resultados_posibles,
+        totales_orion=totales_orion,
+        totales_aister=totales_aister,
+        ultima_fecha=ultima_fecha
     )
+
+
+@main_bp.route('/accion/ocr-subir', methods=['POST'])
+def accion_ocr_subir():
+    from app.services.ocr_processor import OCRProcessor
+    import base64
+
+    fecha = request.form.get('fecha', '202605_12')
+    archivos = request.files.getlist('imagenes')
+
+    if not archivos or all(archivo.filename == '' for archivo in archivos):
+        return "<div class='log-line error'>❌ No se seleccionó ninguna imagen.</div>"
+
+    carpeta_destino = os.path.join(DATA_DIR, f"orion_{fecha}", "Reporte_Imagen")
+    os.makedirs(carpeta_destino, exist_ok=True)
+
+    log_srv = _obtener_log_service()
+    ocr = OCRProcessor(TESSERACT_PATH, log_service=log_srv)
+
+    totales_finales = {'orion': None, 'aister': None}
+    archivos_procesados = []
+    preview_imagenes = []
+
+    for idx, archivo in enumerate(archivos):
+        if archivo.filename == '':
+            continue
+        nombre_base = secure_filename(archivo.filename)
+        nombre_unico = f"{pd.Timestamp.now().strftime('%H%M%S')}_{idx}_{nombre_base}"
+        ruta_guardada = os.path.join(carpeta_destino, nombre_unico)
+        archivo.save(ruta_guardada)
+        archivos_procesados.append(nombre_unico)
+
+        if len(preview_imagenes) < 3:
+            with open(ruta_guardada, "rb") as f:
+                img_data = f.read()
+                img_b64 = base64.b64encode(img_data).decode('utf-8')
+            preview_imagenes.append((nombre_unico, img_b64))
+
+        texto = ocr.extraer_texto(ruta_guardada)
+        nombre_lower = archivo.filename.lower()
+        es_orion = 'orion' in nombre_lower
+        es_aister = 'aister' in nombre_lower or 'aster' in nombre_lower
+
+        # 1. Intentar método específico (Total general Orion/Aister)
+        totales_especificos = ocr.extraer_totales(texto)
+        if totales_finales['orion'] is None and totales_especificos['orion']:
+            totales_finales['orion'] = totales_especificos['orion']
+        if totales_finales['aister'] is None and totales_especificos['aister']:
+            totales_finales['aister'] = totales_especificos['aister']
+
+        # 2. Método genérico "Total general"
+        if totales_finales['orion'] is None or totales_finales['aister'] is None:
+            numeros_gen = ocr.extraer_totales_generico(texto)
+            if numeros_gen:
+                if len(numeros_gen) == 1:
+                    # Un solo número: asignar al cliente correcto según el nombre del archivo
+                    if es_orion and totales_finales['orion'] is None:
+                        totales_finales['orion'] = numeros_gen[0]
+                    elif es_aister and totales_finales['aister'] is None:
+                        totales_finales['aister'] = numeros_gen[0]
+                elif len(numeros_gen) >= 2:
+                    # Dos números: solo asignar el que corresponda al archivo actual
+                    if es_orion and totales_finales['orion'] is None:
+                        totales_finales['orion'] = numeros_gen[0]
+                    elif es_aister and totales_finales['aister'] is None:
+                        totales_finales['aister'] = numeros_gen[-1]
+                    else:
+                        # Archivo no identificado: asignar ambos si faltan (caso genérico)
+                        if totales_finales['orion'] is None:
+                            totales_finales['orion'] = numeros_gen[0]
+                        if totales_finales['aister'] is None:
+                            totales_finales['aister'] = numeros_gen[-1]
+
+        # 3. Respaldo: buscar número cerca de "Orion" o "Aister" en el texto
+        if totales_finales['orion'] is None and es_orion:
+            num = ocr.extraer_numero_cercano(texto, 'Orion')
+            if num:
+                totales_finales['orion'] = num
+        if totales_finales['aister'] is None and es_aister:
+            num = ocr.extraer_numero_cercano(texto, 'Aister')
+            if num:
+                totales_finales['aister'] = num
+
+    # Guardar en sesión
+    session['totales_orion'] = totales_finales['orion']
+    session['totales_aister'] = totales_finales['aister']
+    session['ultima_fecha'] = fecha
+
+    html = ""
+    if preview_imagenes:
+        for nombre, img_b64 in preview_imagenes:
+            html += f"<div style='display:inline-block; margin:5px;'><img src='data:image/png;base64,{img_b64}' style='max-width: 400px; border: 1px solid #444;'/><br/><small>{nombre}</small></div>"
+
+    if totales_finales['orion'] is not None or totales_finales['aister'] is not None:
+        html += f"<div class='log-line success'>✅ OCR completado. Orion: {totales_finales['orion']} | Aister: {totales_finales['aister']}</div>"
+    else:
+        html += "<div class='log-line warning'>⚠️ No se detectaron totales en las imágenes. ¿El reporte tiene el formato esperado? Revise los logs.</div>"
+
+    html += "<p><b>Archivos guardados:</b></p><ul>"
+    for nombre in archivos_procesados:
+        html += f"<li>{nombre}</li>"
+    html += "</ul>"
+    return html
+
+
+@main_bp.route("/reset-logs", methods=["POST"])
+def reset_logs():
+    """Vacia la tabla de logs."""
+    from app.config import LOG_DB_PATH
+    import sqlite3
+
+    try:
+        with sqlite3.connect(LOG_DB_PATH) as conn:
+            conn.execute("DELETE FROM action_log")
+            conn.commit()
+        return "<div class='log-line success'>✅ Logs eliminados correctamente.</div>"
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error al resetear logs: {e}</div>"
