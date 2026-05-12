@@ -1,7 +1,7 @@
 import os
 from flask import Blueprint, render_template
 from app.services.file_manager import FileManager
-from app.config import DATA_DIR
+from app.config import DATA_DIR, TESSERACT_PATH
 
 main_bp = Blueprint("main", __name__)
 
@@ -48,36 +48,71 @@ def test_red():
         return html
     else:
         return f"<h2>Error ❌</h2><p>{resultado['error']}</p>"
-    
 
-@main_bp.route('/test-distribuir')
+
+@main_bp.route("/test-distribuir")
 def test_distribuir():
     """Ruta temporal para probar la distribución de archivos."""
     fm = FileManager(DATA_DIR)
     # Usamos la misma fecha de ejemplo
-    fecha = '202605_06'
+    fecha = "202605_06"
     resultado_verif = fm.verificar_red_y_carpetas(fecha)
 
-    if not resultado_verif['success']:
+    if not resultado_verif["success"]:
         return f"<h2>Error previo ❌</h2><p>{resultado_verif['error']}</p>"
 
     # Si la verificación hubiera tenido éxito, procederíamos
     carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
     resultado_dist = fm.distribuir_archivos(
-        resultado_verif['rutas_validadas'],
+        resultado_verif["rutas_validadas"],
         carpeta_diaria,
-        resultado_verif['archivos_encontrados']
+        resultado_verif["archivos_encontrados"],
     )
 
-    if resultado_dist['success']:
+    if resultado_dist["success"]:
         html = "<h2>Distribución completada ✅</h2><ul>"
-        for f in resultado_dist['copiados']:
+        for f in resultado_dist["copiados"]:
             html += f"<li>{f}</li>"
         html += "</ul>"
         return html
     else:
         html = f"<h2>Distribución con errores ⚠️</h2><ul>"
-        for e in resultado_dist['errores']:
+        for e in resultado_dist["errores"]:
             html += f"<li>{e}</li>"
         html += "</ul>"
         return html
+
+
+@main_bp.route("/test-ocr")
+def test_ocr():
+    """Ruta temporal para probar Tesseract OCR con una imagen generada."""
+    from PIL import Image, ImageDraw, ImageFont
+    import pytesseract
+
+    # Configurar la ruta de Tesseract
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+
+    # Crear carpeta de prueba si no existe
+    test_dir = os.path.join(DATA_DIR, "test_images")
+    os.makedirs(test_dir, exist_ok=True)
+
+    # Generar una imagen simple con texto
+    img = Image.new("RGB", (600, 200), color="black")
+    d = ImageDraw.Draw(img)
+    # Usar una fuente básica (por defecto no se especifica, Pillow usará la interna)
+    d.text((20, 80), "Totales Generales Orion: 1500", fill="white")
+    ruta_img = os.path.join(test_dir, "test_totales.png")
+    img.save(ruta_img)
+
+    # Ejecutar OCR
+    try:
+        texto_extraido = pytesseract.image_to_string(ruta_img, lang="spa")
+    except Exception as e:
+        texto_extraido = f"Error OCR: {e}"
+
+    return f"""
+    <h2>Prueba OCR ✅</h2>
+    <p><strong>Imagen generada:</strong> {ruta_img}</p>
+    <p><strong>Texto extraído:</strong> {texto_extraido.strip()}</p>
+    <img src="/static/../data/test_images/test_totales.png" width="400" />
+    """

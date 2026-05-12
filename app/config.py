@@ -10,3 +10,6 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 RED_BASE_PATH = (
     r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba_carga_diaria_Aster_voip\Orion"
 )
+
+# Ruta del ejecutable de Tesseract-OCR (instalación por defecto en Windows)
+TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
