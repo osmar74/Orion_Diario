@@ -293,52 +293,47 @@ def test_causales():
         html += df_vista.to_html(index=False, classes="dataframe")
     return html
 
-@main_bp.route('/test-lotes')
+
+@main_bp.route("/test-lotes")
 def test_lotes():
     """Prueba del LotesProcessor con CSV simulados."""
     import pandas as pd
     from app.services.lotes_processor import LotesProcessor
     from app.config import DATA_DIR
 
-    test_dir = os.path.join(DATA_DIR, 'test_lotes')
+    test_dir = os.path.join(DATA_DIR, "test_lotes")
     os.makedirs(test_dir, exist_ok=True)
 
     # Crear CSV de ejemplo 1: con columnas phone_number
     data1 = {
-        'Cuenta': ['C001', 'C002'],
-        'Cliente': ['Juan', 'Maria'],
-        'phone_number_1': ['88880001', ''],
-        'phone_number_2': ['', '88880003'],
-        'phone_number_3': ['88880002', ''],
-        'phone_number_4': ['', ''],
-        'phone_number_5': ['', ''],
-        'phone_number_6': ['', ''],
-        'phone_number_7': ['', ''],
+        "Cuenta": ["C001", "C002"],
+        "Cliente": ["Juan", "Maria"],
+        "phone_number_1": ["88880001", ""],
+        "phone_number_2": ["", "88880003"],
+        "phone_number_3": ["88880002", ""],
+        "phone_number_4": ["", ""],
+        "phone_number_5": ["", ""],
+        "phone_number_6": ["", ""],
+        "phone_number_7": ["", ""],
     }
     df1 = pd.DataFrame(data1)
-    df1.to_csv(os.path.join(test_dir, 'LOTE_001.csv'), index=False)
+    df1.to_csv(os.path.join(test_dir, "LOTE_001.csv"), index=False)
 
     # Crear CSV de ejemplo 2: sin columnas phone_number
-    data2 = {
-        'Cuenta': ['C003'],
-        'Cliente': ['Carlos'],
-        'Telefono': ['88880004']
-    }
+    data2 = {"Cuenta": ["C003"], "Cliente": ["Carlos"], "Telefono": ["88880004"]}
     df2 = pd.DataFrame(data2)
-    df2.to_csv(os.path.join(test_dir, 'LOTE_002.csv'), index=False)
+    df2.to_csv(os.path.join(test_dir, "LOTE_002.csv"), index=False)
 
     # Crear un Discador limpio simulado (solo columna Lote)
-    disc_data = {'Lote': ['LOTE_001', 'LOTE_002']}
+    disc_data = {"Lote": ["LOTE_001", "LOTE_002"]}
     df_disc = pd.DataFrame(disc_data)
-    ruta_disc = os.path.join(test_dir, 'discador_limpio.xlsx')
+    ruta_disc = os.path.join(test_dir, "discador_limpio.xlsx")
     df_disc.to_excel(ruta_disc, index=False)
 
     # Procesar
     procesador = LotesProcessor()
     resultado = procesador.procesar_carpeta_lotes(
-        ruta_carpeta=test_dir,
-        fecha_str='202605_12',
-        ruta_discador_limpio=ruta_disc
+        ruta_carpeta=test_dir, fecha_str="202605_12", ruta_discador_limpio=ruta_disc
     )
 
     # Mostrar resultado
@@ -346,12 +341,61 @@ def test_lotes():
     html += f"<p><b>Éxito:</b> {resultado['success']}</p>"
     html += f"<p><b>Total filas consolidadas:</b> {resultado['total_filas']}</p>"
     html += "<h3>Mensajes</h3><ul>"
-    for msg in resultado['mensajes']:
+    for msg in resultado["mensajes"]:
         html += f"<li>{msg}</li>"
     html += "</ul>"
-    if resultado['validacion_cruzada']:
+    if resultado["validacion_cruzada"]:
         html += f"<p><b>Validación cruzada:</b> {'OK' if resultado['validacion_cruzada']['ok'] else 'Fallo'}</p>"
     html += f"<p><b>Ruta consolidado:</b> {resultado['ruta_consolidado']}</p>"
     html += "<h3>Previsualización (primeras 10 filas)</h3>"
-    html += resultado['preview_html']
+    html += resultado["preview_html"]
+    return html
+
+
+@main_bp.route("/test-logging")
+def test_logging():
+    """Prueba del LogService: inserta logs de ejemplo y los muestra."""
+    from app.services.log_service import LogService
+    from app.config import LOG_DB_PATH
+
+    servicio_log = LogService(LOG_DB_PATH)
+
+    # Insertar varios registros de prueba
+    servicio_log.log(
+        "2.1",
+        "Crear estructura diaria",
+        "éxito",
+        "Carpetas creadas correctamente para fecha 202605_12",
+    )
+    servicio_log.log(
+        "2.2",
+        "Verificar red y carpetas",
+        "error",
+        "No se puede acceder a la unidad de red",
+    )
+    servicio_log.log("3.2", "Extraer totales OCR", "éxito", "Orion: 1500, Aister: 890")
+    servicio_log.log(
+        "4.1",
+        "Procesar Discador",
+        "advertencia",
+        "Cuadre no coincidente: esperado 5, obtenido 4",
+    )
+    servicio_log.log(
+        "4.2", "Procesar Causales", "éxito", "2 registros válidos, 2 no válidos"
+    )
+    servicio_log.log("4.3", "Procesar Lotes", "info", "Pivoteo aplicado a LOTE_001")
+
+    # Obtener todos los logs para mostrar
+    logs = servicio_log.obtener_logs(limite=50)
+
+    # Construir tabla HTML
+    html = "<h2>Prueba de Logging ✅</h2>"
+    html += "<table border='1' cellpadding='5' cellspacing='0'>"
+    html += "<tr><th>ID</th><th>Timestamp</th><th>Fase</th><th>Acción</th><th>Resultado</th><th>Detalle</th></tr>"
+    for log in logs:
+        html += (
+            f"<tr><td>{log['id']}</td><td>{log['timestamp']}</td><td>{log['fase']}</td>"
+        )
+        html += f"<td>{log['accion']}</td><td>{log['resultado']}</td><td>{log['detalle']}</td></tr>"
+    html += "</table>"
     return html

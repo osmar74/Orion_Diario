@@ -12,4 +12,7 @@ RED_BASE_PATH = (
 )
 
 # Ruta del ejecutable de Tesseract-OCR (instalación por defecto en Windows)
-TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+TESSERACT_PATH = r"D:\Programs\Tesseract-OCR\tesseract.exe"
+
+# Base de datos de logs
+LOG_DB_PATH = os.path.join(DATA_DIR, "orion_logs.db")
