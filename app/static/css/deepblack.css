@@ -581,3 +581,8 @@ body {
     text-align: center;
     line-height: 1.2;
 }
+
+/* Asegurar que todas las tablas en monitor ocupen el ancho completo */
+.monitor table.dataframe {
+    width: 100% !important;
+}

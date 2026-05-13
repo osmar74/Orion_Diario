@@ -127,6 +127,7 @@ function ejecutarAccion(url, boton) {
                             if (cuadreIcono) cuadreIcono.textContent = '❌';
                         }
                     }
+                    actualizarTotalesHeader();
                 }
                 else if (url.includes('causales')) marcarPasoCompletado('causales');
                 else if (url.includes('lotes')) marcarPasoCompletado('lotes');
@@ -181,7 +182,6 @@ function subirOCR() {
     const icono = boton ? boton.querySelector('.status-icon') : null;
     if (icono) icono.textContent = '🔵';
 
-    // Insertar progreso en el panel de OCR
     insertarEnPanel('panel-ocr', "<p>⏳ Subiendo y procesando imágenes...</p>", false);
 
     fetch('/accion/ocr-subir', {
@@ -193,15 +193,19 @@ function subirOCR() {
         const exito = html.includes('log-line success') || html.includes('✅');
         insertarEnPanel('panel-ocr', html, exito);
 
-        const matchOrion = html.match(/Orion:\s*(\d+)/);
-        const matchAister = html.match(/Aister:\s*(\d+)/);
-        if (matchOrion) {
-            const spanOrion = document.getElementById('totalOrion');
-            if (spanOrion) spanOrion.textContent = matchOrion[1];
-        }
-        if (matchAister) {
-            const spanAister = document.getElementById('totalAister');
-            if (spanAister) spanAister.textContent = matchAister[1];
+        // Leer totales desde el elemento oculto
+        const ocrData = document.getElementById('ocr-data');
+        if (ocrData) {
+            const orionVal = ocrData.getAttribute('data-orion');
+            const aisterVal = ocrData.getAttribute('data-aister');
+            if (orionVal && orionVal !== 'None') {
+                const spanOrion = document.getElementById('totalOrion');
+                if (spanOrion) spanOrion.textContent = orionVal;
+            }
+            if (aisterVal && aisterVal !== 'None') {
+                const spanAister = document.getElementById('totalAister');
+                if (spanAister) spanAister.textContent = aisterVal;
+            }
         }
         actualizarTotalesHeader();
         if (icono) icono.textContent = '✅';
@@ -212,6 +216,7 @@ function subirOCR() {
         if (icono) icono.textContent = '❌';
     });
 }
+
 
 // Al cargar la página, reflejar totales de sesión en el header
 document.addEventListener('DOMContentLoaded', function () {

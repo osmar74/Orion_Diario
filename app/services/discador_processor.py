@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -30,16 +30,14 @@ class DiscadorProcessor:
         if faltantes:
             raise ValueError(f"Columnas faltantes en Discador: {faltantes}")
 
-    def filtrar(self, df: pd.DataFrame) -> tuple:
+    def filtrar(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Filtra:
-        1. Campaña que CONTENGA la palabra 'Cobranzas' (sin importar mayúsculas).
+        1. Campaña que CONTENGA 'Cobranzas'.
         2. EstadoActualContacto que CONTENGA 'Contactada' o 'Vencida'.
         Retorna (df_validos, df_no_validos).
         """
-        # Primer filtro: contiene "Cobranzas"
         mascara_campania = df["Campaña"].str.contains("Cobranzas", case=False, na=False)
-        # Segundo filtro: contiene "Contactada" o "Vencida"
         mascara_estado = df["EstadoActualContacto"].str.contains(
             "Contactada|Vencida", case=False, na=False
         )
@@ -48,12 +46,18 @@ class DiscadorProcessor:
         df_no_validos = df[~mascara_total].copy()
         return df_validos, df_no_validos
 
-    def limpiar(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Reemplaza '-' por None en columnas de limpieza."""
+    def limpiar(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, int]]:
+        """
+        Reemplaza '-' por None en las columnas indicadas.
+        Devuelve (DataFrame limpio, diccionario con conteo de reemplazos por columna).
+        """
+        reemplazos = {}
         for col in self.COLUMNAS_LIMPIAR:
             if col in df.columns:
+                count = (df[col] == "-").sum()
                 df[col] = df[col].replace("-", None)
-        return df
+                reemplazos[col] = int(count)
+        return df, reemplazos
 
     def procesar(
         self, ruta_archivo: str, total_orion_esperado: int, carpeta_salida: str
@@ -62,7 +66,7 @@ class DiscadorProcessor:
         Ejecuta el flujo completo de Discador.
 
         Returns:
-            Diccionario con éxito, cantidad válidos, no válidos, cuadre, mensaje, rutas.
+            Diccionario con éxito, totales, pasos_filtrado, reemplazos, rutas, etc.
         """
         resultado = {
             "success": False,
@@ -73,6 +77,8 @@ class DiscadorProcessor:
             "mensaje": "",
             "ruta_limpio": "",
             "ruta_no_validos": "",
+            "pasos_filtrado": {},
+            "reemplazos": {},
         }
 
         if self.log_service:
@@ -90,7 +96,7 @@ class DiscadorProcessor:
             # Total original
             total_original = len(df)
 
-            # Calcular el primer filtro (contiene "Cobranzas") para la tabla de pasos
+            # Primer filtro: Campaña contiene "Cobranzas"
             mask_campania = df["Campaña"].str.contains(
                 "Cobranzas", case=False, na=False
             )
@@ -99,20 +105,20 @@ class DiscadorProcessor:
             # Filtrar (aplica ambos filtros)
             df_validos, df_no_validos = self.filtrar(df)
 
-            # Limpiar válidos
-            df_validos = self.limpiar(df_validos)
+            # Limpiar válidos y obtener conteo de reemplazos
+            df_validos, reemplazos = self.limpiar(df_validos)
 
             total_validos = len(df_validos)
             total_no_validos = len(df_no_validos)
 
-            # Guardar pasos de filtrado
             resultado["pasos_filtrado"] = {
                 "original": total_original,
                 "despues_campania": total_despues_campania,
                 "valido": total_validos,
             }
 
-            # Control de cuadre
+            resultado["reemplazos"] = reemplazos
+
             cuadre = total_validos == total_orion_esperado
             if cuadre:
                 mensaje = "Cuadre correcto: los totales coinciden."
@@ -122,12 +128,10 @@ class DiscadorProcessor:
                     f"no coincide con el esperado ({total_orion_esperado})."
                 )
 
-            # Generar nombres de salida
             base = os.path.splitext(os.path.basename(ruta_archivo))[0]
             ruta_limpio = os.path.join(carpeta_salida, f"{base}_limpio.xlsx")
             ruta_no_validos = os.path.join(carpeta_salida, f"{base}_no_validos.xlsx")
 
-            # Guardar archivos
             os.makedirs(carpeta_salida, exist_ok=True)
             df_validos.to_excel(ruta_limpio, index=False)
             df_no_validos.to_excel(ruta_no_validos, index=False)

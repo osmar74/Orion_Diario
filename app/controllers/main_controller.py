@@ -668,67 +668,95 @@ def accion_distribuir():
             html += "</ul>"
     return html
 
-@main_bp.route('/accion/procesar-discador')
+
+@main_bp.route("/accion/procesar-discador")
 def accion_procesar_discador():
-    fecha = request.args.get('fecha', '202605_12')
-    total_esperado = request.args.get('total', 0, type=int)
+
+    fecha = request.args.get("fecha", "202605_12")
+    # Tomar total de OCR de la sesión; si no existe, usar parámetro (o 0)
+    total_esperado = session.get("totales_orion")
+    if total_esperado is None:
+        total_esperado = request.args.get("total", 0, type=int)
+
     from app.services.discador_processor import DiscadorProcessor
+
     disc = DiscadorProcessor(log_service=_obtener_log_service())
     carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
-    # Buscar archivo de discador en raíz de carpeta diaria
-    archivos = [f for f in os.listdir(carpeta_diaria) if f.lower().endswith('.xlsx') and 'discador' in f.lower()]
+
+    archivos = [
+        f
+        for f in os.listdir(carpeta_diaria)
+        if f.lower().endswith(".xlsx") and "discador" in f.lower()
+    ]
     if not archivos:
         return "<div class='log-line error'>❌ No se encontró archivo Discador en la carpeta diaria.</div>"
     ruta_disc = os.path.join(carpeta_diaria, archivos[0])
-    
-    # --- DEBUG: mostrar valores únicos de Campaña ---
+
+    # DEBUG: valores únicos de Campaña (permanente, colapsable)
+    debug_html = ""
     try:
         df_temp = pd.read_excel(ruta_disc, dtype=str)
-        if 'Campaña' in df_temp.columns:
-            unicos = df_temp['Campaña'].dropna().unique()[:10]  # primeros 10
-            debug_html = f"<p style='color:yellow;'>DEBUG: Valores únicos de Campaña: {list(unicos)}</p>"
+        if "Campaña" in df_temp.columns:
+            unicos = df_temp["Campaña"].dropna().unique()[:10]
+            debug_html = "<details style='margin-bottom:8px;'><summary style='font-size:0.75rem; color:#ffc107; cursor:pointer;'>🔍 Valores únicos de Campaña</summary>"
+            debug_html += f"<ul style='font-size:0.7rem; color:#ffc107;'>{''.join(f'<li>{v}</li>' for v in unicos)}</ul></details>"
         else:
-            debug_html = "<p style='color:yellow;'>DEBUG: No existe columna Campaña</p>"
+            debug_html = "<p style='color:#ffc107;'>No existe columna Campaña</p>"
     except Exception as e:
-        debug_html = f"<p style='color:yellow;'>DEBUG: Error al leer: {e}</p>"
-    # --- FIN DEBUG ---
-    
-    
+        debug_html = f"<p style='color:#ffc107;'>Error al leer: {e}</p>"
+
     res = disc.procesar(ruta_disc, total_esperado, carpeta_diaria)
-    if res['success']:
-        html = debug_html + f"<div class='log-line success'>✅ Discador procesado correctamente.</div>"
+
+    if res["success"]:
+        html = (
+            debug_html
+            + f"<div class='log-line success'>✅ Discador procesado correctamente.</div>"
+        )
 
         # Tabla de pasos de filtrado
-        if 'pasos_filtrado' in res:
-            pasos = res['pasos_filtrado']
+        if "pasos_filtrado" in res:
+            pasos = res["pasos_filtrado"]
             html += "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>📊 Proceso de filtrado:</p>"
-            html += "<table class='dataframe'><tr><th>Paso</th><th>Cantidad</th></tr>"
-            html += f"<tr><td>Registros originales</td><td>{pasos['original']}</td></tr>"
+            html += "<table class='dataframe' style='width:100%;'><tr><th>Paso</th><th>Cantidad</th></tr>"
+            html += (
+                f"<tr><td>Registros originales</td><td>{pasos['original']}</td></tr>"
+            )
             html += f"<tr><td>Tras filtro Campaña</td><td>{pasos['despues_campania']}</td></tr>"
             html += f"<tr><td>Tras filtro Estado (válidos)</td><td>{pasos['valido']}</td></tr>"
             html += "</table>"
 
+        # Tabla de reemplazos de guiones
+        if "reemplazos" in res and res["reemplazos"]:
+            html += "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>🔄 Reemplazos de '-' por NULL:</p>"
+            html += "<table class='dataframe' style='width:100%;'><tr><th>Columna</th><th>Cantidad</th></tr>"
+            for col, cantidad in res["reemplazos"].items():
+                html += f"<tr><td>{col}</td><td>{cantidad}</td></tr>"
+            html += "</table>"
+
         # Tabla resumen
-        html += "<table class='dataframe'><tr><th>Indicador</th><th>Valor</th></tr>"
-        html += f"<tr><td>Total esperado (OCR)</td><td>{res['total_esperado']}</td></tr>"
+        html += "<table class='dataframe' style='width:100%;'><tr><th>Indicador</th><th>Valor</th></tr>"
+        html += (
+            f"<tr><td>Total esperado (OCR)</td><td>{res['total_esperado']}</td></tr>"
+        )
         html += f"<tr><td>Total válidos</td><td>{res['total_validos']}</td></tr>"
         html += f"<tr><td>Total no válidos</td><td>{res['total_no_validos']}</td></tr>"
         html += f"<tr><td>Cuadre</td><td>{'✅ Correcto' if res['cuadre_ok'] else '❌ No coincide'}</td></tr>"
         html += "</table>"
         html += f"<p style='font-size:0.75rem; color:#aaa;'>{res['mensaje']}</p>"
 
-        # Previsualización de datos válidos
-        if res['ruta_limpio']:
+        # Previsualización
+        if res["ruta_limpio"]:
             try:
-                df = pd.read_excel(res['ruta_limpio'])
+                df = pd.read_excel(res["ruta_limpio"])
                 html += "<details style='margin-top:8px;'><summary style='font-size:0.75rem; color:#ccc; cursor:pointer;'>📋 Vista previa (primeras 5 filas)</summary>"
-                html += df.head(5).to_html(index=False, classes='dataframe')
+                html += df.head(5).to_html(index=False, classes="dataframe")
                 html += "</details>"
             except Exception:
                 pass
     else:
-        html = f"<div class='log-line error'>❌ {res['mensaje']}</div>"
+        html = debug_html + f"<div class='log-line error'>❌ {res['mensaje']}</div>"
     return html
+
 
 @main_bp.route("/accion/procesar-causales")
 def accion_procesar_causales():
@@ -748,10 +776,30 @@ def accion_procesar_causales():
         html = (
             f"<div class='log-line success'>✅ Causales procesados correctamente.</div>"
         )
-        html += "<table class='dataframe'><tr><th>Indicador</th><th>Valor</th></tr>"
+
+        # Tabla de pasos de filtrado
+        if "pasos_filtrado" in res:
+            pasos = res["pasos_filtrado"]
+            html += "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>📊 Proceso de filtrado:</p>"
+            html += "<table class='dataframe' style='width:100%;'><tr><th>Paso</th><th>Cantidad</th></tr>"
+            html += (
+                f"<tr><td>Registros originales</td><td>{pasos['original']}</td></tr>"
+            )
+            html += f"<tr><td>Tras filtro Campaña</td><td>{pasos['despues_campania']}</td></tr>"
+            html += f"<tr><td>Tras filtro Evento (válidos)</td><td>{pasos['valido']}</td></tr>"
+            html += "</table>"
+
+        # Tabla de normalizaciones
+        if "normalizaciones" in res:
+            html += f"<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>🔄 Nombres normalizados (prefijo eliminado): {res['normalizaciones']}</p>"
+
+        # Tabla resumen
+        html += "<table class='dataframe' style='width:100%;'><tr><th>Indicador</th><th>Valor</th></tr>"
         html += f"<tr><td>Total válidos</td><td>{res['total_validos']}</td></tr>"
         html += f"<tr><td>Total no válidos</td><td>{res['total_no_validos']}</td></tr>"
         html += "</table>"
+
+        # Previsualización de datos válidos
         if res["ruta_limpio"]:
             try:
                 df = pd.read_excel(res["ruta_limpio"])
@@ -971,6 +1019,8 @@ def accion_ocr_subir():
         html += "<div class='log-line warning'>⚠️ No se detectaron totales en las imágenes. ¿El reporte tiene el formato esperado? Revise los logs.</div>"
 
     html += "</div>"  # cierra ocr-results
+    # Datos invisibles para JS: totales en formato data-*
+    html += f'<div id="ocr-data" style="display:none;" data-orion="{totales_finales["orion"]}" data-aister="{totales_finales["aister"]}"></div>'
     html += "</div>"  # cierra ocr-result-container
 
     return html
