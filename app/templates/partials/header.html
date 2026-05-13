@@ -3,20 +3,45 @@
     <h1>⚙️ Orion Procesos</h1>
   </div>
   <div class="subheader">
-    <a href="/">Inicio</a>
-    <a href="/logs">Logs</a>
-    <div class="progress-bar" id="progressBar">
-      <span class="paso" data-paso="crear">Crear Carpetas</span>
-      <span class="arrow">→</span>
-      <span class="paso" data-paso="verificar">Verificar Red</span>
-      <span class="arrow">→</span>
-      <span class="paso" data-paso="distribuir">Distribuir</span>
-      <span class="arrow">→</span>
-      <span class="paso" data-paso="discador">Procesar Discador</span>
-      <span class="arrow">→</span>
-      <span class="paso" data-paso="causales">Procesar Causales</span>
-      <span class="arrow">→</span>
-      <span class="paso" data-paso="lotes">Procesar Lotes</span>
+    <div class="subheader-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar panel">☰</button>
+      <a href="/">Inicio</a>
+      <a href="/logs">Logs</a>
+    </div>
+    <div class="subheader-center">
+      <div class="progress-bar" id="progressBar">
+        <span class="paso" data-paso="crear">Crear Carpetas</span>
+        <span class="arrow">→</span>
+        <span class="paso" data-paso="verificar">Verificar Red</span>
+        <span class="arrow">→</span>
+        <span class="paso" data-paso="distribuir">Distribuir</span>
+        <span class="arrow">→</span>
+        <span class="paso" data-paso="discador">Procesar Discador</span>
+        <span class="arrow">→</span>
+        <span class="paso" data-paso="causales">Procesar Causales</span>
+        <span class="arrow">→</span>
+        <span class="paso" data-paso="lotes">Procesar Lotes</span>
+      </div>
+    </div>
+    <div class="subheader-right">
+      <div class="totales-badges">
+        <div class="badge" id="badgeOrion">
+          <span class="badge-label">🔹 Orion</span>
+          <span class="badge-value" id="ocrOrion">--</span>
+        </div>
+        <div class="badge" id="badgeAister">
+          <span class="badge-label">🔹 Aister</span>
+          <span class="badge-value" id="ocrAister">--</span>
+        </div>
+        <div class="badge" id="badgeProc">
+          <span class="badge-label">⚙️ Proc</span>
+          <span class="badge-value" id="procTotal">--</span>
+        </div>
+        <div class="badge cuadre" id="cuadreBadge">
+          <span class="badge-label">⚪</span>
+          <span id="cuadreTexto">Sin verificar</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -32,14 +32,20 @@ class DiscadorProcessor:
 
     def filtrar(self, df: pd.DataFrame) -> tuple:
         """
-        Filtra según Campaña y EstadoActualContacto.
+        Filtra:
+        1. Campaña que CONTENGA la palabra 'Cobranzas' (sin importar mayúsculas).
+        2. EstadoActualContacto que CONTENGA 'Contactada' o 'Vencida'.
         Retorna (df_validos, df_no_validos).
         """
-        mascara_campania = df["Campaña"] == "Cobranzas Hogar 121 dias"
-        mascara_estado = df["EstadoActualContacto"].isin(["Contactada", "Vencida"])
-        mascura_total = mascara_campania & mascara_estado
-        df_validos = df[mascura_total].copy()
-        df_no_validos = df[~mascura_total].copy()
+        # Primer filtro: contiene "Cobranzas"
+        mascara_campania = df["Campaña"].str.contains("Cobranzas", case=False, na=False)
+        # Segundo filtro: contiene "Contactada" o "Vencida"
+        mascara_estado = df["EstadoActualContacto"].str.contains(
+            "Contactada|Vencida", case=False, na=False
+        )
+        mascara_total = mascara_campania & mascara_estado
+        df_validos = df[mascara_total].copy()
+        df_no_validos = df[~mascara_total].copy()
         return df_validos, df_no_validos
 
     def limpiar(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -81,12 +87,32 @@ class DiscadorProcessor:
             df = pd.read_excel(ruta_archivo, dtype=str)
             self.validar_encabezados(df)
 
+            # Total original
+            total_original = len(df)
+
+            # Calcular el primer filtro (contiene "Cobranzas") para la tabla de pasos
+            mask_campania = df["Campaña"].str.contains(
+                "Cobranzas", case=False, na=False
+            )
+            total_despues_campania = int(mask_campania.sum())
+
+            # Filtrar (aplica ambos filtros)
             df_validos, df_no_validos = self.filtrar(df)
+
+            # Limpiar válidos
             df_validos = self.limpiar(df_validos)
 
             total_validos = len(df_validos)
             total_no_validos = len(df_no_validos)
 
+            # Guardar pasos de filtrado
+            resultado["pasos_filtrado"] = {
+                "original": total_original,
+                "despues_campania": total_despues_campania,
+                "valido": total_validos,
+            }
+
+            # Control de cuadre
             cuadre = total_validos == total_orion_esperado
             if cuadre:
                 mensaje = "Cuadre correcto: los totales coinciden."
@@ -96,10 +122,12 @@ class DiscadorProcessor:
                     f"no coincide con el esperado ({total_orion_esperado})."
                 )
 
+            # Generar nombres de salida
             base = os.path.splitext(os.path.basename(ruta_archivo))[0]
             ruta_limpio = os.path.join(carpeta_salida, f"{base}_limpio.xlsx")
             ruta_no_validos = os.path.join(carpeta_salida, f"{base}_no_validos.xlsx")
 
+            # Guardar archivos
             os.makedirs(carpeta_salida, exist_ok=True)
             df_validos.to_excel(ruta_limpio, index=False)
             df_no_validos.to_excel(ruta_no_validos, index=False)

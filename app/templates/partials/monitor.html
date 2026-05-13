@@ -1,11 +1,47 @@
 <div class="monitor">
-    <h2>📋 Monitor de Ejecución</h2>
-    {% if session.get('ultimo_mensaje') %}
-        {{ session['ultimo_mensaje'] | safe }}
-    {% else %}
-        <p>Seleccione una acción en el panel izquierdo para comenzar.</p>
-    {% endif %}
-    <div id="monitor-content">
-        <!-- Respuestas dinámicas -->
-    </div>
+  <h2>📋 Monitor de Ejecución</h2>
+  <div id="monitor-content">
+    <details class="panel-monitor" id="panel-ocr">
+      <summary>
+        <span class="panel-icon">⚪</span> 📊 OCR y Totales
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <details class="panel-monitor" id="panel-crear">
+      <summary>
+        <span class="panel-icon">⚪</span> 📁 Crear Carpetas
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <details class="panel-monitor" id="panel-verificar">
+      <summary>
+        <span class="panel-icon">⚪</span> 🔍 Verificar Red
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <details class="panel-monitor" id="panel-distribuir">
+      <summary>
+        <span class="panel-icon">⚪</span> 📤 Distribuir Archivos
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <details class="panel-monitor" id="panel-discador">
+      <summary>
+        <span class="panel-icon">⚪</span> ⚙️ Procesar Discador
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <details class="panel-monitor" id="panel-causales">
+      <summary>
+        <span class="panel-icon">⚪</span> 📋 Procesar Causales
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <details class="panel-monitor" id="panel-lotes">
+      <summary>
+        <span class="panel-icon">⚪</span> 📦 Procesar Lotes
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+  </div>
 </div>

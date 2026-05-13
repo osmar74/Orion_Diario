@@ -28,6 +28,7 @@ body {
 }
 
 /* ---------- HEADER & SUBHEADER FUSIONADOS ---------- */
+/* ---------- HEADER & SUBHEADER (ajustado) ---------- */
 .header-container {
     background-color: var(--header-bg);
     border-radius: var(--radius) var(--radius) 0 0;
@@ -38,34 +39,140 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 15px 0;
-    flex-wrap: wrap;
+    padding: 10px 0;                /* altura reducida */
 }
 
 .header-main h1 {
-    font-size: 1.8rem;
+    font-size: 1.2rem;              /* reducido */
     color: #ffffff;
     letter-spacing: 1px;
 }
 
 .subheader {
     display: flex;
-    /* align-items: center; */
-    gap: 20px;
-    justify-content: ;
-    padding: 10px 0;
+    align-items: center;
+    justify-content: space-between; /* tres columnas */
+    padding: 4px 0;                 /* compacto */
+    gap: 10px;
     border-radius: 0 0 var(--radius) var(--radius);
+    font-size: 0.8rem;
 }
 
-.subheader a {
+.subheader-left,
+.subheader-center,
+.subheader-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.subheader-left a {
     color: var(--text-secondary);
     text-decoration: none;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     transition: color 0.2s;
 }
 
-.subheader a:hover {
+.subheader-left a:hover {
     color: var(--accent);
+}
+
+.subheader-center {
+    flex: 1;
+    justify-content: center;
+}
+
+/* ---------- BADGES DE TOTALES EN SUBHEADER ---------- */
+.totales-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 3px 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    transition: background 0.3s, border-color 0.3s;
+}
+
+.badge .badge-label {
+    color: #888;
+    font-weight: 500;
+}
+
+.badge .badge-value {
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.badge.cuadre {
+    border-color: #555;
+}
+
+.badge.cuadre.ok {
+    border-color: #28a745;
+    background: #1a3a1a;
+}
+
+.badge.cuadre.ok .badge-label {
+    color: #28a745;
+}
+
+.badge.cuadre.error {
+    border-color: #dc3545;
+    background: #3a1a1a;
+}
+
+.badge.cuadre.error .badge-label {
+    color: #dc3545;
+}
+
+/* Barra de progreso (se mantiene igual) */
+.progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.paso {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #555;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.paso.completado {
+    background: #1a3a1a;
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.paso.activo {
+    background: #1a2a3a;
+    border-color: #1e90ff;
+    color: #1e90ff;
+    box-shadow: 0 0 8px rgba(30,144,255,0.3);
+}
+
+.arrow {
+    color: #555;
+    font-size: 0.7rem;
+    margin: 0 2px;
+    user-select: none;
 }
 
 /* ---------- LAYOUT PRINCIPAL ---------- */
@@ -99,22 +206,20 @@ body {
 }
 
 .sidebar-toggle {
-    background: var(--panel-bg);
+    background: transparent;
     border: 1px solid var(--panel-border);
-    color: var(--text-primary);
-    font-size: 1.2rem;
+    color: var(--text-secondary);
+    font-size: 1rem;
     cursor: pointer;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    left: 305px;
-    top: 20px;
-    z-index: 10;
-    transition: left 0.3s;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.2s, border-color 0.2s;
+    line-height: 1;
+}
+
+.sidebar-toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 .sidebar.collapsed~.sidebar-toggle {
@@ -290,4 +395,189 @@ body {
     font-size: 0.7rem;
     margin: 0 2px;
     user-select: none;
+}
+
+.subheader-left {
+    gap: 8px;
+}
+
+/* ---------- PANELES COLAPSABLES EN MONITOR ---------- */
+.panel-monitor {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 6px 12px;
+    transition: border-color 0.2s;
+}
+
+.panel-monitor[open] {
+    border-color: #555;
+}
+
+.panel-monitor summary {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ccc;
+    cursor: pointer;
+    padding: 4px 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.panel-monitor summary::-webkit-details-marker {
+    display: none;
+}
+
+.panel-monitor .panel-icon {
+    font-size: 0.9rem;
+}
+
+.panel-monitor .panel-body {
+    padding: 10px 0;
+    font-size: 0.8rem;
+    color: #aaa;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* ---------- RESULTADO OCR EN DOS COLUMNAS ---------- */
+/* ---------- RESULTADO OCR EN DOS COLUMNAS ---------- */
+.ocr-result-container {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.ocr-images {
+    flex: 0 0 45%;               /* un poco más ancho */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.ocr-thumb {
+    flex: 1 1 100%;              /* una imagen ocupa toda la columna */
+    max-width: 100%;
+}
+
+.ocr-thumb img {
+    width: 100%;
+    max-height: 350px;           /* crece en altura pero sin exagerar */
+    object-fit: contain;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.ocr-thumb small {
+    display: block;
+    font-size: 0.6rem;
+    color: #888;
+    word-break: break-all;
+}
+
+.ocr-results {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Fila que contiene totales y archivos guardados */
+.totales-archivos-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.totales-grid {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.total-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 8px 14px;
+    text-align: center;
+    min-width: 100px;
+}
+
+.total-card .label {
+    display: block;
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.total-card .value {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #4ecdc4;              /* color cian brillante que resalta */
+}
+
+.archivos-guardados {
+    font-size: 0.7rem;
+    color: #aaa;
+    align-self: center;
+}
+
+.archivos-guardados summary {
+    cursor: pointer;
+    color: #ccc;
+}
+
+.archivos-guardados ul {
+    margin: 5px 0 0 15px;
+    padding: 0;
+}
+
+/* ---------- PANEL CREAR CARPETAS ---------- */
+.carpetas-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.carpeta-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 130px;
+    transition: border-color 0.2s;
+}
+
+.carpeta-card:hover {
+    border-color: #1e90ff;
+}
+
+.carpeta-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+}
+
+.carpeta-nombre {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ccc;
+    margin-bottom: 4px;
+    text-transform: capitalize;
+}
+
+.carpeta-ruta {
+    font-size: 0.6rem;
+    color: #888;
+    word-break: break-all;
+    text-align: center;
+    line-height: 1.2;
 }

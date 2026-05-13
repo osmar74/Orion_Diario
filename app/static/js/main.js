@@ -1,3 +1,23 @@
+// Mapeo de URL a panel
+const panelMap = {
+    'crear-carpetas': 'panel-crear',
+    'verificar-red': 'panel-verificar',
+    'distribuir': 'panel-distribuir',
+    'discador': 'panel-discador',
+    'causales': 'panel-causales',
+    'lotes': 'panel-lotes'
+};
+
+function insertarEnPanel(panelId, html, exito) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    const body = panel.querySelector('.panel-body');
+    const icon = panel.querySelector('.panel-icon');
+    if (body) body.innerHTML = html;
+    if (icon) icon.textContent = exito ? '✅' : '❌';
+    panel.open = true;  // expandir automáticamente
+}
+
 function cerrarOtrosDetails(boton) {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
@@ -23,6 +43,15 @@ function marcarPasoCompletado(paso) {
     }
 }
 
+function actualizarTotalesHeader() {
+    const ocrOrion = document.getElementById('totalOrion')?.textContent || '--';
+    const ocrAister = document.getElementById('totalAister')?.textContent || '--';
+    const elOcrOrion = document.getElementById('ocrOrion');
+    const elOcrAister = document.getElementById('ocrAister');
+    if (elOcrOrion) elOcrOrion.textContent = ocrOrion;
+    if (elOcrAister) elOcrAister.textContent = ocrAister;
+}
+
 function ejecutarAccion(url, boton) {
     cerrarOtrosDetails(boton);
     const monitor = document.getElementById('monitor-content');
@@ -39,7 +68,22 @@ function ejecutarAccion(url, boton) {
 
     const fecha = fechaInput.value;
     const urlConFecha = url + '?fecha=' + encodeURIComponent(fecha);
-    monitor.innerHTML = "<p>⏳ Procesando...</p>";
+
+    // Determinar a qué panel va dirigida la acción
+    let panelId = null;
+    for (const [key, value] of Object.entries(panelMap)) {
+        if (url.includes(key)) {
+            panelId = value;
+            break;
+        }
+    }
+
+    // Mostrar mensaje de progreso dentro del panel destino si existe
+    if (panelId) {
+        insertarEnPanel(panelId, "<p>⏳ Procesando...</p>", false);
+    } else {
+        monitor.innerHTML = "<p>⏳ Procesando...</p>";
+    }
 
     const icono = boton.querySelector('.status-icon');
     if (icono) icono.textContent = '🔵';
@@ -47,14 +91,43 @@ function ejecutarAccion(url, boton) {
     fetch(urlConFecha)
         .then(response => response.text())
         .then(html => {
-            monitor.innerHTML = html;
-            if (html.includes('log-line success') || html.includes('✅')) {
+            const exito = html.includes('log-line success') || html.includes('✅');
+            if (panelId) {
+                insertarEnPanel(panelId, html, exito);
+            } else {
+                monitor.innerHTML = html;
+            }
+
+            // Actualizar icono del botón y barra de progreso
+            if (exito) {
                 if (icono) icono.textContent = '✅';
-                // Marcar paso según URL
                 if (url.includes('crear-carpetas')) marcarPasoCompletado('crear');
                 else if (url.includes('verificar-red')) marcarPasoCompletado('verificar');
                 else if (url.includes('distribuir')) marcarPasoCompletado('distribuir');
-                else if (url.includes('discador')) marcarPasoCompletado('discador');
+                else if (url.includes('discador')) {
+                    marcarPasoCompletado('discador');
+                    // Actualizar procTotal y cuadre (badges)
+                    const matchValidos = html.match(/Válidos:\s*(\d+)/);
+                    if (matchValidos) {
+                        document.getElementById('procTotal').textContent = matchValidos[1];
+                    }
+                    const ocrOrion = parseInt(document.getElementById('ocrOrion')?.textContent);
+                    const proc = parseInt(matchValidos?.[1]);
+                    const cuadreBadge = document.getElementById('cuadreBadge');
+                    const cuadreTexto = document.getElementById('cuadreTexto');
+                    const cuadreIcono = cuadreBadge?.querySelector('.badge-label');
+                    if (!isNaN(ocrOrion) && !isNaN(proc)) {
+                        if (ocrOrion === proc) {
+                            if (cuadreBadge) cuadreBadge.className = 'badge cuadre ok';
+                            if (cuadreTexto) cuadreTexto.textContent = 'Cuadre correcto';
+                            if (cuadreIcono) cuadreIcono.textContent = '✅';
+                        } else {
+                            if (cuadreBadge) cuadreBadge.className = 'badge cuadre error';
+                            if (cuadreTexto) cuadreTexto.textContent = 'No cuadra';
+                            if (cuadreIcono) cuadreIcono.textContent = '❌';
+                        }
+                    }
+                }
                 else if (url.includes('causales')) marcarPasoCompletado('causales');
                 else if (url.includes('lotes')) marcarPasoCompletado('lotes');
             } else if (html.includes('log-line error') || html.includes('❌')) {
@@ -66,7 +139,12 @@ function ejecutarAccion(url, boton) {
             }
         })
         .catch(error => {
-            monitor.innerHTML = `<div class="log-line error">❌ Error de conexión: ${error}</div>`;
+            const errorHtml = `<div class="log-line error">❌ Error de conexión: ${error}</div>`;
+            if (panelId) {
+                insertarEnPanel(panelId, errorHtml, false);
+            } else {
+                monitor.innerHTML = errorHtml;
+            }
             if (icono) icono.textContent = '❌';
         });
 }
@@ -102,7 +180,9 @@ function subirOCR() {
     cerrarOtrosDetails(boton);
     const icono = boton ? boton.querySelector('.status-icon') : null;
     if (icono) icono.textContent = '🔵';
-    monitor.innerHTML = "<p>⏳ Subiendo y procesando imágenes...</p>";
+
+    // Insertar progreso en el panel de OCR
+    insertarEnPanel('panel-ocr', "<p>⏳ Subiendo y procesando imágenes...</p>", false);
 
     fetch('/accion/ocr-subir', {
         method: 'POST',
@@ -110,7 +190,9 @@ function subirOCR() {
     })
     .then(response => response.text())
     .then(html => {
-        monitor.innerHTML = html;
+        const exito = html.includes('log-line success') || html.includes('✅');
+        insertarEnPanel('panel-ocr', html, exito);
+
         const matchOrion = html.match(/Orion:\s*(\d+)/);
         const matchAister = html.match(/Aister:\s*(\d+)/);
         if (matchOrion) {
@@ -121,10 +203,17 @@ function subirOCR() {
             const spanAister = document.getElementById('totalAister');
             if (spanAister) spanAister.textContent = matchAister[1];
         }
+        actualizarTotalesHeader();
         if (icono) icono.textContent = '✅';
     })
     .catch(error => {
-        monitor.innerHTML = `<div class="log-line error">❌ Error de conexión: ${error}</div>`;
+        const errorHtml = `<div class="log-line error">❌ Error de conexión: ${error}</div>`;
+        insertarEnPanel('panel-ocr', errorHtml, false);
         if (icono) icono.textContent = '❌';
     });
 }
+
+// Al cargar la página, reflejar totales de sesión en el header
+document.addEventListener('DOMContentLoaded', function () {
+    actualizarTotalesHeader();
+});
