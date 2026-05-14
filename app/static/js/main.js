@@ -6,7 +6,8 @@ const panelMap = {
     'discador': 'panel-discador',
     'causales': 'panel-causales',
     'comparar-lotes': 'panel-comparar',  // <-- nueva línea
-    'lotes': 'panel-lotes'
+    'lotes': 'panel-lotes',
+    'probar-conexion': 'panel-conexiones'
 
 };
 
@@ -297,7 +298,7 @@ function resetTodo() {
 }
 
 // Cambio de módulo (Orion / Aister / Consolidar)
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.classList.contains('modulo-btn')) {
         document.querySelectorAll('.modulo-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
@@ -311,6 +312,104 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
+
+
+
+document.addEventListener('change', function (e) {
+    if (e.target.id === 'sqlAuth') {
+        const credsDiv = document.getElementById('sqlCreds');
+        if (credsDiv) {
+            credsDiv.style.display = e.target.value === 'windows' ? 'none' : 'block';
+        }
+    }
+});
+
+
+function probarConexion(tipo) {
+    const servidor = document.getElementById('sqlServidor').value;
+    const puerto = document.getElementById('sqlPuerto').value;
+    const basedatos = document.getElementById('sqlBasedatos').value;
+    const usuario = document.getElementById('sqlUsuario').value;
+    const password = document.getElementById('sqlPassword').value;
+    const autenticacion = document.getElementById('sqlAuth').value;
+
+    const formData = new FormData();
+    formData.append('servidor', servidor);   // <-- siempre el valor original
+    formData.append('puerto', puerto);
+    formData.append('basedatos', basedatos);
+    formData.append('usuario', usuario);
+    formData.append('password', password);
+    formData.append('autenticacion', autenticacion);
+
+    const panel = document.getElementById('panel-conexiones');
+    if (panel) panel.open = true;
+    const container = panel ? panel.querySelector('.panel-body') : null;
+    if (container) {
+        const progressDiv = document.createElement('div');
+        progressDiv.innerHTML = '<p>⏳ Probando conexión...</p>';
+        container.appendChild(progressDiv);
+
+        fetch('/accion/probar-conexion', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(html => {
+                progressDiv.remove();
+                const resultDiv = document.createElement('div');
+                resultDiv.innerHTML = html;
+                container.appendChild(resultDiv);
+            })
+            .catch(error => {
+                progressDiv.remove();
+                const errorDiv = document.createElement('div');
+                errorDiv.innerHTML = `<div class="log-line error">❌ Error: ${error}</div>`;
+                container.appendChild(errorDiv);
+            });
+    }
+}
+
+function probarLectura() {
+    const servidor = document.getElementById('sqlServidor').value;
+    const puerto = document.getElementById('sqlPuerto').value;
+    const basedatos = document.getElementById('sqlBasedatos').value;
+    const usuario = document.getElementById('sqlUsuario').value;
+    const password = document.getElementById('sqlPassword').value;
+    const autenticacion = document.getElementById('sqlAuth').value;
+
+    const formData = new FormData();
+    formData.append('servidor', servidor);
+    formData.append('puerto', puerto);
+    formData.append('basedatos', basedatos);
+    formData.append('usuario', usuario);
+    formData.append('password', password);
+    formData.append('autenticacion', autenticacion);
+
+    const panel = document.getElementById('panel-conexiones');
+    if (panel) panel.open = true;
+    const container = panel ? panel.querySelector('.panel-body') : null;
+    if (container) {
+        const progressDiv = document.createElement('div');
+        progressDiv.innerHTML = '<p>⏳ Ejecutando consulta...</p>';
+        container.appendChild(progressDiv);
+
+        fetch('/accion/probar-lectura', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(html => {
+                progressDiv.remove();
+                const resultDiv = document.createElement('div');
+                resultDiv.innerHTML = html;
+                container.appendChild(resultDiv);
+            })
+            .catch(error => {
+                progressDiv.remove();
+                const errorDiv = document.createElement('div');
+                errorDiv.innerHTML = `<div class="log-line error">❌ Error: ${error}</div>`;
+                container.appendChild(errorDiv);
+            });
+    }
+}
+
+
+
 
 // Al cargar la página, reflejar totales de sesión en el header
 document.addEventListener('DOMContentLoaded', function () {

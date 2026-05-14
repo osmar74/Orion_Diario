@@ -1388,12 +1388,179 @@ def accion_consolidar_totales():
     except Exception as e:
         return f"<div class='log-line error'>❌ Error: {e}</div>"
 
-@main_bp.route('/reset')
+
+@main_bp.route("/reset")
 def reset_proceso():
     """Limpia la sesión y registra el reinicio en los logs."""
     # Registrar en log antes de limpiar sesión
     log_srv = _obtener_log_service()
-    log_srv.log('Reset', 'Reinicio del proceso', 'info', 'El usuario solicitó reiniciar todo el proceso.')
-    
+    log_srv.log(
+        "Reset",
+        "Reinicio del proceso",
+        "info",
+        "El usuario solicitó reiniciar todo el proceso.",
+    )
+
     session.clear()
     return "<div class='log-line success'>✅ Sesión reiniciada. Redirigiendo...</div>"
+
+
+# @main_bp.route("/accion/probar-conexion", methods=["POST"])
+# def accion_probar_conexion():
+#     """Recibe datos de conexión y prueba conexión a SQL Server."""
+#     import pyodbc
+
+#     servidor = request.form.get("servidor", "")
+#     puerto = request.form.get("puerto", "1433")
+#     basedatos = request.form.get("basedatos", "")
+#     usuario = request.form.get("usuario", "")
+#     password = request.form.get("password", "")
+#     autenticacion = request.form.get("autenticacion", "sql")
+
+#     if not servidor or not basedatos:
+#         return "<div class='log-line error'>❌ Faltan datos obligatorios (servidor y base de datos).</div>"
+
+#     try:
+#         # Si es LocalDB, usar exactamente la misma cadena que en test_localdb.py
+#         if "localdb" in servidor.lower():
+#             # Imprimir la cadena exacta en la consola de Flask
+#             print("=" * 60)
+#             print("Cadena para LocalDB:", conn_str)
+#             print("Repr servidor:", repr(servidor))
+#             print("Repr basedatos:", repr(basedatos))
+#             print("=" * 60)
+#             # No usar puerto, ni usuario/contraseña, solo Trusted_Connection
+#             conn_str = (
+#                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+#                 f"SERVER=np:{servidor};"
+#                 f"DATABASE={basedatos};"
+#                 f"Trusted_Connection=yes;"
+#             )
+#         else:
+#             # Para otros servidores, construir según autenticación
+#             if autenticacion == "windows":
+#                 conn_str = (
+#                     f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+#                     f"SERVER={servidor},{puerto};"
+#                     f"DATABASE={basedatos};"
+#                     f"Trusted_Connection=yes;"
+#                 )
+#             else:
+#                 conn_str = (
+#                     f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+#                     f"SERVER={servidor},{puerto};"
+#                     f"DATABASE={basedatos};"
+#                     f"UID={usuario};"
+#                     f"PWD={password};"
+#                 )
+
+#         conn = pyodbc.connect(conn_str, timeout=5)
+#         conn.close()
+#         return f"<div class='log-line success'>✅ Conexión exitosa a {servidor}/{basedatos}</div>"
+#     except Exception as e:
+#         return f"<div class='log-line error'>❌ Error de conexión: {str(e)}</div>"
+
+@main_bp.route('/accion/probar-conexion', methods=['POST'])
+def accion_probar_conexion():
+    """Recibe datos de conexión y prueba conexión a SQL Server."""
+    import pyodbc
+
+    servidor = request.form.get('servidor', '')
+    puerto = request.form.get('puerto', '1433')
+    basedatos = request.form.get('basedatos', '')
+    usuario = request.form.get('usuario', '')
+    password = request.form.get('password', '')
+    autenticacion = request.form.get('autenticacion', 'sql')
+
+    if not servidor or not basedatos:
+        return "<div class='log-line error'>❌ Faltan datos obligatorios (servidor y base de datos).</div>"
+
+    try:
+        if 'localdb' in servidor.lower():
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={servidor};"
+                f"DATABASE={basedatos};"
+                f"Trusted_Connection=yes;"
+            )
+        else:
+            if autenticacion == 'windows':
+                conn_str = (
+                    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                    f"SERVER={servidor},{puerto};"
+                    f"DATABASE={basedatos};"
+                    f"Trusted_Connection=yes;"
+                )
+            else:
+                conn_str = (
+                    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                    f"SERVER={servidor},{puerto};"
+                    f"DATABASE={basedatos};"
+                    f"UID={usuario};"
+                    f"PWD={password};"
+                )
+
+        conn = pyodbc.connect(conn_str, timeout=5)
+        conn.close()
+        return f"<div class='log-line success'>✅ Conexión exitosa a {servidor}/{basedatos}</div>"
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error de conexión: {str(e)}</div>"
+
+
+
+
+@main_bp.route("/accion/probar-lectura", methods=["POST"])
+def accion_probar_lectura():
+    """Prueba conexión y lee los últimos 5 registros de Causales."""
+    import pyodbc
+    import pandas as pd
+
+    servidor = request.form.get("servidor", "")
+    puerto = request.form.get("puerto", "1433")
+    basedatos = request.form.get("basedatos", "")
+    usuario = request.form.get("usuario", "")
+    password = request.form.get("password", "")
+    autenticacion = request.form.get("autenticacion", "sql")
+
+    if not servidor or not basedatos:
+        return "<div class='log-line error'>❌ Faltan datos obligatorios.</div>"
+
+    try:
+        if "localdb" in servidor.lower():
+            conn_str = (
+                r"DRIVER={ODBC Driver 17 for SQL Server};"
+                rf"SERVER={servidor};"
+                rf"DATABASE={basedatos};"
+                r"Trusted_Connection=yes;"
+            )
+        else:
+            if autenticacion == "windows":
+                conn_str = (
+                    r"DRIVER={ODBC Driver 17 for SQL Server};"
+                    rf"SERVER={servidor},{puerto};"
+                    rf"DATABASE={basedatos};"
+                    r"Trusted_Connection=yes;"
+                )
+            else:
+                conn_str = (
+                    r"DRIVER={ODBC Driver 17 for SQL Server};"
+                    rf"SERVER={servidor},{puerto};"
+                    rf"DATABASE={basedatos};"
+                    rf"UID={usuario};"
+                    rf"PWD={password};"
+                )
+
+        conn = pyodbc.connect(conn_str, timeout=5)
+        query = "SELECT TOP 5 * FROM Causales"
+        df = pd.read_sql(query, conn)
+        conn.close()
+
+        if df.empty:
+            return "<div class='log-line warning'>⚠️ La tabla Causales existe pero no contiene registros.</div>"
+
+        html = f"<div class='log-line success'>✅ Lectura exitosa. {len(df)} registros encontrados.</div>"
+        html += df.to_html(index=False, classes="dataframe")
+        return html
+
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error al leer Causales: {str(e)}</div>"

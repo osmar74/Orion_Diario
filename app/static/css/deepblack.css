@@ -794,4 +794,37 @@ body {
     justify-content: center;
 }
 
+/* ---------- FORMULARIO CONEXIÓN ---------- */
+.conexion-form label {
+    display: inline-block;
+    width: 90px;
+    font-size: 0.7rem;
+    color: #ccc;
+    margin-top: 4px;
+}
+
+.conexion-form input, .conexion-form select {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+}
+
+.conexion-form button {
+    background: #1e90ff;
+    color: #fff;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    margin-right: 8px;
+}
+
+.conexion-form button:hover {
+    background: #1a6fc4;
+}
 /* Al colapsar, el número se sigue viendo (la etiqueta ya se oculta con la regla existente) */
