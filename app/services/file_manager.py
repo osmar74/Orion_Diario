@@ -73,17 +73,9 @@ class FileManager:
         self, fecha_str: str, red_base_path: str = None
     ) -> Dict:
         """
-        Verifica que la unidad de red y las carpetas año/mes/subcarpetas existan,
-        y que contengan archivos con la fecha del proceso.
-        Si no se pasa red_base_path, busca automáticamente entre las rutas configuradas.
-
-        Args:
-            fecha_str: 'YYYYMM_DD' (ej. '202605_06').
-            red_base_path: Ruta UNC o unidad mapeada a utilizar (opcional).
-
-        Returns:
-            Dict con success, rutas_validadas, mensajes, archivos_encontrados
-            y red_base_usada.
+        Verifica unidad de red, carpetas año/mes/subcarpetas y archivos.
+        Si no encuentra archivos en la carpeta del mes original, intenta con el mes anterior.
+        Busca archivos por DDMMYYYY y, si no hay, por DDMM.
         """
         partes = fecha_str.split("_")
         if len(partes) != 2:
@@ -93,7 +85,7 @@ class FileManager:
             }
 
         anio = partes[0][:4]
-        mes_num = partes[0][4:]
+        mes_num = partes[0][4:]  # Dos dígitos del mes
         dia = partes[1]
 
         meses = {
@@ -114,14 +106,13 @@ class FileManager:
         if not mes_nombre:
             return {"success": False, "error": f"Mes inválido: {mes_num}"}
 
-        fecha_archivo = f"{dia}{mes_num}{anio}"
+        fecha_archivo = f"{dia}{mes_num}{anio}"  # DDMMYYYY
+        fecha_alternativa = f"{dia}{mes_num}"  # DDMM (para búsqueda secundaria)
 
-        rutas = {}
-        mensajes = []
-
-        # Determinar ruta base
+        # Determinar ruta base de red
         if red_base_path is None:
-            # Intentar cada ruta configurada
+            from app.config import RED_BASE_PATHS
+
             for path in RED_BASE_PATHS:
                 if os.path.exists(path):
                     red_base_path = path
@@ -134,8 +125,7 @@ class FileManager:
                 "2.2",
                 "Verificar red y carpetas",
                 "info",
-                f"Verificando red y carpetas para fecha {fecha_str} "
-                f"con ruta base {red_base_path}",
+                f"Verificando con ruta base: {red_base_path}",
             )
 
         if not os.path.exists(red_base_path):
@@ -152,6 +142,7 @@ class FileManager:
                 "red_base_usada": red_base_path,
             }
 
+        # Verificar carpeta del año
         ruta_anio = os.path.join(red_base_path, anio)
         if not os.path.isdir(ruta_anio):
             if self.log_service:
@@ -166,73 +157,103 @@ class FileManager:
                 "error": f"No se encuentra la carpeta del año {anio} en la red.",
                 "red_base_usada": red_base_path,
             }
-        rutas["anio"] = ruta_anio
-        mensajes.append(f"Carpeta año '{anio}' encontrada.")
+        rutas = {"anio": ruta_anio}
+        mensajes = [f"Carpeta año '{anio}' encontrada."]
 
-        ruta_mes = None
+        # --- Función interna para buscar archivos en una carpeta de mes ---
+        def buscar_archivos_en_mes(ruta_mes, nombre_mes_usado):
+            """Retorna (archivos_encontrados, rutas_subcarpetas, mensajes)."""
+            encontrados = {}
+            rutas_sub = {}
+            msgs = []
+            subcarpetas_esperadas = ["Causales", "Discador", "Lotes"]
+            for sub in subcarpetas_esperadas:
+                ruta_sub = os.path.join(ruta_mes, sub)
+                if not os.path.isdir(ruta_sub):
+                    msgs.append(f"Falta la subcarpeta {sub} en {nombre_mes_usado}.")
+                    continue
+                rutas_sub[sub] = ruta_sub
+                try:
+                    contenidos = os.listdir(ruta_sub)
+                    archivos_fecha = [f for f in contenidos if fecha_archivo in f]
+                    if archivos_fecha:
+                        encontrados[sub] = archivos_fecha
+                        msgs.append(
+                            f"Encontrados {len(archivos_fecha)} archivo(s) en {sub} ({nombre_mes_usado}, fecha completa)."
+                        )
+                    else:
+                        archivos_alternativos = [
+                            f for f in contenidos if fecha_alternativa in f
+                        ]
+                        if archivos_alternativos:
+                            encontrados[sub] = archivos_alternativos
+                            msgs.append(
+                                f"Encontrados {len(archivos_alternativos)} archivo(s) en {sub} ({nombre_mes_usado}, búsqueda alternativa DDMM)."
+                            )
+                        else:
+                            encontrados[sub] = []
+                            msgs.append(
+                                f"No se encontraron archivos en {sub} ({nombre_mes_usado})."
+                            )
+                except OSError as e:
+                    msgs.append(f"Error al listar {sub}: {e}")
+            return encontrados, rutas_sub, msgs
+
+        # --- Buscar en el mes original ---
+        ruta_mes_original = None
         try:
             for entry in os.scandir(ruta_anio):
                 if entry.is_dir() and entry.name.lower() == mes_nombre:
-                    ruta_mes = entry.path
+                    ruta_mes_original = entry.path
                     break
         except OSError as e:
             if self.log_service:
                 self.log_service.log("2.2", "Verificar red y carpetas", "error", str(e))
             return {"success": False, "error": f"Error al leer carpeta año: {e}"}
 
-        if not ruta_mes:
-            if self.log_service:
-                self.log_service.log(
-                    "2.2",
-                    "Verificar red y carpetas",
-                    "error",
-                    f'Carpeta mes "{mes_nombre}" no encontrada.',
-                )
-            return {
-                "success": False,
-                "error": f'No se encuentra la carpeta del mes "{mes_nombre}" dentro de {anio}.',
-                "red_base_usada": red_base_path,
-            }
-        rutas["mes"] = ruta_mes
-        mensajes.append(f"Carpeta mes '{mes_nombre}' encontrada.")
-
-        subcarpetas_esperadas = ["Causales", "Discador", "Lotes"]
         archivos_encontrados = {}
-        for sub in subcarpetas_esperadas:
-            ruta_sub = os.path.join(ruta_mes, sub)
-            if not os.path.isdir(ruta_sub):
-                if self.log_service:
-                    self.log_service.log(
-                        "2.2",
-                        "Verificar red y carpetas",
-                        "error",
-                        f"Falta la subcarpeta {sub}",
-                    )
-                return {
-                    "success": False,
-                    "error": f"Falta la subcarpeta {sub} en {ruta_mes}.",
-                    "red_base_usada": red_base_path,
-                }
-            rutas[sub] = ruta_sub
+        if ruta_mes_original:
+            rutas["mes"] = ruta_mes_original
+            mensajes.append(f"Carpeta mes '{mes_nombre}' encontrada.")
+            archivos_encontrados, rutas_sub, msgs_busqueda = buscar_archivos_en_mes(
+                ruta_mes_original, mes_nombre
+            )
+            rutas.update(rutas_sub)  # <-- AÑADIR ESTO
+            mensajes.extend(msgs_busqueda)
 
-            try:
-                contenidos = os.listdir(ruta_sub)
-                archivos_fecha = [f for f in contenidos if fecha_archivo in f]
-                archivos_encontrados[sub] = archivos_fecha
-                if not archivos_fecha:
-                    mensajes.append(
-                        f"Advertencia: No se encontraron archivos con fecha {fecha_archivo} en {sub}."
-                    )
-                else:
-                    mensajes.append(
-                        f"Encontrados {len(archivos_fecha)} archivo(s) en {sub}."
-                    )
-            except OSError as e:
-                if self.log_service:
-                    self.log_service.log(
-                        "2.2", "Verificar red y carpetas", "error", str(e)
-                    )
-                return {"success": False, "error": f"Error al listar {sub}: {e}"}
+        # Si no se encontraron archivos (o no existe la carpeta del mes original) y no es enero, intentar mes anterior
+        if (
+            not any(archivos_encontrados.values()) or not ruta_mes_original
+        ) and mes_num != "01":
+            mes_anterior_num = str(int(mes_num) - 1).zfill(2)
+            mes_anterior_nombre = meses.get(mes_anterior_num)
+            if mes_anterior_nombre:
+                ruta_mes_anterior = None
+                try:
+                    for entry in os.scandir(ruta_anio):
+                        if entry.is_dir() and entry.name.lower() == mes_anterior_nombre:
+                            ruta_mes_anterior = entry.path
+                            break
+                except OSError:
+                    pass
+            if ruta_mes_anterior:
+                mensajes.append(
+                    f"No se encontraron archivos en '{mes_nombre}'. Buscando en mes anterior: '{mes_anterior_nombre}'."
+                )
+                archivos_encontrados, rutas_sub, msgs_busqueda = buscar_archivos_en_mes(
+                    ruta_mes_anterior, mes_anterior_nombre
+                )
+                rutas.update(rutas_sub)  # <-- AÑADIR ESTO
+                mensajes.extend(msgs_busqueda)
+                rutas["mes"] = ruta_mes_anterior
+
+        # Verificar si al final no hay archivos en ninguna subcarpeta
+        if not any(archivos_encontrados.values()):
+            mensajes.append(
+                "No se encontraron archivos en ninguna subcarpeta del mes consultado."
+            )
+        else:
+            mensajes.append("Búsqueda de archivos completada.")
 
         if self.log_service:
             self.log_service.log(

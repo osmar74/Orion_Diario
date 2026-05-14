@@ -129,7 +129,7 @@ class DiscadorProcessor:
                 )
 
             base = os.path.splitext(os.path.basename(ruta_archivo))[0]
-            ruta_limpio = os.path.join(carpeta_salida, f"{base}_limpio.xlsx")
+            ruta_limpio = os.path.join(carpeta_salida, f"{base}_Consolidado.xlsx")
             ruta_no_validos = os.path.join(carpeta_salida, f"{base}_no_validos.xlsx")
 
             os.makedirs(carpeta_salida, exist_ok=True)

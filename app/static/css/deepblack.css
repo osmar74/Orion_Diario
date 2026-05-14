@@ -195,15 +195,7 @@ body {
     transition: width 0.3s, min-width 0.3s, padding 0.3s;
 }
 
-.sidebar.collapsed {
-    width: 60px;
-    min-width: 60px;
-    padding: 10px;
-}
 
-.sidebar.collapsed .sidebar-content {
-    display: none;
-}
 
 .sidebar-toggle {
     background: transparent;
@@ -222,9 +214,7 @@ body {
     border-color: var(--accent);
 }
 
-.sidebar.collapsed~.sidebar-toggle {
-    left: 65px;
-}
+
 
 .sidebar-content details {
     margin-bottom: 10px;
@@ -586,3 +576,222 @@ body {
 .monitor table.dataframe {
     width: 100% !important;
 }
+
+#manual-totales input[type="number"] {
+    font-size: 0.8rem;
+}
+#manual-totales button:hover {
+    background: #1a6fc4;
+}
+
+.paso.activo {
+    background: #1a2a3a !important;
+    border-color: #1e90ff !important;
+    color: #1e90ff !important;
+}
+
+/* ---------- MÓDULOS ---------- */
+.modulos {
+    display: flex;
+    gap: 6px;
+    margin-left: 10px;
+}
+
+.modulo-btn {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #888;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.modulo-btn.active {
+    background: #1a2a3a;
+    border-color: #1e90ff;
+    color: #1e90ff;
+}
+
+.modulo-btn:hover {
+    border-color: #1e90ff;
+    color: #ccc;
+}
+
+/* Ajustar subheader para que no tenga timeline */
+.subheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    gap: 15px;
+}
+
+/* ---------- SIDEBAR DOS COLUMNAS ---------- */
+.sidebar-columns {
+    display: flex;
+    gap: 0;
+    height: 100%;
+}
+
+.sidebar-timeline-col {
+    width: 50px;
+    min-width: 50px;
+    border-right: 1px solid #333;
+    padding-right: 5px;
+}
+
+.sidebar-fases-col {
+    flex: 1;
+    padding-left: 8px;
+    overflow-y: auto;
+    /* Reducir fuente general de fases en un 30% */
+    font-size: 0.7rem;
+}
+
+/* Ajustar los details del sidebar */
+.sidebar-fases-col details summary {
+    font-size: 0.7rem;      /* antes ~1rem, ahora 30% menos */
+    font-weight: bold;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 6px 0;
+    border-bottom: 1px solid #222;
+}
+
+.sidebar-fases-col .fase-actions {
+    padding: 8px 0 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sidebar-fases-col button {
+    font-size: 0.65rem;  /* también más pequeño */
+    padding: 5px 10px;
+}
+
+/* ---------- TIMELINE VERTICAL ---------- */
+.timeline-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding-top: 10px;
+    height: 100%;
+}
+
+.timeline-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.timeline-circle {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    border: 2px solid #555;
+    transition: background 0.3s, border-color 0.3s;
+    margin-bottom: 4px;
+}
+
+.timeline-circle.completado {
+    background: #28a745;
+    border-color: #28a745;
+}
+
+.timeline-circle.activo {
+    background: #1e90ff;
+    border-color: #1e90ff;
+    box-shadow: 0 0 6px rgba(30,144,255,0.5);
+}
+
+.timeline-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 0.55rem;
+    color: #777;
+    white-space: nowrap;
+    transition: color 0.3s;
+}
+
+.timeline-item.completado .timeline-label {
+    color: #28a745;
+}
+
+.timeline-item.activo .timeline-label {
+    color: #1e90ff;
+}
+
+/* Conectar círculos con línea vertical */
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 20px;
+    background: #444;
+}
+
+.timeline-item:first-child::before {
+    display: none;
+}
+
+/* ---------- COLORES DE ENLACES INICIO/LOGS ---------- */
+.subheader-right a {
+    color: #ffffff !important;   /* más visible */
+    font-weight: 500;
+}
+
+.subheader-right a:hover {
+    color: #1e90ff !important;
+}
+
+/* ---------- SIDEBAR COLAPSADO (solo timeline) ---------- */
+.sidebar.collapsed {
+    width: 55px;
+    min-width: 55px;
+    padding: 5px;
+}
+
+.sidebar.collapsed .sidebar-fases-col {
+    display: none;
+}
+
+.sidebar.collapsed .timeline-label {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-timeline-col {
+    border-right: none;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* Número dentro del círculo del timeline */
+.timeline-number {
+    font-size: 0.55rem;
+    font-weight: bold;
+    color: #ccc;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.timeline-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Al colapsar, el número se sigue viendo (la etiqueta ya se oculta con la regla existente) */

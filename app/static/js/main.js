@@ -5,17 +5,20 @@ const panelMap = {
     'distribuir': 'panel-distribuir',
     'discador': 'panel-discador',
     'causales': 'panel-causales',
+    'comparar-lotes': 'panel-comparar',  // <-- nueva línea
     'lotes': 'panel-lotes'
+
 };
 
-function insertarEnPanel(panelId, html, exito) {
+function insertarEnPanel(panelId, html, exito, subSelector = '.panel-body') {
     const panel = document.getElementById(panelId);
     if (!panel) return;
-    const body = panel.querySelector('.panel-body');
+    const container = panel.querySelector(subSelector);
+    if (!container) return;
+    container.innerHTML = html;
     const icon = panel.querySelector('.panel-icon');
-    if (body) body.innerHTML = html;
     if (icon) icon.textContent = exito ? '✅' : '❌';
-    panel.open = true;  // expandir automáticamente
+    panel.open = true;
 }
 
 function cerrarOtrosDetails(boton) {
@@ -31,16 +34,24 @@ function cerrarOtrosDetails(boton) {
 }
 
 function marcarPasoCompletado(paso) {
-    const pasoEl = document.querySelector(`.paso[data-paso="${paso}"]`);
-    if (pasoEl) {
-        const pasos = Array.from(document.querySelectorAll('.paso'));
-        const index = pasos.indexOf(pasoEl);
-        pasos.forEach((p, i) => {
-            p.classList.remove('completado', 'activo');
-            if (i < index) p.classList.add('completado');
-            else if (i === index) p.classList.add('activo');
-        });
-    }
+    // Timeline horizontal antiguo (si aún quedara) -> lo dejamos por si acaso, pero ya no se usa
+    // Ahora manipulamos el timeline vertical
+    const items = document.querySelectorAll('.timeline-item');
+    const index = Array.from(items).findIndex(item => item.dataset.paso === paso);
+    if (index === -1) return;
+
+    items.forEach((item, i) => {
+        const circle = item.querySelector('.timeline-circle');
+        item.classList.remove('completado', 'activo');
+        circle.classList.remove('completado', 'activo');
+        if (i < index) {
+            item.classList.add('completado');
+            circle.classList.add('completado');
+        } else if (i === index) {
+            item.classList.add('activo');
+            circle.classList.add('activo');
+        }
+    });
 }
 
 function actualizarTotalesHeader() {
@@ -130,7 +141,10 @@ function ejecutarAccion(url, boton) {
                     actualizarTotalesHeader();
                 }
                 else if (url.includes('causales')) marcarPasoCompletado('causales');
-                else if (url.includes('lotes')) marcarPasoCompletado('lotes');
+                else if (url.includes('lotes')) {
+                    marcarPasoCompletado('lotes');
+                    console.log('Paso lotes completado');  // para depuración, luego se puede quitar
+                }
             } else if (html.includes('log-line error') || html.includes('❌')) {
                 if (icono) icono.textContent = '❌';
             } else if (html.includes('log-line warning') || html.includes('⚠️')) {
@@ -149,6 +163,8 @@ function ejecutarAccion(url, boton) {
             if (icono) icono.textContent = '❌';
         });
 }
+
+
 
 function subirOCR() {
     const inputFiles = document.getElementById('ocrFiles');
@@ -182,41 +198,119 @@ function subirOCR() {
     const icono = boton ? boton.querySelector('.status-icon') : null;
     if (icono) icono.textContent = '🔵';
 
-    insertarEnPanel('panel-ocr', "<p>⏳ Subiendo y procesando imágenes...</p>", false);
+    // Insertar progreso en el contenedor de resultados del panel OCR
+    insertarEnPanel('panel-ocr', "<p>⏳ Subiendo y procesando imágenes...</p>", false, '#ocr-result-content');
 
     fetch('/accion/ocr-subir', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.text())
-    .then(html => {
-        const exito = html.includes('log-line success') || html.includes('✅');
-        insertarEnPanel('panel-ocr', html, exito);
+        .then(response => response.text())
+        .then(html => {
+            const exito = html.includes('log-line success') || html.includes('✅');
+            insertarEnPanel('panel-ocr', html, exito, '#ocr-result-content');
 
-        // Leer totales desde el elemento oculto
-        const ocrData = document.getElementById('ocr-data');
-        if (ocrData) {
-            const orionVal = ocrData.getAttribute('data-orion');
-            const aisterVal = ocrData.getAttribute('data-aister');
-            if (orionVal && orionVal !== 'None') {
-                const spanOrion = document.getElementById('totalOrion');
-                if (spanOrion) spanOrion.textContent = orionVal;
+            // Mostrar formulario manual
+            const manualDiv = document.getElementById('manual-totales');
+            if (manualDiv) manualDiv.style.display = 'block';
+
+            // Rellenar campos manuales con los totales detectados (desde el elemento oculto)
+            const ocrData = document.getElementById('ocr-data');
+            if (ocrData) {
+                const orionVal = ocrData.getAttribute('data-orion');
+                const aisterVal = ocrData.getAttribute('data-aister');
+                if (orionVal && orionVal !== 'None') {
+                    const manualOrion = document.getElementById('manualOrion');
+                    if (manualOrion) manualOrion.value = orionVal;
+                }
+                if (aisterVal && aisterVal !== 'None') {
+                    const manualAister = document.getElementById('manualAister');
+                    if (manualAister) manualAister.value = aisterVal;
+                }
             }
-            if (aisterVal && aisterVal !== 'None') {
-                const spanAister = document.getElementById('totalAister');
-                if (spanAister) spanAister.textContent = aisterVal;
+
+            // Actualizar totales en sidebar y header
+            const spanOrion = document.getElementById('totalOrion');
+            const spanAister = document.getElementById('totalAister');
+            if (ocrData) {
+                const orionVal = ocrData.getAttribute('data-orion');
+                const aisterVal = ocrData.getAttribute('data-aister');
+                if (orionVal && orionVal !== 'None' && spanOrion) spanOrion.textContent = orionVal;
+                if (aisterVal && aisterVal !== 'None' && spanAister) spanAister.textContent = aisterVal;
             }
-        }
-        actualizarTotalesHeader();
-        if (icono) icono.textContent = '✅';
-    })
-    .catch(error => {
-        const errorHtml = `<div class="log-line error">❌ Error de conexión: ${error}</div>`;
-        insertarEnPanel('panel-ocr', errorHtml, false);
-        if (icono) icono.textContent = '❌';
-    });
+            actualizarTotalesHeader();
+            if (icono) icono.textContent = '✅';
+        })
+        .catch(error => {
+            const errorHtml = `<div class="log-line error">❌ Error de conexión: ${error}</div>`;
+            insertarEnPanel('panel-ocr', errorHtml, false, '#ocr-result-content');
+            if (icono) icono.textContent = '❌';
+        });
 }
 
+
+function consolidarTotales() {
+    const orion = document.getElementById('manualOrion').value;
+    const aister = document.getElementById('manualAister').value;
+    const formData = new FormData();
+    formData.append('orion', orion);
+    formData.append('aister', aister);
+
+    fetch('/accion/consolidar-totales', { method: 'POST', body: formData })
+        .then(response => response.text())
+        .then(html => {
+            // Actualizar totales en sidebar y header
+            const spanOrion = document.getElementById('totalOrion');
+            const spanAister = document.getElementById('totalAister');
+            if (orion && spanOrion) spanOrion.textContent = orion;
+            if (aister && spanAister) spanAister.textContent = aister;
+            actualizarTotalesHeader();
+            // Mostrar mensaje en el propio panel OCR
+            const panelBody = document.querySelector('#panel-ocr .panel-body');
+            if (panelBody) {
+                const confirm = document.createElement('div');
+                confirm.innerHTML = html;
+                panelBody.appendChild(confirm);
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+}
+
+
+
+
+function resetTodo() {
+    if (confirm('¿Está seguro de reiniciar todo el proceso? Se perderán los totales y estados.')) {
+        fetch('/reset')
+            .then(() => {
+                // Limpiar progreso visual antes de recargar
+                document.querySelectorAll('.paso').forEach(p => p.classList.remove('completado', 'activo'));
+                document.querySelectorAll('.panel-icon').forEach(i => i.textContent = '⚪');
+                document.querySelectorAll('.panel-body').forEach(b => b.innerHTML = 'Pendiente...');
+                // Cerrar todos los details del monitor
+                document.querySelectorAll('.panel-monitor').forEach(d => d.open = false);
+                // Recargar para volver a estado inicial con sesión limpia
+                location.reload();
+            })
+            .catch(() => location.reload());
+    }
+}
+
+// Cambio de módulo (Orion / Aister / Consolidar)
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modulo-btn')) {
+        document.querySelectorAll('.modulo-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        const modulo = e.target.dataset.modulo;
+        if (modulo === 'orion') {
+            // Ya estamos en Orion, no hacer nada o refrescar
+        } else if (modulo === 'aister') {
+            alert('Módulo Aister pendiente de implementar.');
+        } else if (modulo === 'consolidar') {
+            alert('Consolidación pendiente de implementar.');
+        }
+    }
+});
 
 // Al cargar la página, reflejar totales de sesión en el header
 document.addEventListener('DOMContentLoaded', function () {
