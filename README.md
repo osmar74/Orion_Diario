@@ -56,6 +56,18 @@ Automatiza la verificación de red, extracción OCR de totales de control, distr
 
 3. Abrir en el navegador http://127.0.0.1:5000 (o http://<IP-LOCAL>:5000 para acceso en red).
 
+4. Para uso local en intranet o red local:
+    from app import create_app
+
+    app = create_app()
+
+    if __name__ == "__main__":
+        #app.run(debug=False, host='0.0.0.0', port=5000)
+
+5. Asegurarse abrir el firewall
+    cmd (Administrador privilegios)
+    netsh advfirewall firewall add rule name="Orion Flask" dir=in action=allow protocol=TCP localport=5000
+
 ## Flujo de trabajo típico
     1. Ingresar la fecha (YYYYMM_DD).
 
