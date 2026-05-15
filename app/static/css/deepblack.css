@@ -1,3 +1,6 @@
+/* ============================================================
+   VARIABLES Y RESETEO GLOBAL
+   ============================================================ */
 :root {
     --bg-total: #000000;
     --panel-bg: #121212;
@@ -27,8 +30,9 @@ body {
     overflow: hidden;
 }
 
-/* ---------- HEADER & SUBHEADER FUSIONADOS ---------- */
-/* ---------- HEADER & SUBHEADER (ajustado) ---------- */
+/* ============================================================
+   HEADER Y SUBHEADER
+   ============================================================ */
 .header-container {
     background-color: var(--header-bg);
     border-radius: var(--radius) var(--radius) 0 0;
@@ -39,11 +43,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0;                /* altura reducida */
+    padding: 10px 0;
 }
 
 .header-main h1 {
-    font-size: 1.2rem;              /* reducido */
+    font-size: 1.2rem;
     color: #ffffff;
     letter-spacing: 1px;
 }
@@ -51,131 +55,68 @@ body {
 .subheader {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* tres columnas */
-    padding: 4px 0;                 /* compacto */
-    gap: 10px;
+    justify-content: space-between;
+    padding: 6px 0;
+    gap: 15px;
     border-radius: 0 0 var(--radius) var(--radius);
-    font-size: 0.8rem;
 }
 
-.subheader-left,
-.subheader-center,
-.subheader-right {
+.subheader-left {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.subheader-left a {
-    color: var(--text-secondary);
+.subheader-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.subheader-right a {
+    color: #ffffff !important;   /* enlaces inicio/logs más visibles */
+    font-weight: 500;
     text-decoration: none;
     font-size: 0.85rem;
     transition: color 0.2s;
 }
 
-.subheader-left a:hover {
+.subheader-right a:hover {
+    color: var(--accent) !important;
+}
+
+/* Módulos (Orion, Aister, Consolidar) */
+.modulos {
+    display: flex;
+    gap: 6px;
+    margin-left: 10px;
+}
+
+.modulo-btn {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #888;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.modulo-btn.active {
+    background: #1a2a3a;
+    border-color: var(--accent);
     color: var(--accent);
 }
 
-.subheader-center {
-    flex: 1;
-    justify-content: center;
+.modulo-btn:hover {
+    border-color: var(--accent);
+    color: #ccc;
 }
 
-/* ---------- BADGES DE TOTALES EN SUBHEADER ---------- */
-.totales-badges {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.badge {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 20px;
-    padding: 3px 10px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    transition: background 0.3s, border-color 0.3s;
-}
-
-.badge .badge-label {
-    color: #888;
-    font-weight: 500;
-}
-
-.badge .badge-value {
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.8rem;
-}
-
-.badge.cuadre {
-    border-color: #555;
-}
-
-.badge.cuadre.ok {
-    border-color: #28a745;
-    background: #1a3a1a;
-}
-
-.badge.cuadre.ok .badge-label {
-    color: #28a745;
-}
-
-.badge.cuadre.error {
-    border-color: #dc3545;
-    background: #3a1a1a;
-}
-
-.badge.cuadre.error .badge-label {
-    color: #dc3545;
-}
-
-/* Barra de progreso (se mantiene igual) */
-.progress-bar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-}
-
-.paso {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #555;
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    transition: background 0.3s, color 0.3s, border-color 0.3s;
-}
-
-.paso.completado {
-    background: #1a3a1a;
-    border-color: #28a745;
-    color: #28a745;
-}
-
-.paso.activo {
-    background: #1a2a3a;
-    border-color: #1e90ff;
-    color: #1e90ff;
-    box-shadow: 0 0 8px rgba(30,144,255,0.3);
-}
-
-.arrow {
-    color: #555;
-    font-size: 0.7rem;
-    margin: 0 2px;
-    user-select: none;
-}
-
-/* ---------- LAYOUT PRINCIPAL ---------- */
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
 .main-layout {
     display: flex;
     height: calc(100vh - 110px);
@@ -183,7 +124,9 @@ body {
     gap: 10px;
 }
 
-/* ---------- SIDEBAR ---------- */
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
 .sidebar {
     background-color: var(--panel-bg);
     border: 1px solid var(--panel-border);
@@ -195,8 +138,29 @@ body {
     transition: width 0.3s, min-width 0.3s, padding 0.3s;
 }
 
+/* Sidebar colapsado (solo timeline) */
+.sidebar.collapsed {
+    width: 55px;
+    min-width: 55px;
+    padding: 5px;
+}
 
+.sidebar.collapsed .sidebar-fases-col {
+    display: none;
+}
 
+.sidebar.collapsed .timeline-label {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-timeline-col {
+    border-right: none;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* Botón toggle del sidebar */
 .sidebar-toggle {
     background: transparent;
     border: 1px solid var(--panel-border);
@@ -214,54 +178,166 @@ body {
     border-color: var(--accent);
 }
 
+/* Columnas internas del sidebar (timeline + fases) */
+.sidebar-columns {
+    display: flex;
+    gap: 0;
+    height: 100%;
+}
 
+.sidebar-timeline-col {
+    width: 50px;
+    min-width: 50px;
+    border-right: 1px solid #333;
+    padding-right: 5px;
+}
 
-.sidebar-content details {
+.sidebar-fases-col {
+    flex: 1;
+    padding-left: 8px;
+    overflow-y: auto;
+    font-size: 0.7rem;   /* reducción del 30% */
+}
+
+/* Fases (details) dentro del sidebar */
+.sidebar-fases-col details {
     margin-bottom: 10px;
 }
 
-.sidebar-content summary {
+.sidebar-fases-col details summary {
+    font-size: 0.7rem;
     font-weight: bold;
     color: var(--accent);
     cursor: pointer;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--panel-border);
+    padding: 6px 0;
+    border-bottom: 1px solid #222;
+    list-style: none;
 }
 
-.sidebar-content .fase-actions {
-    padding: 10px 0 10px 10px;
+.sidebar-fases-col details summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Acciones dentro de cada fase */
+.sidebar-fases-col .fase-actions {
+    padding: 8px 0 8px 8px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
-.sidebar-content button {
+.sidebar-fases-col button {
     background: transparent;
     border: 1px solid var(--accent);
     color: var(--accent);
-    padding: 8px 12px;
+    padding: 5px 10px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.65rem;
     transition: background 0.2s, box-shadow 0.2s;
 }
 
-.sidebar-content button:hover {
+.sidebar-fases-col button:hover {
     background: rgba(30, 144, 255, 0.1);
 }
 
-.sidebar-content button:active {
+.sidebar-fases-col button:active {
     background: var(--accent);
     color: #000;
     box-shadow: 0 0 12px var(--accent);
 }
 
-/* Indicadores de estado */
+/* Indicadores de estado en botones */
 .status-icon {
-    margin-right: 5px;
+    margin-left: 5px;
 }
 
-/* ---------- MONITOR CENTRAL ---------- */
+/* ============================================================
+   TIMELINE VERTICAL
+   ============================================================ */
+.timeline-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding-top: 10px;
+    height: 100%;
+}
+
+.timeline-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.timeline-circle {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    border: 2px solid #555;
+    transition: background 0.3s, border-color 0.3s;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-circle.completado {
+    background: var(--success);
+    border-color: var(--success);
+}
+
+.timeline-circle.activo {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 6px rgba(30,144,255,0.5);
+}
+
+.timeline-number {
+    font-size: 0.55rem;
+    font-weight: bold;
+    color: #ccc;
+    line-height: 1;
+}
+
+.timeline-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 0.55rem;
+    color: #777;
+    white-space: nowrap;
+    transition: color 0.3s;
+}
+
+.timeline-item.completado .timeline-label {
+    color: var(--success);
+}
+
+.timeline-item.activo .timeline-label {
+    color: var(--accent);
+}
+
+/* Línea conectora entre círculos */
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 20px;
+    background: #444;
+}
+
+.timeline-item:first-child::before {
+    display: none;
+}
+
+/* ============================================================
+   MONITOR CENTRAL
+   ============================================================ */
 .monitor {
     background-color: var(--panel-bg);
     border: 1px solid var(--panel-border);
@@ -276,122 +352,7 @@ body {
     margin-bottom: 15px;
 }
 
-.monitor .log-line {
-    padding: 5px 0;
-    border-bottom: 1px solid #222;
-    font-family: monospace;
-    font-size: 0.9rem;
-}
-
-.monitor .log-line.success {
-    color: var(--success);
-}
-
-.monitor .log-line.error {
-    color: var(--danger);
-}
-
-.monitor .log-line.info {
-    color: var(--info);
-}
-
-.monitor table.dataframe {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-.monitor table.dataframe th {
-    background: #1e1e1e;
-    padding: 8px;
-    text-align: left;
-    border: 1px solid #333;
-}
-
-.monitor table.dataframe td {
-    padding: 6px 8px;
-    border: 1px solid #333;
-}
-/* Logs table larger font */
-.monitor table.dataframe {
-    font-size: 0.70rem;
-}
-
-/* ---------- BARRA DE PROGRESO ---------- */
-.progress-bar {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.paso {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #555;
-    padding: 5px 12px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    transition: background 0.3s, color 0.3s, border-color 0.3s;
-}
-
-.paso.completado {
-    background: #1a3a1a;
-    border-color: #28a745;
-    color: #28a745;
-}
-
-.paso.activo {
-    background: #1a2a3a;
-    border-color: #1e90ff;
-    color: #1e90ff;
-    box-shadow: 0 0 8px rgba(30,144,255,0.3);
-}
-
-/* ---------- BARRA DE PROGRESO EN SUBHEADER ---------- */
-.progress-bar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-}
-
-.paso {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #555;
-    padding: 4px 10px;
-    border-radius: 20px;          /* Forma redondeada */
-    font-size: 0.7rem;           /* Letra más pequeña */
-    white-space: nowrap;
-    transition: background 0.3s, color 0.3s, border-color 0.3s;
-}
-
-.paso.completado {
-    background: #1a3a1a;
-    border-color: #28a745;
-    color: #28a745;
-}
-
-.paso.activo {
-    background: #1a2a3a;
-    border-color: #1e90ff;
-    color: #1e90ff;
-    box-shadow: 0 0 8px rgba(30,144,255,0.3);
-}
-
-.arrow {
-    color: #555;
-    font-size: 0.7rem;
-    margin: 0 2px;
-    user-select: none;
-}
-
-.subheader-left {
-    gap: 8px;
-}
-
-/* ---------- PANELES COLAPSABLES EN MONITOR ---------- */
+/* Paneles colapsables del monitor */
 .panel-monitor {
     background: #1a1a1a;
     border: 1px solid #333;
@@ -433,8 +394,188 @@ body {
     overflow-y: auto;
 }
 
-/* ---------- RESULTADO OCR EN DOS COLUMNAS ---------- */
-/* ---------- RESULTADO OCR EN DOS COLUMNAS ---------- */
+/* ============================================================
+   TABLAS EN MONITOR (formato dataframe)
+   ============================================================ */
+.monitor table.dataframe {
+    width: 100% !important;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.monitor table.dataframe th {
+    background: #1e1e1e;
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #333;
+    font-size: 0.85rem;
+}
+
+.monitor table.dataframe td {
+    padding: 6px 8px;
+    border: 1px solid #333;
+    font-size: 0.8rem;
+}
+
+/* ============================================================
+   LOGS (página de logs)
+   ============================================================ */
+.monitor .log-line {
+    padding: 5px 0;
+    border-bottom: 1px solid #222;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.monitor .log-line.success {
+    color: var(--success);
+}
+
+.monitor .log-line.error {
+    color: var(--danger);
+}
+
+.monitor .log-line.info {
+    color: var(--info);
+}
+
+/* ============================================================
+   BADGES DEL SUBHEADER (totales)
+   ============================================================ */
+.totales-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 3px 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    transition: background 0.3s, border-color 0.3s;
+}
+
+.badge .badge-label {
+    color: #888;
+    font-weight: 500;
+}
+
+.badge .badge-value {
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.badge.cuadre {
+    border-color: #555;
+}
+
+.badge.cuadre.ok {
+    border-color: var(--success);
+    background: #1a3a1a;
+}
+
+.badge.cuadre.ok .badge-label {
+    color: var(--success);
+}
+
+.badge.cuadre.error {
+    border-color: var(--danger);
+    background: #3a1a1a;
+}
+
+.badge.cuadre.error .badge-label {
+    color: var(--danger);
+}
+
+/* Badges de conexión (en paneles de carga) */
+.badge-conexion {
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.badge-verde {
+    background: #1a3a1a;
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.badge-rojo {
+    background: #3a1a1a;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+/* ============================================================
+   BOTONES DE CONEXIÓN (Fase G)
+   ============================================================ */
+.conexion-btn {
+    background: #1a1a1a;
+    border: 1px solid #555;
+    color: #888;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+}
+
+.conexion-btn.active {
+    background: #1a2a3a;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ============================================================
+   FORMULARIO DE CONEXIÓN (panel de prueba)
+   ============================================================ */
+.conexion-form label {
+    display: inline-block;
+    width: 90px;
+    font-size: 0.7rem;
+    color: #ccc;
+    margin-top: 4px;
+}
+
+.conexion-form input,
+.conexion-form select {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+}
+
+.conexion-form button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    margin-right: 8px;
+}
+
+.conexion-form button:hover {
+    background: #1a6fc4;
+}
+
+/* ============================================================
+   RESULTADO OCR (dos columnas)
+   ============================================================ */
 .ocr-result-container {
     display: flex;
     gap: 15px;
@@ -442,7 +583,7 @@ body {
 }
 
 .ocr-images {
-    flex: 0 0 45%;               /* un poco más ancho */
+    flex: 0 0 45%;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -450,13 +591,13 @@ body {
 }
 
 .ocr-thumb {
-    flex: 1 1 100%;              /* una imagen ocupa toda la columna */
+    flex: 1 1 100%;
     max-width: 100%;
 }
 
 .ocr-thumb img {
     width: 100%;
-    max-height: 350px;           /* crece en altura pero sin exagerar */
+    max-height: 350px;
     object-fit: contain;
     border: 1px solid #444;
     border-radius: 4px;
@@ -474,7 +615,6 @@ body {
     min-width: 200px;
 }
 
-/* Fila que contiene totales y archivos guardados */
 .totales-archivos-row {
     display: flex;
     align-items: flex-start;
@@ -508,7 +648,7 @@ body {
     display: block;
     font-size: 1.3rem;
     font-weight: 700;
-    color: #4ecdc4;              /* color cian brillante que resalta */
+    color: #4ecdc4;   /* color cian que resalta */
 }
 
 .archivos-guardados {
@@ -527,7 +667,9 @@ body {
     padding: 0;
 }
 
-/* ---------- PANEL CREAR CARPETAS ---------- */
+/* ============================================================
+   PANEL CREAR CARPETAS
+   ============================================================ */
 .carpetas-grid {
     display: flex;
     flex-wrap: wrap;
@@ -548,7 +690,7 @@ body {
 }
 
 .carpeta-card:hover {
-    border-color: #1e90ff;
+    border-color: var(--accent);
 }
 
 .carpeta-icon {
@@ -572,295 +714,13 @@ body {
     line-height: 1.2;
 }
 
-/* Asegurar que todas las tablas en monitor ocupen el ancho completo */
-.monitor table.dataframe {
-    width: 100% !important;
-}
-
+/* ============================================================
+   FORMULARIO MANUAL DE TOTALES (dentro del panel OCR)
+   ============================================================ */
 #manual-totales input[type="number"] {
     font-size: 0.8rem;
 }
+
 #manual-totales button:hover {
     background: #1a6fc4;
-}
-
-.paso.activo {
-    background: #1a2a3a !important;
-    border-color: #1e90ff !important;
-    color: #1e90ff !important;
-}
-
-/* ---------- MÓDULOS ---------- */
-.modulos {
-    display: flex;
-    gap: 6px;
-    margin-left: 10px;
-}
-
-.modulo-btn {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #888;
-    padding: 4px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    transition: all 0.2s;
-}
-
-.modulo-btn.active {
-    background: #1a2a3a;
-    border-color: #1e90ff;
-    color: #1e90ff;
-}
-
-.modulo-btn:hover {
-    border-color: #1e90ff;
-    color: #ccc;
-}
-
-/* Ajustar subheader para que no tenga timeline */
-.subheader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 0;
-    gap: 15px;
-}
-
-/* ---------- SIDEBAR DOS COLUMNAS ---------- */
-.sidebar-columns {
-    display: flex;
-    gap: 0;
-    height: 100%;
-}
-
-.sidebar-timeline-col {
-    width: 50px;
-    min-width: 50px;
-    border-right: 1px solid #333;
-    padding-right: 5px;
-}
-
-.sidebar-fases-col {
-    flex: 1;
-    padding-left: 8px;
-    overflow-y: auto;
-    /* Reducir fuente general de fases en un 30% */
-    font-size: 0.7rem;
-}
-
-/* Ajustar los details del sidebar */
-.sidebar-fases-col details summary {
-    font-size: 0.7rem;      /* antes ~1rem, ahora 30% menos */
-    font-weight: bold;
-    color: var(--accent);
-    cursor: pointer;
-    padding: 6px 0;
-    border-bottom: 1px solid #222;
-}
-
-.sidebar-fases-col .fase-actions {
-    padding: 8px 0 8px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.sidebar-fases-col button {
-    font-size: 0.65rem;  /* también más pequeño */
-    padding: 5px 10px;
-}
-
-/* ---------- TIMELINE VERTICAL ---------- */
-.timeline-vertical {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    padding-top: 10px;
-    height: 100%;
-}
-
-.timeline-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-}
-
-.timeline-circle {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #1a1a1a;
-    border: 2px solid #555;
-    transition: background 0.3s, border-color 0.3s;
-    margin-bottom: 4px;
-}
-
-.timeline-circle.completado {
-    background: #28a745;
-    border-color: #28a745;
-}
-
-.timeline-circle.activo {
-    background: #1e90ff;
-    border-color: #1e90ff;
-    box-shadow: 0 0 6px rgba(30,144,255,0.5);
-}
-
-.timeline-label {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    font-size: 0.55rem;
-    color: #777;
-    white-space: nowrap;
-    transition: color 0.3s;
-}
-
-.timeline-item.completado .timeline-label {
-    color: #28a745;
-}
-
-.timeline-item.activo .timeline-label {
-    color: #1e90ff;
-}
-
-/* Conectar círculos con línea vertical */
-.timeline-item::before {
-    content: '';
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 2px;
-    height: 20px;
-    background: #444;
-}
-
-.timeline-item:first-child::before {
-    display: none;
-}
-
-/* ---------- COLORES DE ENLACES INICIO/LOGS ---------- */
-.subheader-right a {
-    color: #ffffff !important;   /* más visible */
-    font-weight: 500;
-}
-
-.subheader-right a:hover {
-    color: #1e90ff !important;
-}
-
-/* ---------- SIDEBAR COLAPSADO (solo timeline) ---------- */
-.sidebar.collapsed {
-    width: 55px;
-    min-width: 55px;
-    padding: 5px;
-}
-
-.sidebar.collapsed .sidebar-fases-col {
-    display: none;
-}
-
-.sidebar.collapsed .timeline-label {
-    display: none;
-}
-
-.sidebar.collapsed .sidebar-timeline-col {
-    border-right: none;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-
-/* Número dentro del círculo del timeline */
-.timeline-number {
-    font-size: 0.55rem;
-    font-weight: bold;
-    color: #ccc;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
-
-.timeline-circle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* ---------- FORMULARIO CONEXIÓN ---------- */
-.conexion-form label {
-    display: inline-block;
-    width: 90px;
-    font-size: 0.7rem;
-    color: #ccc;
-    margin-top: 4px;
-}
-
-.conexion-form input, .conexion-form select {
-    background: #222;
-    color: #fff;
-    border: 1px solid #444;
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    margin-bottom: 4px;
-}
-
-.conexion-form button {
-    background: #1e90ff;
-    color: #fff;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.7rem;
-    margin-right: 8px;
-}
-
-.conexion-form button:hover {
-    background: #1a6fc4;
-}
-
-/* Botones de conexión activa */
-.conexion-btn {
-    background: #1a1a1a;
-    border: 1px solid #555;
-    color: #888;
-    padding: 4px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.7rem;
-    transition: all 0.2s;
-}
-
-.conexion-btn.active {
-    background: #1a2a3a;
-    border-color: #1e90ff;
-    color: #1e90ff;
-}
-
-/* Badge de estado de conexión en los paneles de carga */
-.badge-conexion {
-    font-size: 0.65rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    margin-left: 10px;
-    vertical-align: middle;
-}
-.badge-verde {
-    background: #1a3a1a;
-    color: #28a745;
-    border: 1px solid #28a745;
-}
-.badge-rojo {
-    background: #3a1a1a;
-    color: #dc3545;
-    border: 1px solid #dc3545;
 }
