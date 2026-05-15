@@ -12,12 +12,8 @@ const panelMap = {
     'distribuir':      'panel-distribuir',
     'discador':        'panel-discador',
     'causales':        'panel-causales',
-    'lotes':           'panel-lotes',
-    'comparar-lotes':  'panel-comparar',
-    'causales':        'panel-carga-causales',   // carga
-    'lote':            'panel-carga-lote',
-    'discador':        'panel-carga-discador',
-    'probar-conexion': 'panel-conexiones'
+    'comparar-lotes':  'panel-comparar',   // ← antes que 'lotes'
+    'lotes':           'panel-lotes'
 };
 
 // ---------- FUNCIONES GENERALES ----------
