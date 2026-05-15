@@ -8,7 +8,7 @@ Blueprint para las fases A-B y D:
 import os
 from flask import Blueprint, request, session
 
-from app.config import DATA_DIR, TESSERACT_PATH, RED_BASE_PATHS
+from app.config import DATA_DIR
 from app.services.file_manager import FileManager
 from app.controllers.helpers import obtener_log_service
 
@@ -43,7 +43,7 @@ def accion_verificar_red():
         session["red_base_activa"] = res.get("red_base_usada")
         red_usada = res.get("red_base_usada", "No especificada")
 
-        html = f"<div class='log-line success'>✅ Red verificada correctamente</div>"
+        html = "<div class='log-line success'>✅ Red verificada correctamente</div>"
         html += f"<p style='margin:5px 0; font-size:0.8rem;'>📍 <b>Unidad de red:</b> {red_usada}</p>"
 
         rutas = res.get("rutas_validadas", {})

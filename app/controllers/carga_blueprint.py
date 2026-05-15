@@ -1,10 +1,7 @@
 """
 Blueprint para la Fase G: Carga de datos a SQL Server.
 """
-
 import os
-import re
-import unicodedata
 import traceback
 import pyodbc
 import pandas as pd
@@ -12,36 +9,31 @@ import numpy as np
 from flask import Blueprint, request, session
 
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
-from app.controllers.helpers import (
-    obtener_log_service,
-    construir_cadena_conexion,
-    normalizar_texto,
-    mapear_columnas_archivo,
-)
+from app.controllers.helpers import construir_cadena_conexion, normalizar_texto, mapear_columnas_archivo
 
-carga_bp = Blueprint("carga", __name__)
+carga_bp = Blueprint('carga', __name__)
 
 
-@carga_bp.route("/accion/probar-conexion", methods=["POST"])
+@carga_bp.route('/accion/probar-conexion', methods=['POST'])
 def accion_probar_conexion():
-    servidor = request.form.get("servidor", "")
-    puerto = request.form.get("puerto", "1433")
-    basedatos = request.form.get("basedatos", "")
-    usuario = request.form.get("usuario", "")
-    password = request.form.get("password", "")
-    autenticacion = request.form.get("autenticacion", "sql")
+    servidor = request.form.get('servidor', '')
+    puerto = request.form.get('puerto', '1433')
+    basedatos = request.form.get('basedatos', '')
+    usuario = request.form.get('usuario', '')
+    password = request.form.get('password', '')
+    autenticacion = request.form.get('autenticacion', 'sql')
 
     if not servidor or not basedatos:
         return "<div class='log-line error'>❌ Faltan datos obligatorios.</div>"
 
     try:
         cfg = {
-            "server": servidor,
-            "port": puerto,
-            "database": basedatos,
-            "auth": autenticacion,
-            "username": usuario,
-            "password": password,
+            'server': servidor,
+            'port': puerto,
+            'database': basedatos,
+            'auth': autenticacion,
+            'username': usuario,
+            'password': password
         }
         conn_str = construir_cadena_conexion(cfg)
         conn = pyodbc.connect(conn_str, timeout=5)
@@ -51,26 +43,26 @@ def accion_probar_conexion():
         return f"<div class='log-line error'>❌ Error de conexión: {e}</div>"
 
 
-@carga_bp.route("/accion/probar-lectura", methods=["POST"])
+@carga_bp.route('/accion/probar-lectura', methods=['POST'])
 def accion_probar_lectura():
-    servidor = request.form.get("servidor", "")
-    puerto = request.form.get("puerto", "1433")
-    basedatos = request.form.get("basedatos", "")
-    usuario = request.form.get("usuario", "")
-    password = request.form.get("password", "")
-    autenticacion = request.form.get("autenticacion", "sql")
+    servidor = request.form.get('servidor', '')
+    puerto = request.form.get('puerto', '1433')
+    basedatos = request.form.get('basedatos', '')
+    usuario = request.form.get('usuario', '')
+    password = request.form.get('password', '')
+    autenticacion = request.form.get('autenticacion', 'sql')
 
     if not servidor or not basedatos:
         return "<div class='log-line error'>❌ Faltan datos obligatorios.</div>"
 
     try:
         cfg = {
-            "server": servidor,
-            "port": puerto,
-            "database": basedatos,
-            "auth": autenticacion,
-            "username": usuario,
-            "password": password,
+            'server': servidor,
+            'port': puerto,
+            'database': basedatos,
+            'auth': autenticacion,
+            'username': usuario,
+            'password': password
         }
         conn_str = construir_cadena_conexion(cfg)
         conn = pyodbc.connect(conn_str, timeout=5)
@@ -79,60 +71,51 @@ def accion_probar_lectura():
         conn.close()
         if df.empty:
             return "<div class='log-line warning'>⚠️ La tabla Causales existe pero no contiene registros.</div>"
-        html = f"<div class='log-line success'>✅ Lectura exitosa. {len(df)} registros encontrados.</div>"
-        html += df.to_html(index=False, classes="dataframe")
+        html = "<div class='log-line success'>✅ Lectura exitosa. {} registros encontrados.</div>".format(len(df))
+        html += df.to_html(index=False, classes='dataframe')
         return html
     except Exception as e:
         return f"<div class='log-line error'>❌ Error al leer Causales: {e}</div>"
 
 
-@carga_bp.route("/accion/verificar-carga", methods=["POST"])
+@carga_bp.route('/accion/verificar-carga', methods=['POST'])
 def accion_verificar_carga():
-    tipo = request.form.get("tipo", "")
-    conexion = request.form.get("conexion", "local")
+    tipo = request.form.get('tipo', '')
+    conexion = request.form.get('conexion', 'local')
 
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = SQL_REMOTO if conexion == 'remoto' else SQL_LOCAL
 
-    fecha = session.get("ultima_fecha", "202605_12")
+    fecha = session.get('ultima_fecha', '202605_12')
     carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
 
     ruta_archivo = None
     nombre_archivo = None
     tabla_destino = None
-    if tipo == "causales":
-        carpeta = os.path.join(carpeta_diaria, "Causales")
+    if tipo == 'causales':
+        carpeta = os.path.join(carpeta_diaria, 'Causales')
         if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Causales_Consolidado") and f.endswith(".xlsx")
-            ]
+            archivos = [f for f in os.listdir(carpeta)
+                        if f.startswith('Causales_Consolidado') and f.endswith('.xlsx')]
             if archivos:
                 ruta_archivo = os.path.join(carpeta, archivos[0])
                 nombre_archivo = archivos[0]
-        tabla_destino = "Causales"
-    elif tipo == "lote":
-        carpeta = os.path.join(carpeta_diaria, "Lotes")
+        tabla_destino = 'Causales'
+    elif tipo == 'lote':
+        carpeta = os.path.join(carpeta_diaria, 'Lotes')
         if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Lote_Consolidado") and f.endswith(".xlsx")
-            ]
+            archivos = [f for f in os.listdir(carpeta)
+                        if f.startswith('Lote_Consolidado') and f.endswith('.xlsx')]
             if archivos:
                 ruta_archivo = os.path.join(carpeta, archivos[0])
                 nombre_archivo = archivos[0]
-        tabla_destino = "Lote"
-    elif tipo == "discador":
-        archivos = [
-            f
-            for f in os.listdir(carpeta_diaria)
-            if "discador" in f.lower() and f.endswith("Consolidado.xlsx")
-        ]
+        tabla_destino = 'Lote'
+    elif tipo == 'discador':
+        archivos = [f for f in os.listdir(carpeta_diaria)
+                    if 'discador' in f.lower() and f.endswith('Consolidado.xlsx')]
         if archivos:
             ruta_archivo = os.path.join(carpeta_diaria, archivos[0])
             nombre_archivo = archivos[0]
-        tabla_destino = "Discador"
+        tabla_destino = 'Discador'
     else:
         return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
 
@@ -145,26 +128,19 @@ def accion_verificar_carga():
         return f"<div class='log-line error'>❌ Error al leer el archivo: {e}"
 
     columnas_archivo_originales = df_archivo_str.columns.tolist()
-    columnas_archivo_para_match = mapear_columnas_archivo(
-        columnas_archivo_originales, tipo
-    )
-    columnas_archivo_norm = [
-        normalizar_texto(col) for col in columnas_archivo_para_match
-    ]
+    columnas_archivo_para_match = mapear_columnas_archivo(columnas_archivo_originales, tipo)
+    columnas_archivo_norm = [normalizar_texto(col) for col in columnas_archivo_para_match]
 
     try:
         conn_str = construir_cadena_conexion(cfg)
         conn = pyodbc.connect(conn_str, timeout=5)
         cursor = conn.cursor()
-        cursor.execute(
-            f"""
-            SELECT COLUMN_NAME, DATA_TYPE 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_NAME = ? 
+        cursor.execute(f"""
+            SELECT COLUMN_NAME, DATA_TYPE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = ?
             ORDER BY ORDINAL_POSITION
-        """,
-            tabla_destino,
-        )
+        """, tabla_destino)
         info_columnas = cursor.fetchall()
         if not info_columnas:
             conn.close()
@@ -177,13 +153,11 @@ def accion_verificar_carga():
         ultimo_id = None
         try:
             primera_col = columnas_servidor[0]
-            cursor.execute(
-                f"SELECT MAX(CAST({primera_col} AS BIGINT)) FROM [{tabla_destino}]"
-            )
+            cursor.execute(f"SELECT MAX(CAST({primera_col} AS BIGINT)) FROM [{tabla_destino}]")
             val = cursor.fetchone()[0]
             if val is not None:
                 ultimo_id = val
-        except:
+        except Exception:
             pass
 
         cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
@@ -192,7 +166,7 @@ def accion_verificar_carga():
     except Exception as e:
         return f"<div class='log-line error'>❌ Error de conexión: {e}"
 
-    html = f"<div class='log-line success'>✅ Verificación de {tipo.capitalize()} (conexión {conexion})</div>"
+    html = "<div class='log-line success'>✅ Verificación de {} (conexión {})</div>".format(tipo.capitalize(), conexion)
     html += f"<p style='font-size:0.75rem;'><b>Archivo:</b> {nombre_archivo}<br><b>Ruta:</b> {ruta_archivo}</p>"
     html += f"<p style='font-size:0.75rem;'><b>Tabla destino:</b> {tabla_destino} ({len(columnas_servidor)} columnas)</p>"
 
@@ -206,8 +180,8 @@ def accion_verificar_carga():
             if norm_arch == norm_srv:
                 match_col = columnas_archivo_originales[j]
                 break
-        coincide = "✅" if match_col else "❌"
-        tipo_srv = tipos_servidor.get(col_srv, "?")
+        coincide = '✅' if match_col else '❌'
+        tipo_srv = tipos_servidor.get(col_srv, '?')
         html += f"<tr><td>{col_srv}</td><td>{match_col or '—'}</td><td>{coincide}</td><td>{tipo_srv}</td></tr>"
         if match_col:
             mapeo_final[col_srv] = match_col
@@ -228,53 +202,44 @@ def accion_verificar_carga():
     return html
 
 
-@carga_bp.route("/accion/cargar-datos", methods=["POST"])
+@carga_bp.route('/accion/cargar-datos', methods=['POST'])
 def accion_cargar_datos():
-    tipo = request.form.get("tipo", "")
-    conexion = request.form.get("conexion", "local")
+    tipo = request.form.get('tipo', '')
+    conexion = request.form.get('conexion', 'local')
 
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = SQL_REMOTO if conexion == 'remoto' else SQL_LOCAL
 
-    fecha = session.get("ultima_fecha", "202605_12")
+    fecha = session.get('ultima_fecha', '202605_12')
     carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
 
     ruta_archivo = None
     nombre_archivo = None
     tabla_destino = None
-    if tipo == "causales":
-        carpeta = os.path.join(carpeta_diaria, "Causales")
+    if tipo == 'causales':
+        carpeta = os.path.join(carpeta_diaria, 'Causales')
         if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Causales_Consolidado") and f.endswith(".xlsx")
-            ]
+            archivos = [f for f in os.listdir(carpeta)
+                        if f.startswith('Causales_Consolidado') and f.endswith('.xlsx')]
             if archivos:
                 ruta_archivo = os.path.join(carpeta, archivos[0])
                 nombre_archivo = archivos[0]
-        tabla_destino = "Causales"
-    elif tipo == "lote":
-        carpeta = os.path.join(carpeta_diaria, "Lotes")
+        tabla_destino = 'Causales'
+    elif tipo == 'lote':
+        carpeta = os.path.join(carpeta_diaria, 'Lotes')
         if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Lote_Consolidado") and f.endswith(".xlsx")
-            ]
+            archivos = [f for f in os.listdir(carpeta)
+                        if f.startswith('Lote_Consolidado') and f.endswith('.xlsx')]
             if archivos:
                 ruta_archivo = os.path.join(carpeta, archivos[0])
                 nombre_archivo = archivos[0]
-        tabla_destino = "Lote"
-    elif tipo == "discador":
-        archivos = [
-            f
-            for f in os.listdir(carpeta_diaria)
-            if "discador" in f.lower() and f.endswith("Consolidado.xlsx")
-        ]
+        tabla_destino = 'Lote'
+    elif tipo == 'discador':
+        archivos = [f for f in os.listdir(carpeta_diaria)
+                    if 'discador' in f.lower() and f.endswith('Consolidado.xlsx')]
         if archivos:
             ruta_archivo = os.path.join(carpeta_diaria, archivos[0])
             nombre_archivo = archivos[0]
-        tabla_destino = "Discador"
+        tabla_destino = 'Discador'
     else:
         return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
 
@@ -289,27 +254,20 @@ def accion_cargar_datos():
     registros_archivo = len(df)
 
     columnas_archivo_originales = df.columns.tolist()
-    columnas_archivo_para_match = mapear_columnas_archivo(
-        columnas_archivo_originales, tipo
-    )
-    columnas_archivo_norm = [
-        normalizar_texto(col) for col in columnas_archivo_para_match
-    ]
+    columnas_archivo_para_match = mapear_columnas_archivo(columnas_archivo_originales, tipo)
+    columnas_archivo_norm = [normalizar_texto(col) for col in columnas_archivo_para_match]
 
     try:
         conn_str = construir_cadena_conexion(cfg)
         conn = pyodbc.connect(conn_str, timeout=5)
         cursor = conn.cursor()
 
-        cursor.execute(
-            f"""
-            SELECT COLUMN_NAME, DATA_TYPE 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_NAME = ? 
+        cursor.execute(f"""
+            SELECT COLUMN_NAME, DATA_TYPE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = ?
             ORDER BY ORDINAL_POSITION
-        """,
-            tabla_destino,
-        )
+        """, tabla_destino)
         info_columnas = cursor.fetchall()
         if not info_columnas:
             conn.close()
@@ -333,8 +291,8 @@ def accion_cargar_datos():
             if norm_arch == norm_srv:
                 match_col = columnas_archivo_originales[j]
                 break
-        coincide = "✅" if match_col else "❌"
-        tipo_srv = tipos_servidor.get(col_srv, "?")
+        coincide = '✅' if match_col else '❌'
+        tipo_srv = tipos_servidor.get(col_srv, '?')
         html_verif += f"<tr><td>{col_srv}</td><td>{match_col or '—'}</td><td>{coincide}</td><td>{tipo_srv}</td></tr>"
         if match_col:
             mapeo_final[col_srv] = match_col
@@ -355,38 +313,21 @@ def accion_cargar_datos():
         for col_srv, tipo_srv in tipos_servidor.items():
             if col_srv not in df_insert.columns:
                 continue
-            if tipo_srv in ("nvarchar", "varchar", "char", "text", "ntext"):
+            if tipo_srv in ('nvarchar', 'varchar', 'char', 'text', 'ntext'):
                 df_insert[col_srv] = df_insert[col_srv].astype(str)
-            elif tipo_srv in ("int", "smallint", "tinyint", "bigint"):
-                df_insert[col_srv] = pd.to_numeric(
-                    df_insert[col_srv], errors="coerce"
-                ).astype("Int64")
-            elif tipo_srv in ("float", "real", "decimal", "numeric", "money"):
-                df_insert[col_srv] = pd.to_numeric(df_insert[col_srv], errors="coerce")
-            elif tipo_srv in ("datetime", "datetime2", "smalldatetime", "date"):
-                df_insert[col_srv] = pd.to_datetime(
-                    df_insert[col_srv], errors="coerce", dayfirst=True
-                )
-            elif tipo_srv == "bit":
-                df_insert[col_srv] = (
-                    df_insert[col_srv]
-                    .astype(str)
-                    .str.strip()
-                    .str.lower()
-                    .map(
-                        {
-                            "1": True,
-                            "true": True,
-                            "yes": True,
-                            "0": False,
-                            "false": False,
-                            "no": False,
-                        }
-                    )
+            elif tipo_srv in ('int', 'smallint', 'tinyint', 'bigint'):
+                df_insert[col_srv] = pd.to_numeric(df_insert[col_srv], errors='coerce').astype('Int64')
+            elif tipo_srv in ('float', 'real', 'decimal', 'numeric', 'money'):
+                df_insert[col_srv] = pd.to_numeric(df_insert[col_srv], errors='coerce')
+            elif tipo_srv in ('datetime', 'datetime2', 'smalldatetime', 'date'):
+                df_insert[col_srv] = pd.to_datetime(df_insert[col_srv], errors='coerce', dayfirst=True)
+            elif tipo_srv == 'bit':
+                df_insert[col_srv] = df_insert[col_srv].astype(str).str.strip().str.lower().map(
+                    {'1': True, 'true': True, 'yes': True, '0': False, 'false': False, 'no': False}
                 )
 
         for col_srv, tipo_srv in tipos_servidor.items():
-            if tipo_srv in ("datetime", "datetime2", "smalldatetime", "date"):
+            if tipo_srv in ('datetime', 'datetime2', 'smalldatetime', 'date'):
                 if col_srv in df_insert.columns:
                     mask = df_insert[col_srv].notna()
                     if mask.any():
@@ -394,8 +335,8 @@ def accion_cargar_datos():
                         invalid = (years < 1753) | (years > 9999)
                         df_insert.loc[mask & invalid, col_srv] = None
 
-        columnas_sql = ", ".join([f"[{col}]" for col in columnas_insert])
-        placeholders = ", ".join(["?" for _ in columnas_insert])
+        columnas_sql = ', '.join([f'[{col}]' for col in columnas_insert])
+        placeholders = ', '.join(['?' for _ in columnas_insert])
         sql = f"INSERT INTO [{tabla_destino}] ({columnas_sql}) VALUES ({placeholders})"
 
         datos = []
@@ -424,13 +365,9 @@ def accion_cargar_datos():
         conn.close()
 
         html = f"<div class='log-line {'success' if exito else 'warning'}'>"
-        html += (
-            f"{'✅' if exito else '⚠️'} Carga de {tipo.capitalize()} completada.</div>"
-        )
+        html += f"{'✅' if exito else '⚠️'} Carga de {tipo.capitalize()} completada.</div>"
         html += f"<p style='font-size:0.8rem;'><b>Servidor:</b> {cfg['server']} / {cfg['database']}</p>"
-        html += (
-            f"<p style='font-size:0.8rem;'><b>Tabla destino:</b> {tabla_destino}</p>"
-        )
+        html += f"<p style='font-size:0.8rem;'><b>Tabla destino:</b> {tabla_destino}</p>"
         html += f"<p style='font-size:0.8rem;'><b>Archivo:</b> {nombre_archivo}<br><b>Ruta:</b> {ruta_archivo}</p>"
         html += f"<p style='font-size:0.8rem;'><b>Registros en archivo:</b> {registros_archivo}</p>"
         html += f"<p style='font-size:0.8rem;'><b>Registros antes:</b> {registros_antes}</p>"
@@ -441,7 +378,7 @@ def accion_cargar_datos():
     except Exception as e:
         try:
             conn.rollback()
-        except:
+        except Exception:
             pass
         traceback.print_exc()
         html = f"<div class='log-line error'>❌ Error en la carga: {str(e)}</div>"
