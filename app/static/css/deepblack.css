@@ -827,4 +827,40 @@ body {
 .conexion-form button:hover {
     background: #1a6fc4;
 }
-/* Al colapsar, el número se sigue viendo (la etiqueta ya se oculta con la regla existente) */
+
+/* Botones de conexión activa */
+.conexion-btn {
+    background: #1a1a1a;
+    border: 1px solid #555;
+    color: #888;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+}
+
+.conexion-btn.active {
+    background: #1a2a3a;
+    border-color: #1e90ff;
+    color: #1e90ff;
+}
+
+/* Badge de estado de conexión en los paneles de carga */
+.badge-conexion {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+.badge-verde {
+    background: #1a3a1a;
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+.badge-rojo {
+    background: #3a1a1a;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}

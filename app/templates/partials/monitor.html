@@ -61,36 +61,26 @@
       </summary>
       <div class="panel-body">Pendiente...</div>
     </details>
-    <details class="panel-monitor" id="panel-conexiones">
+    <!-- Panel Carga Causales -->
+    <details class="panel-monitor" id="panel-carga-causales">
       <summary>
-        <span class="panel-icon">⚪</span> 🔌 Conexiones SQL Server
+        <span class="panel-icon">⚪</span> 📥 Carga Causales <span id="badge-causales" class="badge-conexion badge-rojo">⚫ Desconectado</span>
       </summary>
-      <div class="panel-body">
-        <div class="conexion-form">
-          <label>Servidor:</label>
-          <input type="text" id="sqlServidor" placeholder="192.168.1.100" style="width:150px;" />
-          <label>Puerto:</label>
-          <input type="text" id="sqlPuerto" value="1433" style="width:60px;" />
-          <label>Base de datos:</label>
-          <input type="text" id="sqlBasedatos" placeholder="OrionDB" style="width:120px;" />
-          <label>Autenticación:</label>
-          <select id="sqlAuth" style="background:#222; color:#fff; border:1px solid #444;">
-            <option value="sql">SQL Server</option>
-            <option value="windows">Windows</option>
-          </select>
-          <div id="sqlCreds" style="margin-top:5px;">
-            <label>Usuario:</label>
-            <input type="text" id="sqlUsuario" placeholder="sa" style="width:100px;" />
-            <label>Contraseña:</label>
-            <input type="password" id="sqlPassword" style="width:100px;" />
-          </div>
-          <div style="margin-top:10px;">
-            <button onclick="probarConexion('local')">Probar Local</button>
-            <button onclick="probarConexion('remoto')">Probar Remoto</button>
-            <button onclick="probarLectura()">Probar Lectura</button>
-          </div>
-        </div>
-      </div>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <!-- Panel Carga Lotes -->
+    <details class="panel-monitor" id="panel-carga-lote">
+      <summary>
+        <span class="panel-icon">⚪</span> 📥 Carga Lotes <span id="badge-lote" class="badge-conexion badge-rojo">⚫ Desconectado</span>
+      </summary>
+      <div class="panel-body">Pendiente...</div>
+    </details>
+    <!-- Panel Carga Discador -->
+    <details class="panel-monitor" id="panel-carga-discador">
+      <summary>
+        <span class="panel-icon">⚪</span> 📥 Carga Discador <span id="badge-discador" class="badge-conexion badge-rojo">⚫ Desconectado</span>
+      </summary>
+      <div class="panel-body">Pendiente...</div>
     </details>
   </div>
 </div>

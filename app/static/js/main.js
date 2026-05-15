@@ -7,8 +7,10 @@ const panelMap = {
     'causales': 'panel-causales',
     'comparar-lotes': 'panel-comparar',  // <-- nueva línea
     'lotes': 'panel-lotes',
+    'causales': 'panel-carga-causales',
+    'lote': 'panel-carga-lotes',
+    'discador': 'panel-carga-discador',
     'probar-conexion': 'panel-conexiones'
-
 };
 
 function insertarEnPanel(panelId, html, exito, subSelector = '.panel-body') {
@@ -408,6 +410,137 @@ function probarLectura() {
     }
 }
 
+// Variable global para la conexión activa en carga
+let conexionActiva = 'local';
+
+function setConexion(tipo) {
+    conexionActiva = tipo;
+    document.getElementById('btnConLocal').classList.toggle('active', tipo === 'local');
+    document.getElementById('btnConRemoto').classList.toggle('active', tipo === 'remoto');
+}
+
+function verificarCarga(tipo) {
+    const formData = new FormData();
+    formData.append('tipo', tipo);
+    formData.append('conexion', conexionActiva);
+
+    const panel = document.getElementById('panel-carga');
+    if (panel) panel.open = true;
+    const resultadoDiv = document.getElementById('carga-resultado');
+    if (resultadoDiv) {
+        resultadoDiv.innerHTML = '<p>⏳ Verificando...</p>';
+
+        fetch('/accion/verificar-carga', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(html => {
+                resultadoDiv.innerHTML = html;
+            })
+            .catch(error => {
+                resultadoDiv.innerHTML = `<div class="log-line error">❌ Error: ${error}</div>`;
+            });
+    }
+}
+
+
+function cargarDatos(tipo) {
+    const formData = new FormData();
+    formData.append('tipo', tipo);
+    formData.append('conexion', conexionActiva);  // variable global ya existente
+
+    const panel = document.getElementById('panel-carga');
+    if (panel) panel.open = true;
+    const resultadoDiv = document.getElementById('carga-resultado');
+    if (resultadoDiv) {
+        resultadoDiv.innerHTML = '<p>⏳ Cargando datos...</p>';
+
+        fetch('/accion/cargar-datos', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(html => {
+                resultadoDiv.innerHTML = html;
+            })
+            .catch(error => {
+                resultadoDiv.innerHTML = `<div class="log-line error">❌ Error: ${error}</div>`;
+            });
+    }
+}
+
+
+
+// Función para seleccionar conexión desde el sidebar y probarla
+function seleccionarConexion(tipo) {
+    conexionActiva = tipo;
+    // Actualizar botones del sidebar
+    document.getElementById('btnConLocalSidebar').classList.toggle('active', tipo === 'local');
+    document.getElementById('btnConRemotoSidebar').classList.toggle('active', tipo === 'remoto');
+    // Probar conexión y actualizar badges en los paneles de carga
+    const formData = new FormData();
+    formData.append('servidor', tipo === 'local' ? '' : '172.24.80.32');  // podemos usar los datos de config o dejar que el endpoint use sus propios defaults
+    formData.append('basedatos', 'Orion');
+    // Usamos los datos guardados en config? Mejor confiar en el endpoint que ya tiene la lógica de local/remoto
+    // Vamos a llamar a probar-conexion con los parámetros adecuados
+    // Pero probar-conexion espera servidor, basedatos, etc. Podemos hacer que seleccionarConexion simplemente actualice la variable y luego intentar una prueba rápida.
+    // Para simplificar, llamaremos a probar-conexion usando los mismos valores que el backend usará (podemos obtenerlos de los campos ocultos o fijos).
+    // Ya que el backend conoce las configuraciones, podemos hacer un fetch a un nuevo endpoint que solo pruebe la conexión activa.
+    // Por ahora, crearemos un endpoint simple '/accion/probar-conexion-activa' que use la variable de sesión o reciba 'conexion'.
+    // Alternativa más limpia: que el propio botón de carga verifique la conexión al iniciar.
+    // Dado que el usuario quiere badges, hagamos un fetch a un endpoint que devuelva si la conexión está ok.
+    fetch('/accion/probar-conexion-activa?conexion=' + tipo)
+        .then(res => res.text())
+        .then(html => {
+            const exito = html.includes('success') || html.includes('✅');
+            actualizarBadgesConexion(exito);
+        })
+        .catch(() => actualizarBadgesConexion(false));
+}
+
+// Nuevo endpoint en backend (lo agregaremos abajo)
+
+function actualizarBadgesConexion(exito) {
+    const clases = exito ? 'badge-conexion badge-verde' : 'badge-conexion badge-rojo';
+    const texto = exito ? '✅ Conectado' : '❌ Desconectado';
+    ['causales', 'lote', 'discador'].forEach(tipo => {
+        const badge = document.getElementById('badge-' + tipo);
+        if (badge) {
+            badge.className = clases;
+            badge.textContent = texto;
+        }
+    });
+}
+
+function ejecutarCarga(tipo) {
+    const panelId = 'panel-carga-' + tipo;
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.open = true;
+    const body = panel.querySelector('.panel-body');
+    if (!body) return;
+    body.innerHTML = '<p>⏳ Ejecutando carga...</p>';
+
+    // Identificar el botón correspondiente en el sidebar
+    const boton = document.getElementById('btn-carga-' + tipo);
+    const icono = boton ? boton.querySelector('.status-icon') : null;
+    if (icono) icono.textContent = '🔵';
+
+    const formData = new FormData();
+    formData.append('tipo', tipo);
+    formData.append('conexion', conexionActiva);
+
+    fetch('/accion/cargar-datos', { method: 'POST', body: formData })
+        .then(response => response.text())
+        .then(html => {
+            body.innerHTML = html;
+            const icon = panel.querySelector('.panel-icon');
+            const exito = html.includes('log-line success') || html.includes('✅');
+            if (icon) icon.textContent = exito ? '✅' : '❌';
+            if (icono) icono.textContent = exito ? '✅' : '❌';  // <-- actualizar botón
+        })
+        .catch(error => {
+            body.innerHTML = `<div class="log-line error">❌ Error: ${error}</div>`;
+            const icon = panel.querySelector('.panel-icon');
+            if (icon) icon.textContent = '❌';
+            if (icono) icono.textContent = '❌';  // <-- actualizar botón en error
+        });
+}
 
 
 

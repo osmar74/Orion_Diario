@@ -1,4 +1,6 @@
 import os
+import unicodedata
+import numpy as np
 from werkzeug.utils import secure_filename
 from flask import Blueprint, render_template, request, session
 import pandas as pd
@@ -1405,78 +1407,23 @@ def reset_proceso():
     return "<div class='log-line success'>✅ Sesión reiniciada. Redirigiendo...</div>"
 
 
-# @main_bp.route("/accion/probar-conexion", methods=["POST"])
-# def accion_probar_conexion():
-#     """Recibe datos de conexión y prueba conexión a SQL Server."""
-#     import pyodbc
-
-#     servidor = request.form.get("servidor", "")
-#     puerto = request.form.get("puerto", "1433")
-#     basedatos = request.form.get("basedatos", "")
-#     usuario = request.form.get("usuario", "")
-#     password = request.form.get("password", "")
-#     autenticacion = request.form.get("autenticacion", "sql")
-
-#     if not servidor or not basedatos:
-#         return "<div class='log-line error'>❌ Faltan datos obligatorios (servidor y base de datos).</div>"
-
-#     try:
-#         # Si es LocalDB, usar exactamente la misma cadena que en test_localdb.py
-#         if "localdb" in servidor.lower():
-#             # Imprimir la cadena exacta en la consola de Flask
-#             print("=" * 60)
-#             print("Cadena para LocalDB:", conn_str)
-#             print("Repr servidor:", repr(servidor))
-#             print("Repr basedatos:", repr(basedatos))
-#             print("=" * 60)
-#             # No usar puerto, ni usuario/contraseña, solo Trusted_Connection
-#             conn_str = (
-#                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-#                 f"SERVER=np:{servidor};"
-#                 f"DATABASE={basedatos};"
-#                 f"Trusted_Connection=yes;"
-#             )
-#         else:
-#             # Para otros servidores, construir según autenticación
-#             if autenticacion == "windows":
-#                 conn_str = (
-#                     f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-#                     f"SERVER={servidor},{puerto};"
-#                     f"DATABASE={basedatos};"
-#                     f"Trusted_Connection=yes;"
-#                 )
-#             else:
-#                 conn_str = (
-#                     f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-#                     f"SERVER={servidor},{puerto};"
-#                     f"DATABASE={basedatos};"
-#                     f"UID={usuario};"
-#                     f"PWD={password};"
-#                 )
-
-#         conn = pyodbc.connect(conn_str, timeout=5)
-#         conn.close()
-#         return f"<div class='log-line success'>✅ Conexión exitosa a {servidor}/{basedatos}</div>"
-#     except Exception as e:
-#         return f"<div class='log-line error'>❌ Error de conexión: {str(e)}</div>"
-
-@main_bp.route('/accion/probar-conexion', methods=['POST'])
+@main_bp.route("/accion/probar-conexion", methods=["POST"])
 def accion_probar_conexion():
     """Recibe datos de conexión y prueba conexión a SQL Server."""
     import pyodbc
 
-    servidor = request.form.get('servidor', '')
-    puerto = request.form.get('puerto', '1433')
-    basedatos = request.form.get('basedatos', '')
-    usuario = request.form.get('usuario', '')
-    password = request.form.get('password', '')
-    autenticacion = request.form.get('autenticacion', 'sql')
+    servidor = request.form.get("servidor", "")
+    puerto = request.form.get("puerto", "1433")
+    basedatos = request.form.get("basedatos", "")
+    usuario = request.form.get("usuario", "")
+    password = request.form.get("password", "")
+    autenticacion = request.form.get("autenticacion", "sql")
 
     if not servidor or not basedatos:
         return "<div class='log-line error'>❌ Faltan datos obligatorios (servidor y base de datos).</div>"
 
     try:
-        if 'localdb' in servidor.lower():
+        if "localdb" in servidor.lower():
             conn_str = (
                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
                 f"SERVER={servidor};"
@@ -1484,7 +1431,7 @@ def accion_probar_conexion():
                 f"Trusted_Connection=yes;"
             )
         else:
-            if autenticacion == 'windows':
+            if autenticacion == "windows":
                 conn_str = (
                     f"DRIVER={{ODBC Driver 17 for SQL Server}};"
                     f"SERVER={servidor},{puerto};"
@@ -1505,8 +1452,6 @@ def accion_probar_conexion():
         return f"<div class='log-line success'>✅ Conexión exitosa a {servidor}/{basedatos}</div>"
     except Exception as e:
         return f"<div class='log-line error'>❌ Error de conexión: {str(e)}</div>"
-
-
 
 
 @main_bp.route("/accion/probar-lectura", methods=["POST"])
@@ -1564,3 +1509,599 @@ def accion_probar_lectura():
 
     except Exception as e:
         return f"<div class='log-line error'>❌ Error al leer Causales: {str(e)}</div>"
+
+
+@main_bp.route("/accion/verificar-carga", methods=["POST"])
+def accion_verificar_carga():
+    import pyodbc
+    import pandas as pd
+    from app.config import SQL_LOCAL, SQL_REMOTO
+
+    tipo = request.form.get("tipo", "")
+    conexion = request.form.get("conexion", "local")
+
+    if conexion == "remoto":
+        cfg = SQL_REMOTO
+    else:
+        cfg = SQL_LOCAL
+
+    fecha = session.get("ultima_fecha", "202605_12")
+    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+
+    # Rutas y tabla destino (sin cambios)
+    ruta_archivo = None
+    nombre_archivo = None
+    if tipo == "causales":
+        carpeta = os.path.join(carpeta_diaria, "Causales")
+        if os.path.isdir(carpeta):
+            archivos = [
+                f
+                for f in os.listdir(carpeta)
+                if f.startswith("Causales_Consolidado") and f.endswith(".xlsx")
+            ]
+            if archivos:
+                ruta_archivo = os.path.join(carpeta, archivos[0])
+                nombre_archivo = archivos[0]
+        tabla_destino = "[dbo].[Causales]"  # para Causales
+    elif tipo == "lote":
+        carpeta = os.path.join(carpeta_diaria, "Lotes")
+        if os.path.isdir(carpeta):
+            archivos = [
+                f
+                for f in os.listdir(carpeta)
+                if f.startswith("Lote_Consolidado") and f.endswith(".xlsx")
+            ]
+            if archivos:
+                ruta_archivo = os.path.join(carpeta, archivos[0])
+                nombre_archivo = archivos[0]
+        tabla_destino = "[dbo].[Lote]"  # para Lote
+    elif tipo == "discador":
+        archivos = [
+            f
+            for f in os.listdir(carpeta_diaria)
+            if "discador" in f.lower() and f.endswith("Consolidado.xlsx")
+        ]
+        if archivos:
+            ruta_archivo = os.path.join(carpeta_diaria, archivos[0])
+            nombre_archivo = archivos[0]
+        tabla_destino = "[dbo].[Discador]"  # para Discador
+    else:
+        return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
+
+    if not ruta_archivo or not os.path.isfile(ruta_archivo):
+        return f"<div class='log-line error'>❌ No se encontró el archivo consolidado de {tipo}.</div>"
+
+    # Leer archivo para columnas (como string para el match)
+    try:
+        df_archivo_str = pd.read_excel(ruta_archivo, dtype=str)
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error al leer el archivo: {e}"
+
+    # Leer archivo para inferir tipos reales (solo una fila para no cargar todo)
+    try:
+        df_archivo_tipos = pd.read_excel(ruta_archivo, nrows=1)
+    except:
+        df_archivo_tipos = df_archivo_str  # fallback
+
+    # Función de normalización
+    def normalizar(texto):
+        """Normaliza el texto para comparación: minúsculas, ñ → n, sin acentos, solo alfanumérico."""
+        texto = str(texto).strip().lower()
+        # Reemplazar ñ por n
+        texto = texto.replace("ñ", "n")
+        # Eliminar acentos
+        texto = (
+            unicodedata.normalize("NFKD", texto)
+            .encode("ascii", "ignore")
+            .decode("utf-8")
+        )
+        # Eliminar cualquier carácter que no sea letra o dígito
+        import re
+
+        texto = re.sub(r"[^a-z0-9]", "", texto)
+        return texto
+
+    columnas_archivo = df_archivo_str.columns.tolist()
+
+    # Guardar nombres originales antes de cualquier mapeo
+
+    columnas_archivo_originales = columnas_archivo.copy()
+
+    # Aplicar mapeo manual para Discador solo para comparación
+    columnas_archivo_para_match = columnas_archivo.copy()
+    # Mapeo manual para Discador: codigo_cliente -> NroCliente_Contrato
+    if tipo == "discador":
+        mapeo_discador = {"codigo_cliente": "NroCliente_Contrato"}
+        columnas_archivo_para_match = [
+            mapeo_discador[col] if col in mapeo_discador else col
+            for col in columnas_archivo
+        ]
+
+    # Normalizar las columnas para comparación
+    columnas_archivo_norm = [normalizar(col) for col in columnas_archivo_para_match]
+
+    # Mapa de tipo de dato de cada columna del archivo
+    tipos_archivo = {}
+    for col in columnas_archivo:
+        if col in df_archivo_tipos.columns:
+            dtype = df_archivo_tipos[col].dtype
+            tipos_archivo[col] = str(dtype)
+        else:
+            tipos_archivo[col] = "object"
+
+    # Conexión y metadatos de SQL Server
+    try:
+        if cfg["auth"] == "windows":
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']};"
+                f"DATABASE={cfg['database']};"
+                f"Trusted_Connection=yes;"
+            )
+        else:
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']},{cfg['port']};"
+                f"DATABASE={cfg['database']};"
+                f"UID={cfg['username']};"
+                f"PWD={cfg['password']};"
+            )
+
+        conn = pyodbc.connect(conn_str, timeout=5)
+        cursor = conn.cursor()
+
+        # Obtener columnas y tipos de la tabla
+        cursor.execute(
+            f"""
+            SELECT COLUMN_NAME, DATA_TYPE 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = ? 
+            ORDER BY ORDINAL_POSITION
+        """,
+            tabla_destino,
+        )
+        info_columnas = cursor.fetchall()
+        if not info_columnas:
+            conn.close()
+            return f"<div class='log-line error'>❌ No se encontró la tabla {tabla_destino} en la base de datos.</div>"
+        columnas_servidor = [row.COLUMN_NAME for row in info_columnas]
+        tipos_servidor = {row.COLUMN_NAME: row.DATA_TYPE for row in info_columnas}
+        columnas_servidor_norm = [normalizar(col) for col in columnas_servidor]
+
+        # Último ID
+        ultimo_id = None
+        try:
+            primera_col = columnas_servidor[0]
+            cursor.execute(
+                f"SELECT MAX(CAST({primera_col} AS BIGINT)) FROM {tabla_destino}"
+            )
+            val = cursor.fetchone()[0]
+            if val is not None:
+                ultimo_id = val
+        except:
+            pass
+
+        # Conteo de registros en la tabla
+        cursor.execute(f"SELECT COUNT(*) FROM {tabla_destino}")
+        total_tabla = cursor.fetchone()[0]
+
+        conn.close()
+
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error de conexión a SQL Server: {e}"
+
+    # Construir HTML
+    html = f"<div class='log-line success'>✅ Verificación de {tipo.capitalize()} (conexión {conexion})</div>"
+    html += f"<p style='font-size:0.75rem;'><b>Archivo:</b> {nombre_archivo}<br><b>Ruta:</b> {ruta_archivo}</p>"
+    html += f"<p style='font-size:0.75rem;'><b>Tabla destino:</b> {tabla_destino} ({len(columnas_servidor)} columnas)</p>"
+
+    # Tabla de columnas con coincidencias normalizadas y tipos
+    html += "<table class='dataframe' style='width:100%; margin-top:8px;'>"
+    html += "<tr><th>Columna en SQL Server</th><th>Columna en Archivo Excel</th><th>¿Coincide?</th><th>Tipo SQL Server</th><th>Tipo Excel</th></tr>"
+
+    # Para cada columna del servidor, buscar si hay match normalizado en el archivo
+    for i, col_srv in enumerate(columnas_servidor):
+        norm_srv = columnas_servidor_norm[i]
+        # Buscar en el archivo el primer nombre que coincida normalizado
+        match_col = None
+        for j, norm_arch in enumerate(columnas_archivo_norm):
+            if norm_arch == norm_srv:
+                match_col = columnas_archivo_originales[j]
+                break
+        coinciden = "✅" if match_col else "❌"
+        tipo_srv = tipos_servidor.get(col_srv, "?")
+        tipo_excel = tipos_archivo.get(match_col, "") if match_col else ""
+        html += f"<tr><td>{col_srv}</td><td>{match_col or '—'}</td><td>{coinciden}</td><td>{tipo_srv}</td><td>{tipo_excel}</td></tr>"
+
+    # Columnas del archivo que no aparecieron en el servidor (opcional mostrarlas al final)
+    set_norm_srv = set(columnas_servidor_norm)
+    for j, col_arch in enumerate(columnas_archivo_originales):
+        if columnas_archivo_norm[j] not in set_norm_srv:
+            tipo_excel = tipos_archivo.get(col_arch, "")
+            html += f"<tr><td>—</td><td>{col_arch}</td><td>❌</td><td>—</td><td>{tipo_excel}</td></tr>"
+
+    html += "</table>"
+
+    # Estadísticas
+    html += "<div style='display:flex; gap:20px; margin-top:10px; font-size:0.75rem;'>"
+    html += f"<div><b>Registros en archivo:</b> {len(df_archivo_str)}</div>"
+    if ultimo_id is not None:
+        html += f"<div><b>Último ID en tabla:</b> {ultimo_id}</div>"
+    html += f"<div><b>Registros en tabla:</b> {total_tabla}</div>"
+    html += "</div>"
+
+    # Último registro (detalle colapsable)
+    try:
+        conn = pyodbc.connect(conn_str, timeout=5)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT TOP 1 * FROM {tabla_destino} ORDER BY (SELECT NULL)")
+        row = cursor.fetchone()
+        if row:
+            cols = [column[0] for column in cursor.description]
+            df_ultimo = pd.DataFrame([list(row)], columns=cols)
+            html += "<details style='margin-top:8px;'><summary style='font-size:0.7rem; color:#ccc; cursor:pointer;'>📋 Último registro</summary>"
+            html += df_ultimo.to_html(index=False, classes="dataframe")
+            html += "</details>"
+        conn.close()
+    except:
+        pass
+
+    return html
+
+
+@main_bp.route("/accion/cargar-datos", methods=["POST"])
+def accion_cargar_datos():
+    import pyodbc
+    import pandas as pd
+    import unicodedata
+    import re
+    from app.config import SQL_LOCAL, SQL_REMOTO
+
+    tipo = request.form.get("tipo", "")
+    conexion = request.form.get("conexion", "local")
+
+    if conexion == "remoto":
+        cfg = SQL_REMOTO
+    else:
+        cfg = SQL_LOCAL
+
+    fecha = session.get("ultima_fecha", "202605_12")
+    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+
+    # ---------- Rutas y tabla destino ----------
+    ruta_archivo = None
+    nombre_archivo = None
+    tabla_destino = None
+    if tipo == "causales":
+        carpeta = os.path.join(carpeta_diaria, "Causales")
+        if os.path.isdir(carpeta):
+            archivos = [
+                f
+                for f in os.listdir(carpeta)
+                if f.startswith("Causales_Consolidado") and f.endswith(".xlsx")
+            ]
+            if archivos:
+                ruta_archivo = os.path.join(carpeta, archivos[0])
+                nombre_archivo = archivos[0]
+        tabla_destino = "Causales"  # sin corchetes para pyodbc
+    elif tipo == "lote":
+        carpeta = os.path.join(carpeta_diaria, "Lotes")
+        if os.path.isdir(carpeta):
+            archivos = [
+                f
+                for f in os.listdir(carpeta)
+                if f.startswith("Lote_Consolidado") and f.endswith(".xlsx")
+            ]
+            if archivos:
+                ruta_archivo = os.path.join(carpeta, archivos[0])
+                nombre_archivo = archivos[0]
+        tabla_destino = "Lote"
+    elif tipo == "discador":
+        archivos = [
+            f
+            for f in os.listdir(carpeta_diaria)
+            if "discador" in f.lower() and f.endswith("Consolidado.xlsx")
+        ]
+        if archivos:
+            ruta_archivo = os.path.join(carpeta_diaria, archivos[0])
+            nombre_archivo = archivos[0]
+        tabla_destino = "Discador"
+    else:
+        return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
+
+    if not ruta_archivo or not os.path.isfile(ruta_archivo):
+        return f"<div class='log-line error'>❌ No se encontró el archivo consolidado de {tipo}.</div>"
+
+    # Leer archivo como string
+    try:
+        df = pd.read_excel(ruta_archivo, dtype=str)
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error al leer el archivo: {e}"
+
+    registros_archivo = len(df)
+
+    # ---------- Normalización ----------
+    def normalizar(texto):
+        texto = str(texto).strip().lower()
+        texto = texto.replace("ñ", "n")
+        texto = (
+            unicodedata.normalize("NFKD", texto)
+            .encode("ascii", "ignore")
+            .decode("utf-8")
+        )
+        texto = re.sub(r"[^a-z0-9]", "", texto)
+        return texto
+
+    # Nombres originales del archivo
+    columnas_archivo_originales = df.columns.tolist()
+
+    # Mapeo manual para Discador
+    columnas_archivo_para_match = columnas_archivo_originales.copy()
+    if tipo == "discador":
+        mapeo_disc = {"codigo_cliente": "NroCliente_Contrato"}
+        columnas_archivo_para_match = [
+            mapeo_disc[col] if col in mapeo_disc else col
+            for col in columnas_archivo_originales
+        ]
+
+    columnas_archivo_norm = [normalizar(col) for col in columnas_archivo_para_match]
+
+    # ---------- Conexión y metadatos ----------
+    try:
+        if cfg["auth"] == "windows":
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']};"
+                f"DATABASE={cfg['database']};"
+                f"Trusted_Connection=yes;"
+            )
+        else:
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']},{cfg['port']};"
+                f"DATABASE={cfg['database']};"
+                f"UID={cfg['username']};"
+                f"PWD={cfg['password']};"
+            )
+
+        conn = pyodbc.connect(conn_str, timeout=5)
+        cursor = conn.cursor()
+
+        # Columnas y tipos de la tabla destino
+        cursor.execute(
+            f"""
+            SELECT COLUMN_NAME, DATA_TYPE 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = ? 
+            ORDER BY ORDINAL_POSITION
+        """,
+            tabla_destino,
+        )
+        info_columnas = cursor.fetchall()
+        if not info_columnas:
+            conn.close()
+            return f"<div class='log-line error'>❌ La tabla {tabla_destino} no existe en la base de datos.</div>"
+
+        columnas_servidor = [row.COLUMN_NAME for row in info_columnas]
+        tipos_servidor = {row.COLUMN_NAME: row.DATA_TYPE for row in info_columnas}
+
+        # Contar registros antes
+        cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
+        registros_antes = cursor.fetchone()[0]
+
+        # No cerramos la conexión aún, la reutilizaremos para insertar
+
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error de conexión: {e}"
+
+    # ---------- Construir tabla de coincidencia ----------
+    html_verif = "<table class='dataframe' style='width:100%;'>"
+    html_verif += "<tr><th>Columna SQL Server</th><th>Columna en Archivo</th><th>Coincide</th><th>Tipo SQL</th></tr>"
+    mapeo_final = {}  # columna_servidor -> columna_archivo (nombre original)
+    for col_srv in columnas_servidor:
+        norm_srv = normalizar(col_srv)
+        match_col = None
+        for j, norm_arch in enumerate(columnas_archivo_norm):
+            if norm_arch == norm_srv:
+                match_col = columnas_archivo_originales[j]
+                break
+        coincide = "✅" if match_col else "❌"
+        tipo_srv = tipos_servidor.get(col_srv, "?")
+        html_verif += f"<tr><td>{col_srv}</td><td>{match_col or '—'}</td><td>{coincide}</td><td>{tipo_srv}</td></tr>"
+        if match_col:
+            mapeo_final[col_srv] = match_col
+
+    # Columnas del archivo sin match
+    set_norm_srv = set(normalizar(c) for c in columnas_servidor)
+    for j, col_arch in enumerate(columnas_archivo_originales):
+        if columnas_archivo_norm[j] not in set_norm_srv:
+            html_verif += f"<tr><td>—</td><td>{col_arch}</td><td>❌</td><td>—</td></tr>"
+    html_verif += "</table>"
+
+    # ---------- Preparar DataFrame para inserción ----------
+    try:
+        # Construir DataFrame solo con columnas que coinciden (en el orden de la tabla)
+        columnas_insert = list(mapeo_final.keys())
+        df_insert = pd.DataFrame()
+        for col_srv in columnas_insert:
+            col_arch = mapeo_final[col_srv]
+            df_insert[col_srv] = df[col_arch]
+
+        # Conversión de tipos
+        for col_srv, tipo_srv in tipos_servidor.items():
+            if col_srv not in df_insert.columns:
+                continue
+            if tipo_srv in ("nvarchar", "varchar", "char", "text", "ntext"):
+                df_insert[col_srv] = df_insert[col_srv].astype(str)
+            elif tipo_srv in ("int", "smallint", "tinyint", "bigint"):
+                df_insert[col_srv] = pd.to_numeric(
+                    df_insert[col_srv], errors="coerce"
+                ).astype("Int64")
+            elif tipo_srv in ("float", "real", "decimal", "numeric", "money"):
+                df_insert[col_srv] = pd.to_numeric(df_insert[col_srv], errors="coerce")
+            elif tipo_srv in ("datetime", "datetime2", "smalldatetime", "date"):
+                # Convertir a datetime, si falla dejar NaT
+                df_insert[col_srv] = pd.to_datetime(
+                    df_insert[col_srv], errors="coerce", dayfirst=True
+                )
+            elif tipo_srv == "bit":
+                df_insert[col_srv] = (
+                    df_insert[col_srv]
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                    .map(
+                        {
+                            "1": True,
+                            "true": True,
+                            "yes": True,
+                            "0": False,
+                            "false": False,
+                            "no": False,
+                        }
+                    )
+                )
+
+        # Limpiar fechas fuera del rango permitido por SQL Server datetime
+        for col_srv, tipo_srv in tipos_servidor.items():
+            if tipo_srv in ('datetime', 'datetime2', 'smalldatetime', 'date'):
+                if col_srv in df_insert.columns:
+                    mask = df_insert[col_srv].notna()
+                    if mask.any():
+                        years = df_insert.loc[mask, col_srv].dt.year
+                        invalid = (years < 1753) | (years > 9999)
+                        df_insert.loc[mask & invalid, col_srv] = None
+
+        # ---------- Inserción directa con pyodbc ----------
+        # Construir INSERT SQL
+        columnas_sql = ", ".join([f"[{col}]" for col in columnas_insert])
+        placeholders = ", ".join(["?" for _ in columnas_insert])
+        sql = f"INSERT INTO [{tabla_destino}] ({columnas_sql}) VALUES ({placeholders})"
+
+        # Convertir DataFrame a lista de tuplas, manejando NaT/NaN como None
+        datos = []
+        for _, row in df_insert.iterrows():
+            tupla = []
+            for col in columnas_insert:
+                val = row[col]
+                if pd.isna(val):
+                    tupla.append(None)
+                elif isinstance(val, pd.Timestamp):
+                    tupla.append(val.to_pydatetime())
+                elif isinstance(val, pd.Int64Dtype) or isinstance(val, np.int64):
+                    tupla.append(int(val))
+                else:
+                    tupla.append(val)
+            datos.append(tuple(tupla))
+
+        # Ejecutar inserción
+        cursor.executemany(sql, datos)
+        conn.commit()
+
+        # Contar después de insertar
+        cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
+        registros_despues = cursor.fetchone()[0]
+
+        insertados = registros_despues - registros_antes
+        exito = insertados == registros_archivo
+
+        conn.close()
+
+        # Construir HTML final
+        html = f"<div class='log-line {'success' if exito else 'warning'}'>"
+        html += (
+            f"{'✅' if exito else '⚠️'} Carga de {tipo.capitalize()} completada.</div>"
+        )
+        html += f"<p style='font-size:0.8rem;'><b>Servidor:</b> {cfg['server']} / {cfg['database']}</p>"
+        html += (
+            f"<p style='font-size:0.8rem;'><b>Tabla destino:</b> {tabla_destino}</p>"
+        )
+        html += f"<p style='font-size:0.8rem;'><b>Archivo:</b> {nombre_archivo}<br><b>Ruta:</b> {ruta_archivo}</p>"
+        html += f"<p style='font-size:0.8rem;'><b>Registros en archivo:</b> {registros_archivo}</p>"
+        html += f"<p style='font-size:0.8rem;'><b>Registros antes:</b> {registros_antes}</p>"
+        html += f"<p style='font-size:0.8rem;'><b>Registros después:</b> {registros_despues}</p>"
+        html += f"<p style='font-size:0.8rem;'><b>Insertados:</b> {insertados} {'(coincide)' if exito else '(diferencia con archivo: ' + str(registros_archivo - insertados) + ')'}</p>"
+        html += html_verif
+
+    except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
+        import traceback
+
+        error_completo = traceback.format_exc()
+        print(error_completo)
+        html = f"<div class='log-line error'>❌ Error en la carga: {str(e)}</div>"
+
+    return html
+
+
+@main_bp.route("/accion/probar-conexion-activa")
+def accion_probar_conexion_activa():
+    conexion = request.args.get("conexion", "local")
+    from app.config import SQL_LOCAL, SQL_REMOTO
+
+    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    import pyodbc
+
+    try:
+        if cfg["auth"] == "windows":
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']};"
+                f"DATABASE={cfg['database']};"
+                f"Trusted_Connection=yes;"
+            )
+        else:
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']},{cfg['port']};"
+                f"DATABASE={cfg['database']};"
+                f"UID={cfg['username']};"
+                f"PWD={cfg['password']};"
+            )
+        conn = pyodbc.connect(conn_str, timeout=5)
+        conn.close()
+        return "<span class='badge-conexion badge-verde'>✅ Conectado</span>"
+    except Exception as e:
+        return "<span class='badge-conexion badge-rojo'>❌ Desconectado</span>"
+
+
+@main_bp.route("/test-insert")
+def test_insert():
+    import pyodbc
+    from app.config import SQL_LOCAL
+
+    cfg = SQL_LOCAL  # o SQL_REMOTO si prefieres
+    try:
+        if cfg["auth"] == "windows":
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']};"
+                f"DATABASE={cfg['database']};"
+                f"Trusted_Connection=yes;"
+            )
+        else:
+            conn_str = (
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={cfg['server']},{cfg['port']};"
+                f"DATABASE={cfg['database']};"
+                f"UID={cfg['username']};"
+                f"PWD={cfg['password']};"
+            )
+
+        conn = pyodbc.connect(conn_str, timeout=5)
+        cursor = conn.cursor()
+
+        # Intentar insertar una fila de prueba en Causales (ajusta las columnas obligatorias)
+        sql = """
+            INSERT INTO [dbo].[Causales] (FechayHora, Campana, Usuario)
+            VALUES (?, ?, ?)
+        """
+        cursor.execute(sql, "2026-05-14 10:00:00", "Test Campaña", "Test Usuario")
+        conn.commit()
+        conn.close()
+        return "<div class='log-line success'>✅ Inserción de prueba exitosa</div>"
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error: {str(e)}</div>"
