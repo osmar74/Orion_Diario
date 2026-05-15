@@ -2,10 +2,9 @@
 Blueprint para rutas generales: inicio, logs, reset y prueba de conexión.
 """
 
-import os
 from flask import Blueprint, render_template, request, session
 
-from app.config import DATA_DIR, LOG_DB_PATH, TESSERACT_PATH, RED_BASE_PATHS
+from app.config import LOG_DB_PATH
 from app.controllers.helpers import obtener_log_service
 
 main_bp = Blueprint("main", __name__)
@@ -80,6 +79,20 @@ def reset_proceso():
     return "<div class='log-line success'>✅ Sesión reiniciada. Redirigiendo...</div>"
 
 
+@main_bp.route("/reset-logs", methods=["POST"])
+def reset_logs():
+    """Vacia la tabla de logs."""
+    import sqlite3
+
+    try:
+        with sqlite3.connect(LOG_DB_PATH) as conn:
+            conn.execute("DELETE FROM action_log")
+            conn.commit()
+        return "<div class='log-line success'>✅ Logs eliminados correctamente.</div>"
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error al resetear logs: {e}</div>"
+
+
 @main_bp.route("/accion/probar-conexion-activa")
 def accion_probar_conexion_activa():
     """Prueba la conexión usando la configuración activa (local o remoto)."""
@@ -96,17 +109,3 @@ def accion_probar_conexion_activa():
         return "<div class='log-line success'>✅ Conexión exitosa</div>"
     except Exception as e:
         return f"<div class='log-line error'>❌ Error: {e}</div>"
-
-
-@main_bp.route('/reset-logs', methods=['POST'])
-def reset_logs():
-    """Vacia la tabla de logs."""
-    import sqlite3
-    from app.config import LOG_DB_PATH
-    try:
-        with sqlite3.connect(LOG_DB_PATH) as conn:
-            conn.execute("DELETE FROM action_log")
-            conn.commit()
-        return "<div class='log-line success'>✅ Logs eliminados correctamente.</div>"
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error al resetear logs: {e}</div>"

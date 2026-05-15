@@ -9,7 +9,6 @@ from flask import Blueprint, request, session
 from werkzeug.utils import secure_filename
 
 from app.config import DATA_DIR, TESSERACT_PATH
-from app.services.file_manager import FileManager
 from app.services.ocr_processor import OCRProcessor
 from app.controllers.helpers import obtener_log_service
 
