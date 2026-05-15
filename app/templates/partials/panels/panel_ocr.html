@@ -1,0 +1,16 @@
+<details class="panel-monitor" id="panel-ocr">
+    <summary><span class="panel-icon">⚪</span> 📊 OCR y Totales</summary>
+    <div class="panel-body">
+        <div id="ocr-result-content">Pendiente...</div>
+        <div id="manual-totales" style="display:none; margin-top:12px; border-top:1px solid #333; padding-top:10px;">
+            <p style="font-size:0.8rem; color:#ccc;">📝 Ingresar totales manualmente:</p>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label style="font-size:0.7rem; color:#888;">Orion</label>
+                <input type="number" id="manualOrion" placeholder="0" style="width:80px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+                <label style="font-size:0.7rem; color:#888;">Aister</label>
+                <input type="number" id="manualAister" placeholder="0" style="width:80px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+                <button onclick="consolidarTotales()" style="background:#1e90ff; color:#fff; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.7rem;">Consolidar</button>
+            </div>
+        </div>
+    </div>
+</details>

@@ -1,86 +1,16 @@
 <div class="monitor">
-  <h2>📋 Monitor de Ejecución: Gestion Diara - Orion</h2>
-  <div id="monitor-content">
-    <details class="panel-monitor" id="panel-ocr">
-      <summary>
-        <span class="panel-icon">⚪</span> 📊 OCR y Totales
-      </summary>
-      <div class="panel-body">
-        <div id="ocr-result-content">Pendiente...</div>
-        <div id="manual-totales" style="display:none; margin-top:12px; border-top:1px solid #333; padding-top:10px;">
-          <p style="font-size:0.8rem; color:#ccc;">📝 Ingresar totales manualmente:</p>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <label style="font-size:0.7rem; color:#888;">Orion</label>
-            <input type="number" id="manualOrion" placeholder="0" style="width:80px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;" />
-            <label style="font-size:0.7rem; color:#888;">Aister</label>
-            <input type="number" id="manualAister" placeholder="0" style="width:80px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;" />
-            <button onclick="consolidarTotales()" style="background:#1e90ff; color:#fff; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.7rem;">Consolidar</button>
-          </div>
-        </div>
-      </div>
-    </details>
-    <details class="panel-monitor" id="panel-crear">
-      <summary>
-        <span class="panel-icon">⚪</span> 📁 Crear Carpetas
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <details class="panel-monitor" id="panel-verificar">
-      <summary>
-        <span class="panel-icon">⚪</span> 🔍 Verificar Red
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <details class="panel-monitor" id="panel-distribuir">
-      <summary>
-        <span class="panel-icon">⚪</span> 📤 Distribuir Archivos
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <details class="panel-monitor" id="panel-discador">
-      <summary>
-        <span class="panel-icon">⚪</span> ⚙️ Procesar Discador
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <details class="panel-monitor" id="panel-causales">
-      <summary>
-        <span class="panel-icon">⚪</span> 📋 Procesar Causales
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <details class="panel-monitor" id="panel-lotes">
-      <summary>
-        <span class="panel-icon">⚪</span> 📦 Procesar Lotes
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <details class="panel-monitor" id="panel-comparar">
-      <summary>
-        <span class="panel-icon">⚪</span> 🔍 Comparación
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <!-- Panel Carga Causales -->
-    <details class="panel-monitor" id="panel-carga-causales">
-      <summary>
-        <span class="panel-icon">⚪</span> 📥 Carga Causales <span id="badge-causales" class="badge-conexion badge-rojo">⚫ Desconectado</span>
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <!-- Panel Carga Lotes -->
-    <details class="panel-monitor" id="panel-carga-lote">
-      <summary>
-        <span class="panel-icon">⚪</span> 📥 Carga Lotes <span id="badge-lote" class="badge-conexion badge-rojo">⚫ Desconectado</span>
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-    <!-- Panel Carga Discador -->
-    <details class="panel-monitor" id="panel-carga-discador">
-      <summary>
-        <span class="panel-icon">⚪</span> 📥 Carga Discador <span id="badge-discador" class="badge-conexion badge-rojo">⚫ Desconectado</span>
-      </summary>
-      <div class="panel-body">Pendiente...</div>
-    </details>
-  </div>
+    <h2>📋 Monitor de Ejecución</h2>
+    <div id="monitor-content">
+        {% include 'partials/panels/panel_ocr.html' %}
+        {% include 'partials/panels/panel_crear_carpetas.html' %}
+        {% include 'partials/panels/panel_verificar_red.html' %}
+        {% include 'partials/panels/panel_distribuir.html' %}
+        {% include 'partials/panels/panel_discador.html' %}
+        {% include 'partials/panels/panel_causales.html' %}
+        {% include 'partials/panels/panel_lotes.html' %}
+        {% include 'partials/panels/panel_comparar.html' %}
+        {% include 'partials/panels/panel_carga_causales.html' %}
+        {% include 'partials/panels/panel_carga_lote.html' %}
+        {% include 'partials/panels/panel_carga_discador.html' %}
+    </div>
 </div>
