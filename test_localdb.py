@@ -1,6 +1,6 @@
 import pyodbc
 
-servidor = r"(localdb)\MSSQLLocalDB"
+servidor = r"VCNIC-132\SQL2025TEST"
 basedatos = "Orion"
 
 conn_str = (

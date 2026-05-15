@@ -32,10 +32,33 @@ def normalizar_texto(texto: str) -> str:
     return texto
 
 
+# def construir_cadena_conexion(cfg: dict) -> str:
+#     """
+#     Construye la cadena de conexión ODBC a partir de un diccionario de configuración.
+#     Soporta autenticación Windows y SQL Server.
+#     """
+#     if cfg["auth"] == "windows":
+#         return (
+#             f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+#             f"SERVER={cfg['server']};"
+#             f"DATABASE={cfg['database']};"
+#             f"Trusted_Connection=yes;"
+#         )
+#     else:
+#         return (
+#             f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+#             f"SERVER={cfg['server']},{cfg['port']};"
+#             f"DATABASE={cfg['database']};"
+#             f"UID={cfg['username']};"
+#             f"PWD={cfg['password']};"
+#         )
+
+
 def construir_cadena_conexion(cfg: dict) -> str:
     """
     Construye la cadena de conexión ODBC a partir de un diccionario de configuración.
     Soporta autenticación Windows y SQL Server.
+    Agrega parámetros de cifrado requeridos por versiones modernas de SQL Server.
     """
     if cfg["auth"] == "windows":
         return (
@@ -43,16 +66,23 @@ def construir_cadena_conexion(cfg: dict) -> str:
             f"SERVER={cfg['server']};"
             f"DATABASE={cfg['database']};"
             f"Trusted_Connection=yes;"
+            f"Encrypt=yes;"
+            f"TrustServerCertificate=yes;"
         )
     else:
+        # Si se especifica puerto, lo incluimos; si no, se omite para que el driver lo resuelva
+        server_part = (
+            f"{cfg['server']},{cfg['port']}" if cfg.get("port") else cfg["server"]
+        )
         return (
             f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={cfg['server']},{cfg['port']};"
+            f"SERVER={server_part};"
             f"DATABASE={cfg['database']};"
             f"UID={cfg['username']};"
             f"PWD={cfg['password']};"
+            f"Encrypt=yes;"
+            f"TrustServerCertificate=yes;"
         )
-
 
 def normalizar_usuario(usuario: str) -> str:
     """Elimina prefijos numéricos y guiones de un nombre de usuario."""

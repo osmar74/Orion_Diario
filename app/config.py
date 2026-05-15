@@ -21,12 +21,12 @@ LOG_DB_PATH = os.path.join(DATA_DIR, "orion_logs.db")
 
 # Configuración de conexiones a SQL Server
 SQL_LOCAL = {
-    'server': r'(localdb)\MSSQLLocalDB',
-    'port': '',                     # no se usa para LocalDB
+    'server': r'VCNIC-132\SQL2025TEST',
+    'port': '',                     # vacío
     'database': 'Orion',
-    'auth': 'windows',
-    'username': '',
-    'password': ''
+    'auth': 'sql',
+    'username': 'Admin1',
+    'password': '1234'
 }
 
 SQL_REMOTO = {
