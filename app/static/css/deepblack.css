@@ -724,3 +724,17 @@ body {
 #manual-totales button:hover {
     background: #1a6fc4;
 }
+
+/* Cabecera del monitor con badges */
+.monitor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.monitor-header h2 {
+    margin-bottom: 0;
+}

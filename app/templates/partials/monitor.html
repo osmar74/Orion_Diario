@@ -1,16 +1,36 @@
 <div class="monitor">
+  <div class="monitor-header">
     <h2>📋 Monitor de Ejecución</h2>
-    <div id="monitor-content">
-        {% include 'partials/panels/panel_ocr.html' %}
-        {% include 'partials/panels/panel_crear_carpetas.html' %}
-        {% include 'partials/panels/panel_verificar_red.html' %}
-        {% include 'partials/panels/panel_distribuir.html' %}
-        {% include 'partials/panels/panel_discador.html' %}
-        {% include 'partials/panels/panel_causales.html' %}
-        {% include 'partials/panels/panel_lotes.html' %}
-        {% include 'partials/panels/panel_comparar.html' %}
-        {% include 'partials/panels/panel_carga_causales.html' %}
-        {% include 'partials/panels/panel_carga_lote.html' %}
-        {% include 'partials/panels/panel_carga_discador.html' %}
+    <div class="totales-badges">
+      <div class="badge" id="badgeOrion">
+        <span class="badge-label">🔹 Orion</span>
+        <span class="badge-value" id="ocrOrion">--</span>
+      </div>
+      <div class="badge" id="badgeAister">
+        <span class="badge-label">🔹 Aister</span>
+        <span class="badge-value" id="ocrAister">--</span>
+      </div>
+      <div class="badge" id="badgeProc">
+        <span class="badge-label">⚙️ Proc</span>
+        <span class="badge-value" id="procTotal">--</span>
+      </div>
+      <div class="badge cuadre" id="cuadreBadge">
+        <span class="badge-label">⚪</span>
+        <span id="cuadreTexto">Sin verificar</span>
+      </div>
     </div>
+  </div>
+  <div id="monitor-content">
+    {% include 'partials/panels/panel_ocr.html' %}
+    {% include 'partials/panels/panel_crear_carpetas.html' %}
+    {% include 'partials/panels/panel_verificar_red.html' %}
+    {% include 'partials/panels/panel_distribuir.html' %}
+    {% include 'partials/panels/panel_discador.html' %}
+    {% include 'partials/panels/panel_causales.html' %}
+    {% include 'partials/panels/panel_lotes.html' %}
+    {% include 'partials/panels/panel_comparar.html' %}
+    {% include 'partials/panels/panel_carga_causales.html' %}
+    {% include 'partials/panels/panel_carga_lote.html' %}
+    {% include 'partials/panels/panel_carga_discador.html' %}
+  </div>
 </div>

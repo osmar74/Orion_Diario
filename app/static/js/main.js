@@ -7,13 +7,13 @@ let conexionActiva = 'local';   // 'local' o 'remoto'
 
 // ---------- MAPEO DE URL A PANELES DEL MONITOR ----------
 const panelMap = {
-    'crear-carpetas':  'panel-crear',
-    'verificar-red':   'panel-verificar',
-    'distribuir':      'panel-distribuir',
-    'discador':        'panel-discador',
-    'causales':        'panel-causales',
-    'comparar-lotes':  'panel-comparar',   // ← antes que 'lotes'
-    'lotes':           'panel-lotes'
+    'crear-carpetas': 'panel-crear',
+    'verificar-red': 'panel-verificar',
+    'distribuir': 'panel-distribuir',
+    'discador': 'panel-discador',
+    'causales': 'panel-causales',
+    'comparar-lotes': 'panel-comparar',   // ← antes que 'lotes'
+    'lotes': 'panel-lotes'
 };
 
 // ---------- FUNCIONES GENERALES ----------
@@ -125,12 +125,30 @@ function ejecutarAccion(url, boton) {
                 if (paso) marcarPasoCompletado(paso);
             }
             // Acciones específicas por URL
+            // Acciones específicas por URL
             if (url.includes('discador')) {
-                const matchValidos = html.match(/Válidos:\s*(\d+)/);
-                if (matchValidos) {
-                    document.getElementById('procTotal').textContent = matchValidos[1];
+                const discData = document.getElementById('discador-data');
+                if (discData) {
+                    const valido = discData.getAttribute('data-valido');
+                    const esperado = discData.getAttribute('data-esperado');
+                    const cuadre = discData.getAttribute('data-cuadre');
+                    if (valido) {
+                        document.getElementById('procTotal').textContent = valido;
+                    }
+                    // Actualizar badge de cuadre
+                    const cuadreBadge = document.getElementById('cuadreBadge');
+                    const cuadreTexto = document.getElementById('cuadreTexto');
+                    const cuadreIcono = cuadreBadge?.querySelector('.badge-label');
+                    if (cuadre === 'True') {
+                        if (cuadreBadge) cuadreBadge.className = 'badge cuadre ok';
+                        if (cuadreTexto) cuadreTexto.textContent = 'Cuadre correcto';
+                        if (cuadreIcono) cuadreIcono.textContent = '✅';
+                    } else {
+                        if (cuadreBadge) cuadreBadge.className = 'badge cuadre error';
+                        if (cuadreTexto) cuadreTexto.textContent = 'No cuadra';
+                        if (cuadreIcono) cuadreIcono.textContent = '❌';
+                    }
                 }
-                actualizarCuadre(matchValidos ? parseInt(matchValidos[1]) : null);
                 actualizarTotalesHeader();
             }
         })
