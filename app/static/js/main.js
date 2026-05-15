@@ -16,6 +16,16 @@ const panelMap = {
     'lotes': 'panel-lotes'
 };
 
+const pasoMap = {
+    'crear-carpetas': 'crear',
+    'verificar-red': 'verificar',
+    'distribuir': 'distribuir',
+    'discador': 'discador',
+    'causales': 'causales',
+    'lotes': 'lotes',
+    'comparar-lotes': null   // no tiene paso en el timeline
+};
+
 // ---------- FUNCIONES GENERALES ----------
 
 /** Normaliza texto para comparación (misma lógica que el backend). */
@@ -58,6 +68,7 @@ function cerrarOtrosDetails(boton) {
 
 /** Marca un paso como completado en el timeline vertical. */
 function marcarPasoCompletado(paso) {
+    console.log('marcarPasoCompletado llamado con paso:', paso);
     const items = document.querySelectorAll('.timeline-item');
     const index = Array.from(items).findIndex(item => item.dataset.paso === paso);
     if (index === -1) return;
@@ -120,8 +131,10 @@ function ejecutarAccion(url, boton) {
             }
             if (icono) icono.textContent = exito ? '✅' : '❌';
             // Marcar paso en timeline
+            // Marcar paso en timeline
             if (exito) {
-                const paso = Object.keys(panelMap).find(k => url.includes(k));
+                const clave = Object.keys(panelMap).find(k => url.includes(k));
+                const paso = pasoMap[clave];
                 if (paso) marcarPasoCompletado(paso);
             }
             // Acciones específicas por URL

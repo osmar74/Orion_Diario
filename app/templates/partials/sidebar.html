@@ -1,58 +1,16 @@
 <div class="sidebar" id="sidebar">
-  <div class="sidebar-content">
-    <div class="sidebar-columns">
-      <!-- Columna izquierda: timeline -->
-      <div class="sidebar-timeline-col">
-        {% include 'partials/timeline.html' %}
-      </div>
-      <!-- Columna derecha: fases -->
-      <div class="sidebar-fases-col">
-        <details open>
-          <summary>📁 Fase A-B: Ingreso y Carpetas</summary>
-          <div class="fase-actions">
-            <label>Fecha (YYYYMM_DD):</label>
-            <input type="text" id="fechaInput" placeholder="202605_12" value="{{ ultima_fecha }}" style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;" />
-            <button onclick="ejecutarAccion('/accion/crear-carpetas', this)" id="btn-crear">Crear Carpetas <span class="status-icon">⚪</span></button>
-            <button onclick="ejecutarAccion('/accion/verificar-red', this)" id="btn-verred">Verificar Red <span class="status-icon">⚪</span></button>
-          </div>
-        </details>
-        <details>
-          <summary>📊 Fase C: OCR y Totales</summary>
-          <div class="fase-actions">
-            <input type="file" id="ocrFiles" accept="image/*" multiple style="color:#aaa; margin-bottom:8px;" />
-            <button onclick="subirOCR()" id="btn-ocr">Subir y Procesar OCR <span class="status-icon">⚪</span></button>
-            <span style="font-size:0.8rem; color:#aaa;">Totales: Orion: <span id="totalOrion">{{ totales_orion }}</span> | Aister: <span id="totalAister">{{ totales_aister }}</span></span>
-          </div>
-        </details>
-        <details>
-          <summary>📤 Fase D: Distribuir</summary>
-          <div class="fase-actions">
-            <button onclick="ejecutarAccion('/accion/distribuir', this)" id="btn-dist">Distribuir Archivos <span class="status-icon">⚪</span></button>
-          </div>
-        </details>
-        <details>
-          <summary>⚙️ Fase F: Procesamiento</summary>
-          <div class="fase-actions">
-            <button onclick="ejecutarAccion('/accion/procesar-discador', this)" id="btn-disc">Procesar Discador <span class="status-icon">⚪</span></button>
-            <button onclick="ejecutarAccion('/accion/procesar-causales', this)" id="btn-caus">Procesar Causales <span class="status-icon">⚪</span></button>
-            <button onclick="ejecutarAccion('/accion/procesar-lotes', this)" id="btn-lotes">Procesar Lotes <span class="status-icon">⚪</span></button>
-            <button onclick="ejecutarAccion('/accion/comparar-lotes', this)" id="btn-comparar">Comparar Lotes <span class="status-icon">⚪</span></button>
-          </div>
-        </details>
-        <details>
-          <summary>💾 Fase G: Carga Consolidados</summary>
-          <div class="fase-actions">
-            <p style="font-size:0.65rem; color:#888; margin:0;">Seleccione conexión:</p>
-            <div style="display:flex; gap:6px; margin-bottom:8px;">
-              <button id="btnConLocalSidebar" onclick="seleccionarConexion('local')" class="conexion-btn active">Local</button>
-              <button id="btnConRemotoSidebar" onclick="seleccionarConexion('remoto')" class="conexion-btn">Remoto</button>
+    <div class="sidebar-content">
+        <div class="sidebar-columns">
+            <div class="sidebar-timeline-col">
+                {% include 'partials/sidebar/timeline.html' %}
             </div>
-            <button onclick="ejecutarCarga('causales')" id="btn-carga-causales">Causales <span class="status-icon">⚪</span></button>
-            <button onclick="ejecutarCarga('lote')" id="btn-carga-lotes">Lotes <span class="status-icon">⚪</span></button>
-            <button onclick="ejecutarCarga('discador')" id="btn-carga-discador">Discador <span class="status-icon">⚪</span></button>
-          </div>
-        </details>
-      </div>
+            <div class="sidebar-fases-col">
+                {% include 'partials/sidebar/fase_ingreso_carpetas.html' %}
+                {% include 'partials/sidebar/fase_ocr.html' %}
+                {% include 'partials/sidebar/fase_distribuir.html' %}
+                {% include 'partials/sidebar/fase_procesamiento.html' %}
+                {% include 'partials/sidebar/fase_carga.html' %}
+            </div>
+        </div>
     </div>
-  </div>
 </div>

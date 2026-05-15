@@ -1,0 +1,13 @@
+<details>
+    <summary>💾 Fase G: Carga Consolidados</summary>
+    <div class="fase-actions">
+        <p style="font-size:0.65rem; color:#888; margin:0;">Seleccione conexión:</p>
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <button id="btnConLocalSidebar" onclick="seleccionarConexion('local')" class="conexion-btn active">Local</button>
+            <button id="btnConRemotoSidebar" onclick="seleccionarConexion('remoto')" class="conexion-btn">Remoto</button>
+        </div>
+        <button onclick="ejecutarCarga('causales')" id="btn-carga-causales">Causales <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarCarga('lote')" id="btn-carga-lotes">Lotes <span class="status-icon">⚪</span></button>
+        <button onclick="ejecutarCarga('discador')" id="btn-carga-discador">Discador <span class="status-icon">⚪</span></button>
+    </div>
+</details>
