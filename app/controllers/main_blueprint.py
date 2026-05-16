@@ -1,8 +1,13 @@
 """
 Blueprint para rutas generales: inicio, logs, reset y prueba de conexión.
 """
+import os
 
-from flask import Blueprint, render_template, request, session
+from app.config import LOG_DB_PATH, DATA_DIR
+from app.controllers.helpers import obtener_log_service
+from flask import Blueprint, render_template, send_file
+from flask import request
+from flask import session
 
 from app.config import LOG_DB_PATH
 from app.controllers.helpers import obtener_log_service
@@ -109,3 +114,13 @@ def accion_probar_conexion_activa():
         return "<div class='log-line success'>✅ Conexión exitosa</div>"
     except Exception as e:
         return f"<div class='log-line error'>❌ Error: {e}</div>"
+
+
+@main_bp.route("/descargar/<path:filename>")
+def descargar_archivo(filename):
+
+
+    ruta = os.path.join(DATA_DIR, filename)
+    if os.path.isfile(ruta):
+        return send_file(ruta, as_attachment=True)
+    return "Archivo no encontrado", 404

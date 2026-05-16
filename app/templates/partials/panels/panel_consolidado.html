@@ -1,0 +1,23 @@
+<details class="panel-monitor" id="panel-consolidado">
+    <summary>
+        <span class="panel-icon">⚪</span> 📊 Consolidado Gestión Orion
+        <span id="badge-consolidado" class="badge-conexion badge-rojo">⚫ Desconectado</span>
+    </summary>
+    <div class="panel-body">
+        <p style="font-size:0.75rem; color:#ccc;">Parámetros del proceso</p>
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+            <label style="font-size:0.7rem; color:#888;">Fecha (YYYY-MM-DD):</label>
+            <input type="text" id="consFecha" placeholder="2026-05-05" value="2026-05-05" style="width:120px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+            <label style="font-size:0.7rem; color:#888;">Meses Gestión (YYYYMM):</label>
+            <input type="text" id="consMeses" placeholder="202605" value="202605" style="width:120px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+        </div>
+        <p style="font-size:0.65rem; color:#888; margin:0;">Conexión para consolidado:</p>
+        <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <button id="btnConsLocal" onclick="seleccionarConexionConsolidado('local')" class="conexion-btn active">Local</button>
+            <button id="btnConsRemoto" onclick="seleccionarConexionConsolidado('remoto')" class="conexion-btn">Remoto</button>
+            <span id="cons-conexion-indicador" style="font-size:0.65rem; color:#aaa; margin-left:auto;">Local activo</span>
+        </div>
+        <button onclick="ejecutarConsultaConsolidado()" style="background:#1e90ff; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-bottom:10px;">Ejecutar Consulta</button>
+        <div id="cons-resultado"></div>
+    </div>
+</details>

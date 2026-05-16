@@ -425,6 +425,92 @@ function verificarCarga(tipo) {
         });
 }
 
+// Conexión independiente para el panel de consolidado
+let conexionConsolidado = 'local';
+
+function abrirConsolidado() {
+    const panel = document.getElementById('panel-consolidado');
+    if (panel) panel.open = true;
+}
+
+function seleccionarConexionConsolidado(tipo) {
+    conexionConsolidado = tipo;
+    document.getElementById('btnConsLocal').classList.toggle('active', tipo === 'local');
+    document.getElementById('btnConsRemoto').classList.toggle('active', tipo === 'remoto');
+    const indicador = document.getElementById('cons-conexion-indicador');
+    if (indicador) {
+        indicador.textContent = tipo === 'local' ? 'Local activo' : 'Remoto activo';
+    }
+    // Probar conexión y actualizar badge del panel
+    fetch('/accion/probar-conexion-consolidado?conexion=' + tipo)
+        .then(res => res.text())
+        .then(html => {
+            const badge = document.getElementById('badge-consolidado');
+            const exito = html.includes('success') || html.includes('✅');
+            if (badge) {
+                badge.className = exito ? 'badge-conexion badge-verde' : 'badge-conexion badge-rojo';
+                badge.textContent = (exito ? '✅ ' : '❌ ') + (tipo === 'local' ? 'Local' : 'Remoto');
+            }
+        })
+        .catch(() => {
+            const badge = document.getElementById('badge-consolidado');
+            if (badge) {
+                badge.className = 'badge-conexion badge-rojo';
+                badge.textContent = '❌ ' + (tipo === 'local' ? 'Local' : 'Remoto');
+            }
+        });
+}
+
+function ejecutarConsultaConsolidado() {
+    const resultado = document.getElementById('cons-resultado');
+    resultado.innerHTML = '<p>⏳ Ejecutando consulta...</p>';
+
+    const fecha = document.getElementById('consFecha').value;
+    const meses = document.getElementById('consMeses').value;
+
+    const formData = new FormData();
+    formData.append('fecha', fecha);
+    formData.append('meses', meses);
+    formData.append('conexion', conexionConsolidado);
+
+    fetch('/accion/consolidar-consulta', { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(html => {
+            resultado.innerHTML = html;
+        })
+        .catch(err => {
+            resultado.innerHTML = `<div class="log-line error">❌ Error: ${err}</div>`;
+        });
+}
+
+function aplicarFiltroYExportar() {
+    const resultado = document.getElementById('cons-resultado');
+    const checkboxes = resultado.querySelectorAll('input[name="descripcion"]:checked');
+    const seleccionados = Array.from(checkboxes).map(cb => cb.value);
+
+    const fecha = document.getElementById('consFecha').value;
+    const meses = document.getElementById('consMeses').value;
+    const tempId = document.getElementById('cons-temp-id').value;
+
+    const formData = new FormData();
+    formData.append('fecha', fecha);
+    formData.append('meses', meses);
+    formData.append('conexion', conexionConsolidado);
+    formData.append('seleccionados', JSON.stringify(seleccionados));
+    formData.append('temp_id', tempId);   // <-- nuevo
+
+    resultado.innerHTML = '<p>⏳ Aplicando filtros y generando Excel...</p>';
+
+    fetch('/accion/consolidar-aplicar', { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(html => {
+            resultado.innerHTML = html;
+        })
+        .catch(err => {
+            resultado.innerHTML = `<div class="log-line error">❌ Error: ${err}</div>`;
+        });
+}
+
 // ---------- INICIALIZACIÓN ----------
 document.addEventListener('DOMContentLoaded', () => {
     actualizarTotalesHeader();

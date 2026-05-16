@@ -478,3 +478,143 @@ def accion_insertar_datos():
         html = f"<div class='log-line error'>❌ Error en la inserción: {str(e)}</div>"
 
     return html
+
+
+@carga_bp.route("/accion/probar-conexion-consolidado")
+def accion_probar_conexion_consolidado():
+    """Prueba la conexión para el panel de consolidado."""
+    conexion = request.args.get("conexion", "local")
+    from app.config import SQL_LOCAL, SQL_REMOTO
+    from app.controllers.helpers import construir_cadena_conexion
+    import pyodbc
+
+    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    try:
+        conn_str = construir_cadena_conexion(cfg)
+        conn = pyodbc.connect(conn_str, timeout=5)
+        conn.close()
+        return "<div class='log-line success'>✅ Conexión exitosa</div>"
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error: {e}</div>"
+
+
+@carga_bp.route("/accion/consolidar-consulta", methods=["POST"])
+def accion_consolidar_consulta():
+    """Ejecuta la consulta SQL de consolidación y devuelve los valores únicos de Descripción."""
+    import re
+    import os
+    import pickle
+    import uuid
+    import pandas as pd
+    import pyodbc
+
+    # Limpiar posibles residuos grandes en sesión de ejecuciones anteriores
+    session.pop("consolidado_df", None)
+    session.pop("consolidado_valores", None)
+
+    fecha = request.form.get("fecha", "2026-05-05")
+    meses = request.form.get("meses", "202605")
+    conexion = request.form.get("conexion", "local")
+
+    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+
+    # Leer el archivo SQL
+    sql_path = os.path.join(os.path.dirname(__file__), "..", "sql", "consolidado.sql")
+    try:
+        with open(sql_path, "r", encoding="utf-8") as f:
+            sql_template = f.read()
+    except FileNotFoundError:
+        return "<div class='log-line error'>❌ No se encuentra el archivo SQL de consolidación.</div>"
+
+    # Validar formatos
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", fecha):
+        return "<div class='log-line error'>❌ Formato de fecha inválido. Use YYYY-MM-DD.</div>"
+    if not re.match(r"^\d{6}$", meses):
+        return "<div class='log-line error'>❌ Formato de meses inválido. Use YYYYMM.</div>"
+
+    # Reemplazar variables en el SQL
+    sql_final = sql_template.format(fecha=fecha, meses=meses)
+
+    try:
+        conn_str = construir_cadena_conexion(cfg)
+        conn = pyodbc.connect(conn_str, timeout=60)
+        df = pd.read_sql(sql_final, conn)
+        conn.close()
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error en consulta SQL: {str(e)}</div>"
+
+    if df.empty:
+        return (
+            "<div class='log-line warning'>⚠️ La consulta no devolvió resultados.</div>"
+        )
+
+    # Filtrar filas con fecha de compromiso no vacía
+    df_con_fecha = df[df["Fecha_Compromiso"].notna() & (df["Fecha_Compromiso"] != "")]
+    valores_unicos = sorted(
+        df_con_fecha["Descripcion Codigo De Gestion"].dropna().unique()
+    )
+
+    # Guardar DataFrame en archivo temporal (no en sesión)
+    temp_id = uuid.uuid4().hex[:10]
+    temp_path = os.path.join(DATA_DIR, f"temp_consolidado_{temp_id}.pkl")
+    with open(temp_path, "wb") as f:
+        pickle.dump(df, f)
+
+    # Construir HTML con checkboxes
+    html = f"<p style='font-size:0.75rem; color:#ccc;'>Valores únicos en 'Descripción Codigo de Gestion' con fecha de compromiso ({len(valores_unicos)}):</p>"
+    html += "<div style='max-height:200px; overflow-y:auto; margin-bottom:10px;'>"
+    html += "<table class='dataframe' style='width:100%;'>"
+    html += "<tr><th>Seleccionar</th><th>Descripción</th></tr>"
+    for val in valores_unicos:
+        html += f"<tr><td><input type='checkbox' name='descripcion' value='{val}'></td><td>{val}</td></tr>"
+    html += "</table>"
+    html += "</div>"
+    html += f"<input type='hidden' id='cons-temp-id' value='{temp_id}'>"
+    html += "<button onclick='aplicarFiltroYExportar()' style='background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;'>Aplicar Filtro y Exportar a Excel</button>"
+    return html
+
+
+@carga_bp.route("/accion/consolidar-aplicar", methods=["POST"])
+def accion_consolidar_aplicar():
+    """Aplica los filtros seleccionados y exporta el Excel final."""
+    import json
+    import pickle
+    import os
+    import pandas as pd
+
+    fecha = request.form.get("fecha", "2026-05-05")
+    seleccionados = json.loads(request.form.get("seleccionados", "[]"))
+    temp_id = request.form.get("temp_id")
+
+    if not temp_id:
+        return "<div class='log-line error'>❌ Falta identificador de consulta previa.</div>"
+
+    temp_path = os.path.join(DATA_DIR, f"temp_consolidado_{temp_id}.pkl")
+    if not os.path.isfile(temp_path):
+        return "<div class='log-line error'>❌ Los datos de consulta previa han expirado. Ejecute la consulta nuevamente.</div>"
+
+    try:
+        with open(temp_path, "rb") as f:
+            df = pickle.load(f)
+        # Borrar el archivo temporal después de cargarlo
+        os.remove(temp_path)
+    except Exception as e:
+        return f"<div class='log-line error'>❌ Error al cargar datos: {e}</div>"
+
+    # Aplicar limpieza: para las filas con fecha de compromiso y cuyo Descripción esté en seleccionados,
+    # reemplazar la fecha por vacío
+    mask_fecha = df["Fecha_Compromiso"].notna() & (df["Fecha_Compromiso"] != "")
+    mask_seleccionados = df["Descripcion Codigo De Gestion"].isin(seleccionados)
+    df.loc[mask_fecha & mask_seleccionados, "Fecha_Compromiso"] = None
+
+    # Exportar a Excel
+    nombre_archivo = f"{fecha.replace('-', '')}_Gestion_orion.xlsx"
+    ruta_guardado = os.path.join(DATA_DIR, nombre_archivo)
+    df.to_excel(ruta_guardado, index=False)
+
+    # Generar enlace de descarga
+    html = "<div class='log-line success'>✅ Excel generado correctamente.</div>"
+    html += f"<p style='font-size:0.8rem;'><b>Archivo:</b> {nombre_archivo}</p>"
+    html += f"<p><a href='/descargar/{nombre_archivo}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
+    html += f"<p style='font-size:0.7rem; color:#888;'>Ruta: {ruta_guardado}</p>"
+    return html
