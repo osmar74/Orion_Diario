@@ -5,9 +5,10 @@
         <div style="display:flex; gap:6px; margin-bottom:8px;">
             <button id="btnConLocalSidebar" onclick="seleccionarConexion('local')" class="conexion-btn active">Local</button>
             <button id="btnConRemotoSidebar" onclick="seleccionarConexion('remoto')" class="conexion-btn">Remoto</button>
+            <span id="conexion-actual-indicador" style="font-size:0.65rem; color:#aaa; margin-left:auto;">Local activo</span>
         </div>
-        <button onclick="ejecutarCarga('causales')" id="btn-carga-causales">Causales <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarCarga('lote')" id="btn-carga-lotes">Lotes <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarCarga('discador')" id="btn-carga-discador">Discador <span class="status-icon">⚪</span></button>
+        <button onclick="verificarCarga('causales')" id="btn-carga-causales">Causales <span class="status-icon">⚪</span></button>
+        <button onclick="verificarCarga('lote')" id="btn-carga-lotes">Lotes <span class="status-icon">⚪</span></button>
+        <button onclick="verificarCarga('discador')" id="btn-carga-discador">Discador <span class="status-icon">⚪</span></button>
     </div>
 </details>

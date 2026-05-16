@@ -3,7 +3,7 @@
    ============================================================ */
 
 // ---------- VARIABLES GLOBALES ----------
-let conexionActiva = 'local';   // 'local' o 'remoto'
+var conexionActiva = 'local';   // 'local' o 'remoto'
 
 // ---------- MAPEO DE URL A PANELES DEL MONITOR ----------
 const panelMap = {
@@ -300,10 +300,32 @@ function seleccionarConexion(tipo) {
         .catch(() => actualizarBadgesConexion(false));
 }
 
-/** Actualiza los badges de estado de conexión en los paneles de carga. */
+// Variable global de conexión (ya debe existir)
+var conexionActiva = 'local';
+
+function seleccionarConexion(tipo) {
+    conexionActiva = tipo;
+    // Actualizar estilos de botones
+    document.getElementById('btnConLocalSidebar').classList.toggle('active', tipo === 'local');
+    document.getElementById('btnConRemotoSidebar').classList.toggle('active', tipo === 'remoto');
+    // Actualizar indicador
+    const indicador = document.getElementById('conexion-actual-indicador');
+    if (indicador) {
+        indicador.textContent = tipo === 'local' ? 'Local activo' : 'Remoto activo';
+    }
+    // Probar conexión y actualizar badges
+    fetch('/accion/probar-conexion-activa?conexion=' + tipo)
+        .then(res => res.text())
+        .then(html => {
+            const exito = html.includes('success') || html.includes('✅');
+            actualizarBadgesConexion(exito);
+        })
+        .catch(() => actualizarBadgesConexion(false));
+}
+
 function actualizarBadgesConexion(exito) {
     const clases = exito ? 'badge-conexion badge-verde' : 'badge-conexion badge-rojo';
-    const texto = exito ? '✅ Conectado' : '❌ Desconectado';
+    const texto = (exito ? '✅ ' : '❌ ') + (conexionActiva === 'local' ? 'Local' : 'Remoto');
     ['causales', 'lote', 'discador'].forEach(tipo => {
         const badge = document.getElementById('badge-' + tipo);
         if (badge) {
@@ -313,40 +335,20 @@ function actualizarBadgesConexion(exito) {
     });
 }
 
-/** Ejecuta la carga de un tipo (causales, lote, discador). */
-function ejecutarCarga(tipo) {
-    const panelId = 'panel-carga-' + tipo;
-    const panel = document.getElementById(panelId);
-    if (!panel) return;
-    panel.open = true;
-    const body = panel.querySelector('.panel-body');
-    if (!body) return;
-    body.innerHTML = '<p>⏳ Ejecutando carga...</p>';
-
-    const boton = document.getElementById('btn-carga-' + tipo);
-    const icono = boton?.querySelector('.status-icon');
-    if (icono) icono.textContent = '🔵';
-
-    const formData = new FormData();
-    formData.append('tipo', tipo);
-    formData.append('conexion', conexionActiva);
-
-    fetch('/accion/cargar-datos', { method: 'POST', body: formData })
-        .then(res => res.text())
-        .then(html => {
-            body.innerHTML = html;
-            const exito = html.includes('log-line success') || html.includes('✅');
-            const icon = panel.querySelector('.panel-icon');
-            if (icon) icon.textContent = exito ? '✅' : '❌';
-            if (icono) icono.textContent = exito ? '✅' : '❌';
-        })
-        .catch(err => {
-            body.innerHTML = `<div class="log-line error">❌ Error: ${err}</div>`;
-            const icon = panel.querySelector('.panel-icon');
-            if (icon) icon.textContent = '❌';
-            if (icono) icono.textContent = '❌';
-        });
+/** Actualiza los badges de estado de conexión en los paneles de carga. */
+function actualizarBadgesConexion(exito) {
+    const clases = exito ? 'badge-conexion badge-verde' : 'badge-conexion badge-rojo';
+    const tipoConexion = conexionActiva === 'local' ? 'Conexión Local' : 'Conexión Remota';
+    const texto = (exito ? '✅ ' : '❌ ') + tipoConexion;
+    ['causales', 'lote', 'discador'].forEach(tipo => {
+        const badge = document.getElementById('badge-' + tipo);
+        if (badge) {
+            badge.className = clases;
+            badge.textContent = texto;
+        }
+    });
 }
+
 
 // ---------- RESET ----------
 
@@ -365,9 +367,64 @@ function resetTodo() {
     }
 }
 
+
+function insertarDatos(tipo, conexion) {
+    const resultadoDiv = document.getElementById('resultado-insercion-' + tipo);
+    if (resultadoDiv) {
+        resultadoDiv.innerHTML = '<p>⏳ Insertando datos...</p>';
+    } else {
+        // Si no encuentra el div específico, intenta el genérico por si acaso
+        const fallbackDiv = document.getElementById('resultado-insercion');
+        if (fallbackDiv) fallbackDiv.innerHTML = '<p>⏳ Insertando datos...</p>';
+    }
+
+    const formData = new FormData();
+    formData.append('tipo', tipo);
+    formData.append('conexion', conexion);
+
+    fetch('/accion/insertar-datos', { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(html => {
+            const div = document.getElementById('resultado-insercion-' + tipo) ||
+                document.getElementById('resultado-insercion');
+            if (div) div.innerHTML = html;
+        })
+        .catch(err => {
+            const div = document.getElementById('resultado-insercion-' + tipo) ||
+                document.getElementById('resultado-insercion');
+            if (div) div.innerHTML = `<div class="log-line error">❌ Error: ${err}</div>`;
+        });
+}
+
+
+function verificarCarga(tipo) {
+    const panelId = 'panel-carga-' + tipo;
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.open = true;
+    const body = panel.querySelector('.panel-body');
+    if (!body) return;
+    body.innerHTML = '<p>⏳ Verificando columnas...</p>';
+
+    const formData = new FormData();
+    formData.append('tipo', tipo);
+    formData.append('conexion', conexionActiva);  // variable global
+
+    fetch('/accion/verificar-carga', { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(html => {
+            body.innerHTML = html;
+        })
+        .catch(err => {
+            body.innerHTML = `<div class="log-line error">❌ Error: ${err}</div>`;
+        });
+}
+
 // ---------- INICIALIZACIÓN ----------
 document.addEventListener('DOMContentLoaded', () => {
     actualizarTotalesHeader();
-    // Cerrar todos los paneles del monitor al cargar
+    // Cerrar paneles del monitor
     document.querySelectorAll('.panel-monitor').forEach(d => d.open = false);
+    // Mostrar estado inicial de conexión (local no verificado)
+    actualizarBadgesConexion(false);
 });
