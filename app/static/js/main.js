@@ -372,11 +372,12 @@ function insertarDatos(tipo, conexion) {
     const resultadoDiv = document.getElementById('resultado-insercion-' + tipo);
     if (resultadoDiv) {
         resultadoDiv.innerHTML = '<p>⏳ Insertando datos...</p>';
-    } else {
-        // Si no encuentra el div específico, intenta el genérico por si acaso
-        const fallbackDiv = document.getElementById('resultado-insercion');
-        if (fallbackDiv) fallbackDiv.innerHTML = '<p>⏳ Insertando datos...</p>';
     }
+
+    // Actualizar icono del botón en el sidebar
+    const boton = document.getElementById('btn-carga-' + tipo);
+    const icono = boton ? boton.querySelector('.status-icon') : null;
+    if (icono) icono.textContent = '🔵';
 
     const formData = new FormData();
     formData.append('tipo', tipo);
@@ -388,11 +389,15 @@ function insertarDatos(tipo, conexion) {
             const div = document.getElementById('resultado-insercion-' + tipo) ||
                 document.getElementById('resultado-insercion');
             if (div) div.innerHTML = html;
+
+            const exito = html.includes('log-line success') || html.includes('✅');
+            if (icono) icono.textContent = exito ? '✅' : '❌';
         })
         .catch(err => {
             const div = document.getElementById('resultado-insercion-' + tipo) ||
                 document.getElementById('resultado-insercion');
             if (div) div.innerHTML = `<div class="log-line error">❌ Error: ${err}</div>`;
+            if (icono) icono.textContent = '❌';
         });
 }
 
