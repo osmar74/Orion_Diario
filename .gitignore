@@ -1,36 +1,57 @@
-# Entorno virtual
+# =========================
+# Entornos virtuales Python
+# =========================
 venv/
 env/
 .venv/
 
+# =========================
 # Bytecode de Python
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Archivos de distribución
+# =========================
+# Distribución / paquetes
+# =========================
 *.egg-info/
 dist/
 build/
 
-# Archivos de configuración de IDEs
+# =========================
+# Configuración de editores
+# =========================
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Archivos de sistema
+# =========================
+# Archivos del sistema
+# =========================
 Thumbs.db
 .DS_Store
 Desktop.ini
 
-# Archivos de datos y logs generados (no versionar)
+# =========================
+# Datos, logs y bases locales
+# =========================
 data/
 logs/
 *.db
 *.sqlite3
 
-# Archivos Excel y CSV de prueba (si decides versionarlos luego, quita esta línea)
+# =========================
+# Archivos de prueba o entrada local
+# =========================
 *.xlsx
+*.xls
 *.csv
 *.txt
+
+# =========================
+# Variables de entorno locales
+# =========================
+.env
+.env.local
