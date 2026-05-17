@@ -12,7 +12,7 @@ from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
 from app.controllers.helpers import construir_cadena_conexion
 
 
-FECHA = "2026-05-12"
+FECHA = "2026-05-05"
 MESES = "202605"
 
 
