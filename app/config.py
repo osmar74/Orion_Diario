@@ -32,10 +32,8 @@ def get_tesseract_path():
         return env_path
 
     possible_paths = [
-        r"D:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"D:\Programs\Tesseract-OCR\tesseract.exe",
-        
     ]
 
     for path in possible_paths:
@@ -60,7 +58,7 @@ LOG_DB_PATH = os.path.join(DATA_DIR, "orion_logs.db")
 # ============================================================
 
 SQL_LOCAL = {
-    "server": os.getenv("ORION_SQL_LOCAL_SERVER", r"localhost\SQL2025DEV"),   #VCNIC-132\SQL2025TEST
+    "server": os.getenv("ORION_SQL_LOCAL_SERVER", r"localhost\SQL2025DEV"),
     "port": os.getenv("ORION_SQL_LOCAL_PORT", ""),
     "database": os.getenv("ORION_SQL_LOCAL_DATABASE", "Orion"),
     "auth": os.getenv("ORION_SQL_LOCAL_AUTH", "sql"),
@@ -74,8 +72,10 @@ SQL_LOCAL = {
 # ============================================================
 
 SQL_REMOTO = {
-    "server": os.getenv("ORION_SQL_REMOTO_SERVER", "172.24.80.32"),
-    "port": os.getenv("ORION_SQL_REMOTO_PORT", "1433"),
+    "server": os.getenv("ORION_SQL_REMOTO_SERVER", "VC-EIDER"),
+    "alt_server": os.getenv("ORION_SQL_REMOTO_ALT_SERVER", "172.24.80.32"),
+    "port": os.getenv("ORION_SQL_REMOTO_PORT", ""),
+    "alt_port": os.getenv("ORION_SQL_REMOTO_ALT_PORT", "1433"),
     "database": os.getenv("ORION_SQL_REMOTO_DATABASE", "Orion"),
     "auth": os.getenv("ORION_SQL_REMOTO_AUTH", "sql"),
     "username": os.getenv("ORION_SQL_REMOTO_USERNAME", "Admin1"),
