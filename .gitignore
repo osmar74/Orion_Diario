@@ -50,6 +50,9 @@ logs/
 *.csv
 *.txt
 
+# Permitir versionar el archivo oficial de dependencias
+!requirements.txt
+
 # =========================
 # Variables de entorno locales
 # =========================
