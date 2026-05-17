@@ -6,3 +6,4 @@ pyodbc
 pytesseract
 Pillow
 python-dotenv
+SQLAlchemy

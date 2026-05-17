@@ -4,9 +4,11 @@ Funciones auxiliares compartidas por los blueprints del controlador.
 
 import re
 import unicodedata
+from urllib.parse import quote_plus
 
 import pandas as pd
 import pyodbc
+from sqlalchemy import create_engine
 
 
 def obtener_log_service():
@@ -115,6 +117,22 @@ def construir_cadena_conexion(cfg: dict) -> str:
         partes.append(f"PWD={cfg['password']}")
 
     return ";".join(partes) + ";"
+
+
+def construir_sqlalchemy_engine(cfg: dict):
+    """
+    Construye un engine SQLAlchemy compatible con pandas.read_sql.
+
+    Se usa para lecturas con pandas, porque pandas recomienda
+    SQLAlchemy connectable en lugar de conexiones pyodbc directas.
+    """
+    odbc_connection_string = construir_cadena_conexion(cfg)
+    odbc_connection_string_encoded = quote_plus(odbc_connection_string)
+
+    return create_engine(
+        f"mssql+pyodbc:///?odbc_connect={odbc_connection_string_encoded}",
+        pool_pre_ping=True,
+    )
 
 
 def normalizar_usuario(usuario: str) -> str:

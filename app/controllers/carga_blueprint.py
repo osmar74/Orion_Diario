@@ -12,6 +12,7 @@ from flask import Blueprint, request, session
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
 from app.controllers.helpers import (
     construir_cadena_conexion,
+    construir_sqlalchemy_engine,
     normalizar_texto,
     mapear_columnas_archivo,
 )
@@ -538,7 +539,14 @@ def accion_consolidar_consulta():
     try:
         conn_str = construir_cadena_conexion(cfg)
         conn = pyodbc.connect(conn_str, timeout=60)
-        df = pd.read_sql(sql_final, conn)
+        engine = construir_sqlalchemy_engine(cfg)
+
+        try:
+            with engine.connect() as conn_sqlalchemy:
+                df = pd.read_sql(sql_final, conn_sqlalchemy)
+        finally:
+            engine.dispose()
+        
         conn.close()
     except Exception as e:
         return f"<div class='log-line error'>❌ Error en consulta SQL: {str(e)}</div>"
