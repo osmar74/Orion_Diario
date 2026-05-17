@@ -60,7 +60,7 @@ LOG_DB_PATH = os.path.join(DATA_DIR, "orion_logs.db")
 # ============================================================
 
 SQL_LOCAL = {
-    "server": os.getenv("ORION_SQL_LOCAL_SERVER", r"VCNIC-132\SQL2025TEST"),
+    "server": os.getenv("ORION_SQL_LOCAL_SERVER", r"localhost\SQL2025DEV"),   #VCNIC-132\SQL2025TEST
     "port": os.getenv("ORION_SQL_LOCAL_PORT", ""),
     "database": os.getenv("ORION_SQL_LOCAL_DATABASE", "Orion"),
     "auth": os.getenv("ORION_SQL_LOCAL_AUTH", "sql"),
