@@ -25,10 +25,27 @@ RED_BASE_PATHS = [
 # Tesseract OCR
 # ============================================================
 
-TESSERACT_PATH = os.getenv(
-    "ORION_TESSERACT_PATH",
-    r"D:\Programs\Tesseract-OCR\tesseract.exe",
-)
+def get_tesseract_path():
+    env_path = os.getenv("ORION_TESSERACT_PATH")
+
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    possible_paths = [
+        r"D:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"D:\Programs\Tesseract-OCR\tesseract.exe",
+        
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+
+    return r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+
+TESSERACT_PATH = get_tesseract_path()
 
 
 # ============================================================
