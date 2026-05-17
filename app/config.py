@@ -1,39 +1,66 @@
 import os
 
-# Ruta absoluta de la raíz del proyecto
+
+# ============================================================
+# Rutas base del proyecto
+# ============================================================
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Carpeta donde se almacenarán los datos generados
 DATA_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-# Unidad de red para archivos Orion (dejar el % literal, Windows lo maneja)
-# Posibles rutas de red (UNC y unidad mapeada)
+
+# ============================================================
+# Rutas de red Orion
+# ============================================================
+
 RED_BASE_PATHS = [
     r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
-    r"Z:\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion"
+    r"Z:\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
 ]
 
-# Ruta del ejecutable de Tesseract-OCR (instalación por defecto en Windows)
-TESSERACT_PATH = r"D:\Programs\Tesseract-OCR\tesseract.exe"
 
-# Base de datos de logs
+# ============================================================
+# Tesseract OCR
+# ============================================================
+
+TESSERACT_PATH = os.getenv(
+    "ORION_TESSERACT_PATH",
+    r"D:\Programs\Tesseract-OCR\tesseract.exe",
+)
+
+
+# ============================================================
+# Base de datos local de logs
+# ============================================================
+
 LOG_DB_PATH = os.path.join(DATA_DIR, "orion_logs.db")
 
-# Configuración de conexiones a SQL Server
+
+# ============================================================
+# SQL Server local
+# ============================================================
+
 SQL_LOCAL = {
-    'server': r'VCNIC-132\SQL2025TEST',
-    'port': '',                     # vacío
-    'database': 'Orion',
-    'auth': 'sql',
-    'username': 'Admin1',
-    'password': '1234'
+    "server": os.getenv("ORION_SQL_LOCAL_SERVER", r"VCNIC-132\SQL2025TEST"),
+    "port": os.getenv("ORION_SQL_LOCAL_PORT", ""),
+    "database": os.getenv("ORION_SQL_LOCAL_DATABASE", "Orion"),
+    "auth": os.getenv("ORION_SQL_LOCAL_AUTH", "sql"),
+    "username": os.getenv("ORION_SQL_LOCAL_USERNAME", "Admin1"),
+    "password": os.getenv("ORION_SQL_LOCAL_PASSWORD", "1234"),
 }
 
+
+# ============================================================
+# SQL Server remoto
+# ============================================================
+
 SQL_REMOTO = {
-    'server': '172.24.80.32',       # o 'VC-EIDER'
-    'port': '1433',
-    'database': 'Orion',
-    'auth': 'sql',
-    'username': 'Admin1',
-    'password': '1234'
+    "server": os.getenv("ORION_SQL_REMOTO_SERVER", "172.24.80.32"),
+    "port": os.getenv("ORION_SQL_REMOTO_PORT", "1433"),
+    "database": os.getenv("ORION_SQL_REMOTO_DATABASE", "Orion"),
+    "auth": os.getenv("ORION_SQL_REMOTO_AUTH", "sql"),
+    "username": os.getenv("ORION_SQL_REMOTO_USERNAME", "Admin1"),
+    "password": os.getenv("ORION_SQL_REMOTO_PASSWORD", "1234"),
 }
