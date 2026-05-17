@@ -17,6 +17,12 @@ from app.controllers.helpers import (
     mapear_columnas_archivo,
 )
 
+from app.services.load_registry import (
+    buscar_carga_previa,
+    calcular_sha256,
+    registrar_carga,
+)
+
 carga_bp = Blueprint("carga", __name__)
 
 
@@ -303,6 +309,36 @@ def accion_insertar_datos():
         return f"<div class='log-line error'>❌ Error al leer el archivo: {e}"
 
     registros_archivo = len(df)
+    
+    archivo_hash = calcular_sha256(ruta_archivo)
+    carga_previa = buscar_carga_previa(
+        tipo=tipo,
+        conexion=conexion,
+        tabla_destino=tabla_destino,
+        archivo_hash=archivo_hash,
+    )
+
+    if carga_previa:
+        return f"""
+        <div class='log-line warning'>
+            ⚠️ Este archivo ya fue insertado anteriormente.
+        </div>
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr>
+                <th colspan='2' style='background:#8a6d3b; color:#fff;'>
+                    Carga duplicada bloqueada
+                </th>
+            </tr>
+            <tr><td><b>Tipo</b></td><td>{tipo}</td></tr>
+            <tr><td><b>Conexión</b></td><td>{conexion}</td></tr>
+            <tr><td><b>Tabla destino</b></td><td>{tabla_destino}</td></tr>
+            <tr><td><b>Archivo</b></td><td>{carga_previa['nombre_archivo']}</td></tr>
+            <tr><td><b>Registros archivo</b></td><td>{carga_previa['registros_archivo']}</td></tr>
+            <tr><td><b>Registros insertados</b></td><td>{carga_previa['registros_insertados']}</td></tr>
+            <tr><td><b>Fecha de carga</b></td><td>{carga_previa['fecha_carga']}</td></tr>
+        </table>
+        """
+    
 
     # Normalización de columnas
     columnas_archivo_originales = df.columns.tolist()
@@ -437,6 +473,18 @@ def accion_insertar_datos():
         registros_despues = cursor.fetchone()[0]
         insertados = registros_despues - registros_antes
         exito = insertados == registros_archivo
+
+        if exito:
+            registrar_carga(
+                tipo=tipo,
+                conexion=conexion,
+                tabla_destino=tabla_destino,
+                nombre_archivo=nombre_archivo,
+                ruta_archivo=ruta_archivo,
+                archivo_hash=archivo_hash,
+                registros_archivo=registros_archivo,
+                registros_insertados=insertados,
+            )
 
         conn.close()
 
