@@ -1,5 +1,14 @@
 import os
 
+from dotenv import load_dotenv
+
+
+# ============================================================
+# Variables de entorno
+# ============================================================
+
+load_dotenv()
+
 
 # ============================================================
 # Rutas base del proyecto
@@ -16,8 +25,9 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ============================================================
 
 RED_BASE_PATHS = [
-    r"F:\Vencorp\ff\unidad_red_Data",                                                       #r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
+    r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
     r"Z:\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
+    r"F:\Vencorp\ff\unidad_red_Data",
 ]
 
 
@@ -54,6 +64,13 @@ LOG_DB_PATH = os.path.join(DATA_DIR, "orion_logs.db")
 
 
 # ============================================================
+# Flask
+# ============================================================
+
+SECRET_KEY = os.getenv("ORION_FLASK_SECRET_KEY", "orion_secret_key_dev")
+
+
+# ============================================================
 # SQL Server local
 # ============================================================
 
@@ -63,7 +80,7 @@ SQL_LOCAL = {
     "database": os.getenv("ORION_SQL_LOCAL_DATABASE", "Orion"),
     "auth": os.getenv("ORION_SQL_LOCAL_AUTH", "sql"),
     "username": os.getenv("ORION_SQL_LOCAL_USERNAME", "Admin1"),
-    "password": os.getenv("ORION_SQL_LOCAL_PASSWORD", "1234"),
+    "password": os.getenv("ORION_SQL_LOCAL_PASSWORD", ""),
 }
 
 
@@ -79,5 +96,5 @@ SQL_REMOTO = {
     "database": os.getenv("ORION_SQL_REMOTO_DATABASE", "Orion"),
     "auth": os.getenv("ORION_SQL_REMOTO_AUTH", "sql"),
     "username": os.getenv("ORION_SQL_REMOTO_USERNAME", "Admin1"),
-    "password": os.getenv("ORION_SQL_REMOTO_PASSWORD", "1234"),
+    "password": os.getenv("ORION_SQL_REMOTO_PASSWORD", ""),
 }

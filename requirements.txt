@@ -5,3 +5,4 @@ openpyxl
 pyodbc
 pytesseract
 Pillow
+python-dotenv
