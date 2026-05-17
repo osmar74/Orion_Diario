@@ -1,9 +1,11 @@
 from flask import Flask
 
+from app.config import SECRET_KEY
+
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = "orion_secret_key_2026"
+    app.secret_key = SECRET_KEY
 
     from app.controllers.main_blueprint import main_bp
     from app.controllers.fases_blueprint import fases_ab_bp
