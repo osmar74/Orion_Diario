@@ -3,11 +3,13 @@ Blueprint para la Fase G: Carga de datos a SQL Server.
 """
 
 import os
-import traceback
+
 import pyodbc
 import pandas as pd
 import numpy as np
 from flask import Blueprint, request, session
+
+from typing import cast
 
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
 from app.controllers.helpers import (
@@ -76,11 +78,18 @@ def accion_probar_lectura():
             "username": usuario,
             "password": password,
         }
-        conn_str = construir_cadena_conexion(cfg)
-        conn = pyodbc.connect(conn_str, timeout=5)
+
         query = "SELECT TOP 5 * FROM Causales"
-        df = pd.read_sql(query, conn)
-        conn.close()
+
+        engine = construir_sqlalchemy_engine(cfg)
+
+        try:
+            with engine.connect() as conn_sqlalchemy:
+                df = pd.read_sql(query, conn_sqlalchemy)
+        finally:
+            engine.dispose()
+
+
         if df.empty:
             return "<div class='log-line warning'>⚠️ La tabla Causales existe pero no contiene registros.</div>"
         html = "<div class='log-line success'>✅ Lectura exitosa. {} registros encontrados.</div>".format(
@@ -190,7 +199,9 @@ def accion_verificar_carga():
             cursor.execute(
                 f"SELECT MAX(CAST({primera_col} AS BIGINT)) FROM [{tabla_destino}]"
             )
-            val = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            val = row[0] if row else None
+
             if val is not None:
                 ultimo_id = val
         except Exception:
@@ -198,7 +209,8 @@ def accion_verificar_carga():
 
         # Conteo de registros en la tabla
         cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
-        total_tabla = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        total_tabla = row[0] if row else 0
         conn.close()
     except Exception as e:
         return f"<div class='log-line error'>❌ Error de conexión: {e}"
@@ -374,7 +386,8 @@ def accion_insertar_datos():
 
         # Contar registros antes
         cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
-        registros_antes = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        registros_antes = row[0] if row else 0
 
     except Exception as e:
         return f"<div class='log-line error'>❌ Error de conexión: {e}"
@@ -439,7 +452,9 @@ def accion_insertar_datos():
                 if col_srv in df_insert.columns:
                     mask = df_insert[col_srv].notna()
                     if mask.any():
-                        years = df_insert.loc[mask, col_srv].dt.year
+                        serie_fechas = cast(pd.Series, df_insert.loc[mask, col_srv])
+                        fechas_validas = pd.to_datetime(serie_fechas, errors="coerce")
+                        years = fechas_validas.dt.year
                         invalid = (years < 1753) | (years > 9999)
                         df_insert.loc[mask & invalid, col_srv] = None
 
@@ -458,8 +473,10 @@ def accion_insertar_datos():
                     tupla.append(None)
                 elif isinstance(val, pd.Timestamp):
                     tupla.append(val.to_pydatetime())
-                elif isinstance(val, (pd.Int64Dtype, np.int64)):
+                elif isinstance(val, np.integer):
                     tupla.append(int(val))
+                elif isinstance(val, np.floating):
+                    tupla.append(float(val))
                 else:
                     tupla.append(val)
             datos.append(tuple(tupla))
@@ -470,7 +487,8 @@ def accion_insertar_datos():
 
         # Contar después de insertar
         cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
-        registros_despues = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        registros_despues = row[0] if row else registros_antes
         insertados = registros_despues - registros_antes
         exito = insertados == registros_archivo
 

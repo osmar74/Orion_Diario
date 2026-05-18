@@ -1,19 +1,55 @@
 /* ============================================================
+   ORION DIARIO - TEMA DEEP BLACK
+   ============================================================ */
+
+/* ============================================================
    VARIABLES Y RESETEO GLOBAL
    ============================================================ */
+
 :root {
     --bg-total: #000000;
     --panel-bg: #121212;
+    --panel-bg-soft: #1a1a1a;
+    --panel-bg-hover: #202020;
     --panel-border: #222222;
+    --panel-border-soft: #333333;
+    --panel-border-active: #555555;
+
     --header-bg: #101010;
+
     --text-primary: #e0e0e0;
     --text-secondary: #a0a0a0;
+    --text-muted: #888888;
+    --text-soft: #cccccc;
+    --text-white: #ffffff;
+
     --accent: #1e90ff;
+    --accent-soft: rgba(30, 144, 255, 0.1);
+    --accent-dark: #1a6fc4;
+
     --success: #28a745;
+    --success-bg: #1a3a1a;
+
     --warning: #ffc107;
+
     --danger: #dc3545;
+    --danger-bg: #3a1a1a;
+
     --info: #17a2b8;
-    --radius: 15px;
+
+    --cyan: #4ecdc4;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 15px;
+    --radius-pill: 20px;
+
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+
+    --font-main: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    --font-mono: Consolas, "Courier New", monospace;
 }
 
 * {
@@ -22,20 +58,47 @@
     box-sizing: border-box;
 }
 
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
 body {
     background-color: var(--bg-total);
     color: var(--text-primary);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-main);
     height: 100vh;
     overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+a {
+    color: inherit;
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 /* ============================================================
    HEADER Y SUBHEADER
    ============================================================ */
+
 .header-container {
     background-color: var(--header-bg);
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     padding: 0 20px;
 }
 
@@ -48,7 +111,7 @@ body {
 
 .header-main h1 {
     font-size: 1.2rem;
-    color: #ffffff;
+    color: var(--text-white);
     letter-spacing: 1px;
 }
 
@@ -56,36 +119,41 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 0;
     gap: 15px;
-    border-radius: 0 0 var(--radius) var(--radius);
+    padding: 6px 0;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+.subheader-left,
+.subheader-right {
+    display: flex;
+    align-items: center;
 }
 
 .subheader-left {
-    display: flex;
-    align-items: center;
     gap: 8px;
 }
 
 .subheader-right {
-    display: flex;
-    align-items: center;
     gap: 20px;
 }
 
 .subheader-right a {
-    color: #ffffff !important;   /* enlaces inicio/logs más visibles */
+    color: var(--text-white) !important;
     font-weight: 500;
     text-decoration: none;
     font-size: 0.85rem;
-    transition: color 0.2s;
+    transition: color var(--transition-fast);
 }
 
 .subheader-right a:hover {
     color: var(--accent) !important;
 }
 
-/* Módulos (Orion, Aister, Consolidar) */
+/* ============================================================
+   MÓDULOS
+   ============================================================ */
+
 .modulos {
     display: flex;
     gap: 6px;
@@ -93,14 +161,16 @@ body {
 }
 
 .modulo-btn {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #888;
+    background: var(--panel-bg-soft);
+    border: 1px solid var(--panel-border-soft);
+    color: var(--text-muted);
     padding: 4px 12px;
     border-radius: 6px;
-    cursor: pointer;
     font-size: 0.75rem;
-    transition: all 0.2s;
+    transition:
+        background var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast);
 }
 
 .modulo-btn.active {
@@ -111,66 +181,67 @@ body {
 
 .modulo-btn:hover {
     border-color: var(--accent);
-    color: #ccc;
+    color: var(--text-soft);
 }
 
 /* ============================================================
    LAYOUT PRINCIPAL
    ============================================================ */
+
 .main-layout {
     display: flex;
     height: calc(100vh - 110px);
-    margin: 10px 20px 0 20px;
+    margin: 10px 20px 0;
     gap: 10px;
 }
 
 /* ============================================================
    SIDEBAR
    ============================================================ */
+
 .sidebar {
-    background-color: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
     width: 300px;
     min-width: 300px;
     padding: 15px;
     overflow-y: auto;
-    transition: width 0.3s, min-width 0.3s, padding 0.3s;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-xl);
+    transition:
+        width var(--transition-normal),
+        min-width var(--transition-normal),
+        padding var(--transition-normal);
 }
 
-/* Sidebar colapsado (solo timeline) */
 .sidebar.collapsed {
     width: 55px;
     min-width: 55px;
     padding: 5px;
 }
 
-.sidebar.collapsed .sidebar-fases-col {
-    display: none;
-}
-
+.sidebar.collapsed .sidebar-fases-col,
 .sidebar.collapsed .timeline-label {
     display: none;
 }
 
 .sidebar.collapsed .sidebar-timeline-col {
-    border-right: none;
     width: 100%;
     display: flex;
     justify-content: center;
+    border-right: none;
 }
 
-/* Botón toggle del sidebar */
 .sidebar-toggle {
     background: transparent;
     border: 1px solid var(--panel-border);
     color: var(--text-secondary);
     font-size: 1rem;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    transition: color 0.2s, border-color 0.2s;
     line-height: 1;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    transition:
+        color var(--transition-fast),
+        border-color var(--transition-fast);
 }
 
 .sidebar-toggle:hover {
@@ -178,7 +249,6 @@ body {
     border-color: var(--accent);
 }
 
-/* Columnas internas del sidebar (timeline + fases) */
 .sidebar-columns {
     display: flex;
     gap: 0;
@@ -188,29 +258,28 @@ body {
 .sidebar-timeline-col {
     width: 50px;
     min-width: 50px;
-    border-right: 1px solid #333;
     padding-right: 5px;
+    border-right: 1px solid var(--panel-border-soft);
 }
 
 .sidebar-fases-col {
     flex: 1;
     padding-left: 8px;
     overflow-y: auto;
-    font-size: 0.7rem;   /* reducción del 30% */
+    font-size: 0.7rem;
 }
 
-/* Fases (details) dentro del sidebar */
 .sidebar-fases-col details {
     margin-bottom: 10px;
 }
 
 .sidebar-fases-col details summary {
-    font-size: 0.7rem;
-    font-weight: bold;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--panel-border);
     color: var(--accent);
     cursor: pointer;
-    padding: 6px 0;
-    border-bottom: 1px solid #222;
+    font-size: 0.7rem;
+    font-weight: 700;
     list-style: none;
 }
 
@@ -218,12 +287,11 @@ body {
     display: none;
 }
 
-/* Acciones dentro de cada fase */
 .sidebar-fases-col .fase-actions {
-    padding: 8px 0 8px 8px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    padding: 8px 0 8px 8px;
 }
 
 .sidebar-fases-col button {
@@ -232,22 +300,23 @@ body {
     color: var(--accent);
     padding: 5px 10px;
     border-radius: 5px;
-    cursor: pointer;
     font-size: 0.65rem;
-    transition: background 0.2s, box-shadow 0.2s;
+    transition:
+        background var(--transition-fast),
+        box-shadow var(--transition-fast),
+        color var(--transition-fast);
 }
 
 .sidebar-fases-col button:hover {
-    background: rgba(30, 144, 255, 0.1);
+    background: var(--accent-soft);
 }
 
 .sidebar-fases-col button:active {
     background: var(--accent);
-    color: #000;
+    color: var(--bg-total);
     box-shadow: 0 0 12px var(--accent);
 }
 
-/* Indicadores de estado en botones */
 .status-icon {
     margin-left: 5px;
 }
@@ -255,33 +324,52 @@ body {
 /* ============================================================
    TIMELINE VERTICAL
    ============================================================ */
+
 .timeline-vertical {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 20px;
-    padding-top: 10px;
     height: 100%;
+    padding-top: 10px;
 }
 
 .timeline-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
+}
+
+.timeline-item::before {
+    content: "";
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    width: 2px;
+    height: 20px;
+    background: #444444;
+    transform: translateX(-50%);
+}
+
+.timeline-item:first-child::before {
+    display: none;
 }
 
 .timeline-circle {
     width: 14px;
     height: 14px;
-    border-radius: 50%;
-    background: #1a1a1a;
-    border: 2px solid #555;
-    transition: background 0.3s, border-color 0.3s;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--panel-bg-soft);
+    border: 2px solid #555555;
+    border-radius: 50%;
+    transition:
+        background var(--transition-normal),
+        border-color var(--transition-normal),
+        box-shadow var(--transition-normal);
 }
 
 .timeline-circle.completado {
@@ -292,23 +380,23 @@ body {
 .timeline-circle.activo {
     background: var(--accent);
     border-color: var(--accent);
-    box-shadow: 0 0 6px rgba(30,144,255,0.5);
+    box-shadow: 0 0 6px rgba(30, 144, 255, 0.5);
 }
 
 .timeline-number {
+    color: var(--text-soft);
     font-size: 0.55rem;
-    font-weight: bold;
-    color: #ccc;
+    font-weight: 700;
     line-height: 1;
 }
 
 .timeline-label {
+    color: #777777;
+    font-size: 0.55rem;
+    white-space: nowrap;
     writing-mode: vertical-rl;
     text-orientation: mixed;
-    font-size: 0.55rem;
-    color: #777;
-    white-space: nowrap;
-    transition: color 0.3s;
+    transition: color var(--transition-normal);
 }
 
 .timeline-item.completado .timeline-label {
@@ -319,63 +407,64 @@ body {
     color: var(--accent);
 }
 
-/* Línea conectora entre círculos */
-.timeline-item::before {
-    content: '';
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 2px;
-    height: 20px;
-    background: #444;
-}
-
-.timeline-item:first-child::before {
-    display: none;
-}
-
 /* ============================================================
    MONITOR CENTRAL
    ============================================================ */
+
 .monitor {
-    background-color: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
     flex: 1;
     padding: 20px;
     overflow-y: auto;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-xl);
 }
 
 .monitor h2 {
+    margin-bottom: 15px;
     color: var(--accent);
+}
+
+.monitor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
     margin-bottom: 15px;
 }
 
-/* Paneles colapsables del monitor */
+.monitor-header h2 {
+    margin-bottom: 0;
+}
+
+/* ============================================================
+   PANELES DEL MONITOR
+   ============================================================ */
+
 .panel-monitor {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px;
     margin-bottom: 8px;
     padding: 6px 12px;
-    transition: border-color 0.2s;
+    background: var(--panel-bg-soft);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast);
 }
 
 .panel-monitor[open] {
-    border-color: #555;
+    border-color: var(--panel-border-active);
 }
 
 .panel-monitor summary {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #ccc;
-    cursor: pointer;
-    padding: 4px 0;
-    list-style: none;
     display: flex;
     align-items: center;
     gap: 6px;
+    padding: 4px 0;
+    color: var(--text-soft);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    list-style: none;
 }
 
 .panel-monitor summary::-webkit-details-marker {
@@ -387,43 +476,48 @@ body {
 }
 
 .panel-monitor .panel-body {
-    padding: 10px 0;
-    font-size: 0.8rem;
-    color: #aaa;
     max-height: 400px;
+    padding: 10px 0;
     overflow-y: auto;
+    color: #aaaaaa;
+    font-size: 0.8rem;
 }
 
 /* ============================================================
-   TABLAS EN MONITOR (formato dataframe)
+   TABLAS
    ============================================================ */
+
 .monitor table.dataframe {
     width: 100% !important;
-    border-collapse: collapse;
     margin-top: 10px;
+    border-collapse: collapse;
+}
+
+.monitor table.dataframe th,
+.monitor table.dataframe td {
+    border: 1px solid var(--panel-border-soft);
 }
 
 .monitor table.dataframe th {
     background: #1e1e1e;
     padding: 8px;
     text-align: left;
-    border: 1px solid #333;
     font-size: 0.85rem;
 }
 
 .monitor table.dataframe td {
     padding: 6px 8px;
-    border: 1px solid #333;
     font-size: 0.8rem;
 }
 
 /* ============================================================
-   LOGS (página de logs)
+   LOGS
    ============================================================ */
+
 .monitor .log-line {
     padding: 5px 0;
-    border-bottom: 1px solid #222;
-    font-family: monospace;
+    border-bottom: 1px solid var(--panel-border);
+    font-family: var(--font-mono);
     font-size: 0.9rem;
 }
 
@@ -439,9 +533,14 @@ body {
     color: var(--info);
 }
 
+.monitor .log-line.warning {
+    color: var(--warning);
+}
+
 /* ============================================================
-   BADGES DEL SUBHEADER (totales)
+   BADGES
    ============================================================ */
+
 .totales-badges {
     display: flex;
     align-items: center;
@@ -450,36 +549,38 @@ body {
 }
 
 .badge {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 20px;
-    padding: 3px 10px;
     display: flex;
     align-items: center;
     gap: 5px;
+    padding: 3px 10px;
+    background: var(--panel-bg-soft);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: var(--radius-pill);
     font-size: 0.7rem;
     white-space: nowrap;
-    transition: background 0.3s, border-color 0.3s;
+    transition:
+        background var(--transition-normal),
+        border-color var(--transition-normal);
 }
 
 .badge .badge-label {
-    color: #888;
+    color: var(--text-muted);
     font-weight: 500;
 }
 
 .badge .badge-value {
-    color: #fff;
-    font-weight: 700;
+    color: var(--text-white);
     font-size: 0.8rem;
+    font-weight: 700;
 }
 
 .badge.cuadre {
-    border-color: #555;
+    border-color: var(--panel-border-active);
 }
 
 .badge.cuadre.ok {
+    background: var(--success-bg);
     border-color: var(--success);
-    background: #1a3a1a;
 }
 
 .badge.cuadre.ok .badge-label {
@@ -487,48 +588,50 @@ body {
 }
 
 .badge.cuadre.error {
+    background: var(--danger-bg);
     border-color: var(--danger);
-    background: #3a1a1a;
 }
 
 .badge.cuadre.error .badge-label {
     color: var(--danger);
 }
 
-/* Badges de conexión (en paneles de carga) */
 .badge-conexion {
-    font-size: 0.6rem;
+    margin-left: 8px;
     padding: 2px 10px;
     border-radius: 12px;
-    margin-left: 8px;
-    vertical-align: middle;
+    font-size: 0.6rem;
     white-space: nowrap;
+    vertical-align: middle;
 }
 
 .badge-verde {
-    background: #1a3a1a;
+    background: var(--success-bg);
     color: var(--success);
     border: 1px solid var(--success);
 }
 
 .badge-rojo {
-    background: #3a1a1a;
+    background: var(--danger-bg);
     color: var(--danger);
     border: 1px solid var(--danger);
 }
 
 /* ============================================================
-   BOTONES DE CONEXIÓN (Fase G)
+   BOTONES Y FORMULARIOS DE CONEXIÓN
    ============================================================ */
+
 .conexion-btn {
-    background: #1a1a1a;
-    border: 1px solid #555;
-    color: #888;
+    background: var(--panel-bg-soft);
+    border: 1px solid var(--panel-border-active);
+    color: var(--text-muted);
     padding: 4px 12px;
-    border-radius: 4px;
-    cursor: pointer;
+    border-radius: var(--radius-sm);
     font-size: 0.7rem;
-    transition: all 0.2s;
+    transition:
+        background var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast);
 }
 
 .conexion-btn.active {
@@ -537,46 +640,43 @@ body {
     color: var(--accent);
 }
 
-/* ============================================================
-   FORMULARIO DE CONEXIÓN (panel de prueba)
-   ============================================================ */
 .conexion-form label {
     display: inline-block;
     width: 90px;
-    font-size: 0.7rem;
-    color: #ccc;
     margin-top: 4px;
+    color: var(--text-soft);
+    font-size: 0.7rem;
 }
 
 .conexion-form input,
 .conexion-form select {
-    background: #222;
-    color: #fff;
-    border: 1px solid #444;
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-size: 0.7rem;
     margin-bottom: 4px;
+    padding: 3px 6px;
+    background: #222222;
+    color: var(--text-white);
+    border: 1px solid #444444;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
 }
 
 .conexion-form button {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.7rem;
     margin-right: 8px;
+    padding: 5px 12px;
+    background: var(--accent);
+    color: var(--text-white);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
 }
 
 .conexion-form button:hover {
-    background: #1a6fc4;
+    background: var(--accent-dark);
 }
 
 /* ============================================================
-   RESULTADO OCR (dos columnas)
+   RESULTADO OCR
    ============================================================ */
+
 .ocr-result-container {
     display: flex;
     gap: 15px;
@@ -600,14 +700,14 @@ body {
     width: 100%;
     max-height: 350px;
     object-fit: contain;
-    border: 1px solid #444;
-    border-radius: 4px;
+    border: 1px solid #444444;
+    border-radius: var(--radius-sm);
 }
 
 .ocr-thumb small {
     display: block;
+    color: var(--text-muted);
     font-size: 0.6rem;
-    color: #888;
     word-break: break-all;
 }
 
@@ -631,36 +731,36 @@ body {
 }
 
 .total-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px;
+    min-width: 100px;
     padding: 8px 14px;
     text-align: center;
-    min-width: 100px;
+    background: var(--panel-bg-soft);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: var(--radius-md);
 }
 
 .total-card .label {
     display: block;
+    color: var(--text-muted);
     font-size: 0.7rem;
-    color: #888;
 }
 
 .total-card .value {
     display: block;
+    color: var(--cyan);
     font-size: 1.3rem;
     font-weight: 700;
-    color: #4ecdc4;   /* color cian que resalta */
 }
 
 .archivos-guardados {
-    font-size: 0.7rem;
-    color: #aaa;
     align-self: center;
+    color: #aaaaaa;
+    font-size: 0.7rem;
 }
 
 .archivos-guardados summary {
+    color: var(--text-soft);
     cursor: pointer;
-    color: #ccc;
 }
 
 .archivos-guardados ul {
@@ -671,6 +771,7 @@ body {
 /* ============================================================
    PANEL CREAR CARPETAS
    ============================================================ */
+
 .carpetas-grid {
     display: flex;
     flex-wrap: wrap;
@@ -679,15 +780,15 @@ body {
 }
 
 .carpeta-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 12px;
-    padding: 8px 14px;
     display: flex;
     flex-direction: column;
     align-items: center;
     min-width: 130px;
-    transition: border-color 0.2s;
+    padding: 8px 14px;
+    background: var(--panel-bg-soft);
+    border: 1px solid var(--panel-border-soft);
+    border-radius: var(--radius-lg);
+    transition: border-color var(--transition-fast);
 }
 
 .carpeta-card:hover {
@@ -695,47 +796,105 @@ body {
 }
 
 .carpeta-icon {
-    font-size: 1.5rem;
     margin-bottom: 4px;
+    font-size: 1.5rem;
 }
 
 .carpeta-nombre {
+    margin-bottom: 4px;
+    color: var(--text-soft);
     font-size: 0.8rem;
     font-weight: 600;
-    color: #ccc;
-    margin-bottom: 4px;
     text-transform: capitalize;
 }
 
 .carpeta-ruta {
+    color: var(--text-muted);
     font-size: 0.6rem;
-    color: #888;
-    word-break: break-all;
-    text-align: center;
     line-height: 1.2;
+    text-align: center;
+    word-break: break-all;
 }
 
 /* ============================================================
-   FORMULARIO MANUAL DE TOTALES (dentro del panel OCR)
+   FORMULARIO MANUAL DE TOTALES
    ============================================================ */
+
 #manual-totales input[type="number"] {
     font-size: 0.8rem;
 }
 
 #manual-totales button:hover {
-    background: #1a6fc4;
+    background: var(--accent-dark);
 }
 
-/* Cabecera del monitor con badges */
-.monitor-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-    gap: 15px;
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 900px) {
+    body {
+        overflow: auto;
+    }
+
+    .main-layout {
+        height: auto;
+        flex-direction: column;
+        margin: 10px;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-height: 45vh;
+    }
+
+    .monitor {
+        min-height: 50vh;
+    }
+
+    .subheader {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .subheader-right {
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .ocr-images {
+        flex: 1 1 100%;
+    }
 }
 
-.monitor-header h2 {
-    margin-bottom: 0;
+@media (max-width: 600px) {
+    .header-container {
+        padding: 0 12px;
+    }
+
+    .header-main,
+    .monitor-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .modulos,
+    .totales-badges,
+    .totales-grid {
+        width: 100%;
+    }
+
+    .modulo-btn,
+    .conexion-btn {
+        flex: 1;
+    }
+
+    .monitor {
+        padding: 12px;
+    }
+
+    .panel-monitor {
+        padding: 6px 10px;
+    }
 }

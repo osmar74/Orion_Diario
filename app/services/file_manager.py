@@ -70,7 +70,7 @@ class FileManager:
             }
 
     def verificar_red_y_carpetas(
-        self, fecha_str: str, red_base_path: str = None
+        self, fecha_str: str, red_base_path: Optional[str] = None
     ) -> Dict:
         """
         Verifica unidad de red, carpetas año/mes/subcarpetas y archivos.
@@ -227,8 +227,9 @@ class FileManager:
         ) and mes_num != "01":
             mes_anterior_num = str(int(mes_num) - 1).zfill(2)
             mes_anterior_nombre = meses.get(mes_anterior_num)
+            ruta_mes_anterior: Optional[str] = None
+
             if mes_anterior_nombre:
-                ruta_mes_anterior = None
                 try:
                     for entry in os.scandir(ruta_anio):
                         if entry.is_dir() and entry.name.lower() == mes_anterior_nombre:
@@ -236,14 +237,16 @@ class FileManager:
                             break
                 except OSError:
                     pass
-            if ruta_mes_anterior:
+
+            if ruta_mes_anterior and mes_anterior_nombre:
                 mensajes.append(
-                    f"No se encontraron archivos en '{mes_nombre}'. Buscando en mes anterior: '{mes_anterior_nombre}'."
+                    f"No se encontraron archivos en '{mes_nombre}'. "
+                    f"Buscando en mes anterior: '{mes_anterior_nombre}'."
                 )
                 archivos_encontrados, rutas_sub, msgs_busqueda = buscar_archivos_en_mes(
                     ruta_mes_anterior, mes_anterior_nombre
                 )
-                rutas.update(rutas_sub)  # <-- AÑADIR ESTO
+                rutas.update(rutas_sub)
                 mensajes.extend(msgs_busqueda)
                 rutas["mes"] = ruta_mes_anterior
 
