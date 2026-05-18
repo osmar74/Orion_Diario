@@ -25,6 +25,12 @@ from app.services.load_registry import (
     registrar_carga,
 )
 
+from app.services.schema_validator import (
+    generar_html_errores_longitud,
+    obtener_columnas_texto_sql,
+    validar_longitudes_dataframe,
+)
+
 carga_bp = Blueprint("carga", __name__)
 
 
@@ -408,9 +414,20 @@ def accion_insertar_datos():
     try:
         columnas_insert = list(mapeo_final.keys())
         df_insert = pd.DataFrame()
+
         for col_srv in columnas_insert:
             col_arch = mapeo_final[col_srv]
             df_insert[col_srv] = df[col_arch]
+
+        # Validar longitudes de columnas de texto antes del INSERT.
+        # Esto evita errores SQL como:
+        # String or binary data would be truncated
+        columnas_texto_sql = obtener_columnas_texto_sql(conn, tabla_destino)
+        errores_longitud = validar_longitudes_dataframe(df_insert, columnas_texto_sql)
+
+        if errores_longitud:
+            conn.close()
+            return generar_html_errores_longitud(errores_longitud)
 
         # Conversión de tipos
         for col_srv, tipo_srv in tipos_servidor.items():
