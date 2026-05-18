@@ -1189,6 +1189,44 @@ function construirMonitorAster(config) {
             </div>
         </details>
 
+                <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">🗄️</span>
+                FASE E. Conexión y consulta SQL ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Conecte al servidor ASTER y ejecute la consulta SQL de entidades por fecha.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="asterFechaConsultaSql" style="font-size:0.8rem;">
+                        Fecha consulta:
+                    </label>
+                    <input
+                        id="asterFechaConsultaSql"
+                        type="text"
+                        placeholder="Ejemplo: 20260513"
+                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+
+                    <button type="button" onclick="ejecutarConsultaSqlAster(this)">
+                        Ejecutar consulta SQL ASTER
+                    </button>
+                </div>
+
+                <div class="log-line warning" style="margin-top:8px;">
+                    Servidor ASTER: 10.24.90.101 | Base: gestioncomercial | Tabla: comentarios
+                </div>
+
+                <div id="aster-sql-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Consulta SQL ASTER pendiente de ejecución.
+                    </div>
+                </div>
+            </div>
+        </details>
+
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -1615,6 +1653,43 @@ function analizarEntidadesAster(boton) {
         });
 }
 
+/* ---------- ASTER - FASE E: CONSULTA SQL ---------- */
+
+function ejecutarConsultaSqlAster(boton) {
+    const fechaInput = document.getElementById("asterFechaConsultaSql");
+    const resultado = document.getElementById("aster-sql-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de consulta SQL ASTER.");
+        return;
+    }
+
+    const fechaConsulta =
+        fechaInput?.value ||
+        document.getElementById("asterFechaProceso")?.value ||
+        getInputValue("fechaInput");
+
+    if (!fechaConsulta) {
+        alert("Ingrese la fecha de consulta ASTER. Ejemplo: 20260513.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("fecha_consulta", fechaConsulta);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Ejecutando consulta SQL ASTER...");
+
+    postFormTexto("/accion/aster-consulta-sql", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error ejecutando consulta SQL ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
@@ -1644,6 +1719,7 @@ window.actualizarTotalAsterDesdeRespuesta = actualizarTotalAsterDesdeRespuesta;
 window.buscarYCopiarArchivoAster = buscarYCopiarArchivoAster;
 window.normalizarEncabezadosAster = normalizarEncabezadosAster;
 window.analizarEntidadesAster = analizarEntidadesAster;
+window.ejecutarConsultaSqlAster = ejecutarConsultaSqlAster;
 window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;

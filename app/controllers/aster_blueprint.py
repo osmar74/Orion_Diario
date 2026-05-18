@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import unicodedata
+from datetime import datetime
 from html import escape
 from typing import Any
 
@@ -421,6 +422,183 @@ def _generar_html_entidades_excel_aster(
     return html
 
 
+def _normalizar_fecha_sql_aster(fecha_raw: str) -> str:
+    """
+    Convierte una fecha recibida en distintos formatos a YYYY-MM-DD.
+
+    Acepta:
+    - 20260513
+    - 2026-05-13
+    - 202605_13
+    """
+    fecha_yyyymmdd = _normalizar_fecha_aster(fecha_raw)
+
+    fecha_dt = datetime.strptime(fecha_yyyymmdd, "%Y%m%d")
+
+    return fecha_dt.strftime("%Y-%m-%d")
+
+
+def _obtener_config_mysql_aster() -> dict[str, str]:
+    """
+    Obtiene configuración MySQL ASTER desde variables de entorno.
+    """
+    config = {
+        "host": os.getenv("ASTER_DB_HOST", "").strip(),
+        "user": os.getenv("ASTER_DB_USER", "").strip(),
+        "password": os.getenv("ASTER_DB_PASSWORD", "").strip(),
+        "database": os.getenv("ASTER_DB_NAME", "gestioncomercial").strip(),
+    }
+
+    faltantes = [
+        nombre
+        for nombre, valor in config.items()
+        if nombre != "password" and not valor
+    ]
+
+    if not config["password"]:
+        faltantes.append("password")
+
+    if faltantes:
+        raise ValueError(
+            "Faltan variables de entorno ASTER: "
+            + ", ".join(f"ASTER_DB_{campo.upper()}" for campo in faltantes)
+        )
+
+    return config
+
+
+def _consultar_entidades_sql_aster(fecha_sql: str) -> list[dict[str, Any]]:
+    """
+    Ejecuta la consulta SQL contra el servidor ASTER.
+    """
+    try:
+        import pymysql
+    except ImportError as exc:
+        raise RuntimeError(
+            "No está instalado PyMySQL. Ejecute: pip install PyMySQL"
+        ) from exc
+
+    config = _obtener_config_mysql_aster()
+
+    sql = """
+        SELECT
+            entidad,
+            count(distinct data) as numero
+        FROM comentarios
+        WHERE DATE(fecha) = %s
+        GROUP BY entidad
+        ORDER BY numero DESC
+    """
+
+    conexion = pymysql.connect(
+        host=config["host"],
+        user=config["user"],
+        password=config["password"],
+        database=config["database"],
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(sql, (fecha_sql,))
+            filas = cursor.fetchall()
+    finally:
+        conexion.close()
+
+    resultados: list[dict[str, Any]] = []
+
+    for fila in filas:
+        entidad = str(fila.get("entidad") or "").strip()
+        numero = int(fila.get("numero") or 0)
+
+        resultados.append(
+            {
+                "entidad": entidad,
+                "numero": numero,
+                "SSS": f"'{entidad}'",
+            }
+        )
+
+    return resultados
+
+
+def _generar_html_consulta_sql_aster(
+    fecha_sql: str,
+    resultados: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML de la consulta SQL ASTER.
+    """
+    total_entidades = len(resultados)
+    total_registros = sum(int(fila["numero"]) for fila in resultados)
+
+    if not resultados:
+        return f"""
+        <div class='log-line warning'>
+            ⚠️ La consulta ASTER no devolvió resultados para la fecha {escape(fecha_sql)}.
+        </div>
+        """
+
+    html = "<div class='log-line success'>✅ Consulta SQL ASTER ejecutada correctamente.</div>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen consulta SQL ASTER
+            </th>
+        </tr>
+    """
+
+    filas_resumen = [
+        ("Fecha consultada", fecha_sql),
+        ("Entidades devueltas por SQL", total_entidades),
+        ("Total registros SQL", total_registros),
+    ]
+
+    for etiqueta, valor in filas_resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.9rem; font-weight:bold;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Entidad</th>
+            <th>Número</th>
+            <th>SSS</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(resultados, start=1):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(str(fila["entidad"]))}</b></td>
+            <td style='font-weight:bold;'>{escape(str(fila["numero"]))}</td>
+            <td><code>{escape(str(fila["SSS"]))}</code></td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += (
+        "<div id='aster-sql-data' style='display:none;' "
+        f"data-fecha='{escape(fecha_sql)}' "
+        f"data-total-entidades='{total_entidades}' "
+        f"data-total-registros='{total_registros}'>"
+        "</div>"
+    )
+
+    return html
+
 @aster_bp.route("/accion/aster-ocr-subir", methods=["POST"])
 def accion_aster_ocr_subir():
     """
@@ -741,6 +919,47 @@ def accion_aster_entidades_excel():
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error analizando entidades ASTER: {exc}</div>"
 
+
+@aster_bp.route("/accion/aster-consulta-sql", methods=["POST"])
+def accion_aster_consulta_sql():
+    """
+    Ejecuta consulta SQL ASTER para obtener entidades del día.
+    """
+    try:
+        fecha_raw = request.form.get("fecha_consulta", "").strip()
+
+        if not fecha_raw:
+            fecha_raw = str(
+                session.get("aster_fecha_proceso")
+                or session.get("ultima_fecha_aster")
+                or ""
+            )
+
+        if not fecha_raw:
+            return """
+            <div class='log-line error'>
+                ❌ Debe ingresar la fecha de consulta ASTER.
+            </div>
+            """
+
+        fecha_sql = _normalizar_fecha_sql_aster(fecha_raw)
+        resultados = _consultar_entidades_sql_aster(fecha_sql)
+
+        session["aster_fecha_sql"] = fecha_sql
+        session["aster_resultados_sql"] = resultados
+        session["aster_total_entidades_sql"] = len(resultados)
+        session["aster_total_registros_sql"] = sum(
+            int(fila["numero"]) for fila in resultados
+        )
+
+        return _generar_html_consulta_sql_aster(
+            fecha_sql=fecha_sql,
+            resultados=resultados,
+        )
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error ejecutando consulta SQL ASTER: {escape(str(exc))}</div>"
+    
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])
 def accion_aster_total_actual():
