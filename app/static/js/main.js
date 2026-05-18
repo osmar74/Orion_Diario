@@ -1227,6 +1227,31 @@ function construirMonitorAster(config) {
             </div>
         </details>
 
+
+                <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">🔎</span>
+                FASE F. Depuración y clasificación ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Depure las entidades SQL: primero excluya las que no corresponden a cobranzas %, luego clasifique las restantes como Cobranza % o Integral.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button type="button" onclick="prepararDepuracionAster(this)">
+                        Preparar depuración ASTER
+                    </button>
+                </div>
+
+                <div id="aster-depuracion-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Depuración ASTER pendiente de ejecución.
+                    </div>
+                </div>
+            </div>
+        </details>
+
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -1691,6 +1716,101 @@ function ejecutarConsultaSqlAster(boton) {
         });
 }
 
+/* ---------- ASTER - FASE F: DEPURACIÓN Y CLASIFICACIÓN ---------- */
+
+function prepararDepuracionAster(boton) {
+    const resultado = document.getElementById("aster-depuracion-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de depuración ASTER.");
+        return;
+    }
+
+    const formData = new FormData();
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Preparando depuración ASTER...");
+
+    postFormTexto("/accion/aster-preparar-depuracion", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error preparando depuración ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+function aplicarExclusionesAster(boton) {
+    const resultado = document.getElementById("aster-depuracion-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de depuración ASTER.");
+        return;
+    }
+
+    const checks = document.querySelectorAll(".aster-excluir-checkbox:checked");
+    const formData = new FormData();
+
+    checks.forEach((check) => {
+        formData.append("entidades_excluir", check.value);
+    });
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Aplicando exclusiones ASTER...");
+
+    postFormTexto("/accion/aster-aplicar-exclusiones", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error aplicando exclusiones ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+function guardarClasificacionAster(boton) {
+    const resultado = document.getElementById("aster-depuracion-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de depuración ASTER.");
+        return;
+    }
+
+    const selects = document.querySelectorAll(".aster-clasificacion-select");
+    const clasificaciones = [];
+
+    selects.forEach((select) => {
+        clasificaciones.push({
+            entidad: select.getAttribute("data-entidad") || "",
+            numero: Number(select.getAttribute("data-numero") || 0),
+            SSS: select.getAttribute("data-sss") || "",
+            clasificacion: select.value || "",
+        });
+    });
+
+    const formData = new FormData();
+    formData.append("clasificaciones", JSON.stringify(clasificaciones));
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Guardando clasificación ASTER...");
+
+    postFormTexto("/accion/aster-guardar-clasificacion", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error guardando clasificación ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+
+
+
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
 window.normalizar = normalizar;
@@ -1720,6 +1840,9 @@ window.buscarYCopiarArchivoAster = buscarYCopiarArchivoAster;
 window.normalizarEncabezadosAster = normalizarEncabezadosAster;
 window.analizarEntidadesAster = analizarEntidadesAster;
 window.ejecutarConsultaSqlAster = ejecutarConsultaSqlAster;
+window.prepararDepuracionAster = prepararDepuracionAster;
+window.aplicarExclusionesAster = aplicarExclusionesAster;
+window.guardarClasificacionAster = guardarClasificacionAster;
 window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;

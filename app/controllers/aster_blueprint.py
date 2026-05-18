@@ -7,6 +7,7 @@ Fase A:
 """
 
 import base64
+import json
 import os
 import re
 import shutil
@@ -599,6 +600,299 @@ def _generar_html_consulta_sql_aster(
 
     return html
 
+
+def _obtener_resultados_sql_aster_desde_sesion() -> list[dict[str, Any]]:
+    """
+    Obtiene resultados SQL ASTER guardados en sesión.
+    """
+    resultados = session.get("aster_resultados_sql") or []
+
+    return [
+        {
+            "entidad": str(fila.get("entidad") or "").strip(),
+            "numero": int(fila.get("numero") or 0),
+            "SSS": str(fila.get("SSS") or ""),
+        }
+        for fila in resultados
+        if str(fila.get("entidad") or "").strip()
+    ]
+
+
+def _generar_tabla_entidades_aster(
+    titulo: str,
+    filas: list[dict[str, Any]],
+) -> str:
+    """
+    Genera tabla simple de entidades ASTER.
+    """
+    html = f"""
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='4' style='background:#1e3a5f; color:#fff;'>
+                {escape(titulo)} ({len(filas)})
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Entidad</th>
+            <th>Número</th>
+            <th>SSS</th>
+        </tr>
+    """
+
+    if not filas:
+        html += """
+        <tr>
+            <td colspan='4' style='text-align:center; color:#888;'>
+                Sin registros.
+            </td>
+        </tr>
+        """
+
+    for idx, fila in enumerate(filas, start=1):
+        entidad = str(fila.get("entidad") or "")
+        numero = int(fila.get("numero") or 0)
+        sss = str(fila.get("SSS") or f"'{entidad}'")
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(entidad)}</b></td>
+            <td style='font-weight:bold;'>{numero}</td>
+            <td><code>{escape(sss)}</code></td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+def _generar_html_preparar_depuracion_aster(
+    resultados: list[dict[str, Any]],
+) -> str:
+    """
+    Genera primera tabla para seleccionar registros que no corresponden a cobranzas %.
+    """
+    total_entidades = len(resultados)
+    total_registros = sum(int(fila.get("numero") or 0) for fila in resultados)
+
+    html = """
+    <div class='log-line info'>
+        Seleccione las entidades que NO corresponden a cobranzas %. Luego presione Aplicar exclusiones.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='5' style='background:#1e3a5f; color:#fff;'>
+                Depuración inicial ASTER
+            </th>
+        </tr>
+    """
+
+    resumen = [
+        ("Entidades SQL disponibles", total_entidades),
+        ("Total registros SQL", total_registros),
+    ]
+
+    for etiqueta, valor in resumen:
+        html += f"""
+        <tr>
+            <td colspan='2'><b>{escape(str(etiqueta))}</b></td>
+            <td colspan='3' style='font-weight:bold;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += """
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>Excluir</th>
+            <th>#</th>
+            <th>Entidad</th>
+            <th>Número</th>
+            <th>SSS</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(resultados, start=1):
+        entidad = str(fila.get("entidad") or "")
+        numero = int(fila.get("numero") or 0)
+        sss = str(fila.get("SSS") or f"'{entidad}'")
+
+        entidad_value = escape(entidad, quote=True)
+
+        html += f"""
+        <tr>
+            <td style='text-align:center;'>
+                <input
+                    type='checkbox'
+                    class='aster-excluir-checkbox'
+                    value="{entidad_value}"
+                >
+            </td>
+            <td>{idx}</td>
+            <td><b>{escape(entidad)}</b></td>
+            <td style='font-weight:bold;'>{numero}</td>
+            <td><code>{escape(sss)}</code></td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div style='margin-top:10px;'>
+        <button type='button' onclick='aplicarExclusionesAster(this)'>
+            Aplicar exclusiones ASTER
+        </button>
+    </div>
+    """
+
+    return html
+
+
+def _generar_html_exclusiones_aplicadas_aster(
+    removidos: list[dict[str, Any]],
+    filtrados: list[dict[str, Any]],
+) -> str:
+    """
+    Muestra removidos y tabla filtrada para clasificar Cobranza % / Integral.
+    """
+    html = "<div class='log-line success'>✅ Exclusiones ASTER aplicadas correctamente.</div>"
+
+    html += _generar_tabla_entidades_aster(
+        "Registros removidos por no corresponder a cobranzas %",
+        removidos,
+    )
+
+    html += """
+    <div class='log-line info' style='margin-top:10px;'>
+        Clasifique las entidades restantes como Cobranza % o Integral. Las que deje sin seleccionar quedarán como no seleccionadas.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='5' style='background:#1e3a5f; color:#fff;'>
+                Clasificación de entidades ASTER filtradas
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Entidad</th>
+            <th>Número</th>
+            <th>SSS</th>
+            <th>Clasificación</th>
+        </tr>
+    """
+
+    if not filtrados:
+        html += """
+        <tr>
+            <td colspan='5' style='text-align:center; color:#888;'>
+                Sin entidades disponibles para clasificar.
+            </td>
+        </tr>
+        """
+
+    for idx, fila in enumerate(filtrados, start=1):
+        entidad = str(fila.get("entidad") or "")
+        numero = int(fila.get("numero") or 0)
+        sss = str(fila.get("SSS") or f"'{entidad}'")
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(entidad)}</b></td>
+            <td style='font-weight:bold;'>{numero}</td>
+            <td><code>{escape(sss)}</code></td>
+            <td>
+                <select
+                    class='aster-clasificacion-select'
+                    data-entidad="{escape(entidad, quote=True)}"
+                    data-numero="{numero}"
+                    data-sss="{escape(sss, quote=True)}"
+                    style='padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;'
+                >
+                    <option value=''>No seleccionado</option>
+                    <option value='cobranza'>Cobranza %</option>
+                    <option value='integral'>Integral</option>
+                </select>
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div style='margin-top:10px;'>
+        <button type='button' onclick='guardarClasificacionAster(this)'>
+            Guardar clasificación ASTER
+        </button>
+    </div>
+    """
+
+    return html
+
+
+def _generar_html_clasificacion_final_aster(
+    removidos: list[dict[str, Any]],
+    cobranza: list[dict[str, Any]],
+    integral: list[dict[str, Any]],
+    no_seleccionados: list[dict[str, Any]],
+) -> str:
+    """
+    Muestra resultado final de la depuración y clasificación ASTER.
+    """
+    total_validado = len(cobranza) + len(integral) + len(no_seleccionados)
+
+    html = "<div class='log-line success'>✅ Clasificación ASTER guardada correctamente.</div>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen clasificación ASTER
+            </th>
+        </tr>
+    """
+
+    resumen = [
+        ("Registros removidos", len(removidos)),
+        ("Bases Cobranza %", len(cobranza)),
+        ("Bases Integral", len(integral)),
+        ("No seleccionadas", len(no_seleccionados)),
+        ("Entidades revisadas después de exclusiones", total_validado),
+    ]
+
+    for etiqueta, valor in resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-weight:bold;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += _generar_tabla_entidades_aster("Registros removidos", removidos)
+    html += _generar_tabla_entidades_aster("Seleccionadas como Cobranza %", cobranza)
+    html += _generar_tabla_entidades_aster("Seleccionadas como Integral", integral)
+    html += _generar_tabla_entidades_aster("No seleccionadas", no_seleccionados)
+
+    html += (
+        "<div id='aster-clasificacion-data' style='display:none;' "
+        f"data-removidos='{len(removidos)}' "
+        f"data-cobranza='{len(cobranza)}' "
+        f"data-integral='{len(integral)}' "
+        f"data-no-seleccionados='{len(no_seleccionados)}'>"
+        "</div>"
+    )
+
+    return html
+
+
 @aster_bp.route("/accion/aster-ocr-subir", methods=["POST"])
 def accion_aster_ocr_subir():
     """
@@ -976,3 +1270,121 @@ def accion_aster_total_actual():
         origen="Sesión actual",
         previews=[],
     )
+    
+    
+@aster_bp.route("/accion/aster-preparar-depuracion", methods=["POST"])
+def accion_aster_preparar_depuracion():
+    """
+    Prepara la tabla para excluir entidades que no corresponden a cobranzas %.
+    """
+    try:
+        resultados = _obtener_resultados_sql_aster_desde_sesion()
+
+        if not resultados:
+            return """
+            <div class='log-line error'>
+                ❌ No hay resultados SQL ASTER en sesión. Ejecute primero la Fase E.
+            </div>
+            """
+
+        return _generar_html_preparar_depuracion_aster(resultados)
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error preparando depuración ASTER: {escape(str(exc))}</div>"
+
+
+@aster_bp.route("/accion/aster-aplicar-exclusiones", methods=["POST"])
+def accion_aster_aplicar_exclusiones():
+    """
+    Aplica exclusiones seleccionadas y genera tabla de clasificación.
+    """
+    try:
+        resultados = _obtener_resultados_sql_aster_desde_sesion()
+
+        if not resultados:
+            return """
+            <div class='log-line error'>
+                ❌ No hay resultados SQL ASTER en sesión. Ejecute primero la Fase E.
+            </div>
+            """
+
+        entidades_excluir = set(request.form.getlist("entidades_excluir"))
+
+        removidos = [
+            fila
+            for fila in resultados
+            if str(fila.get("entidad") or "") in entidades_excluir
+        ]
+
+        filtrados = [
+            fila
+            for fila in resultados
+            if str(fila.get("entidad") or "") not in entidades_excluir
+        ]
+
+        session["aster_sql_removidos"] = removidos
+        session["aster_sql_filtrados"] = filtrados
+
+        return _generar_html_exclusiones_aplicadas_aster(
+            removidos=removidos,
+            filtrados=filtrados,
+        )
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error aplicando exclusiones ASTER: {escape(str(exc))}</div>"
+
+
+@aster_bp.route("/accion/aster-guardar-clasificacion", methods=["POST"])
+def accion_aster_guardar_clasificacion():
+    """
+    Guarda clasificación final de entidades ASTER.
+    """
+    try:
+        clasificaciones_raw = request.form.get("clasificaciones", "[]")
+
+        clasificaciones = json.loads(clasificaciones_raw)
+
+        if not isinstance(clasificaciones, list):
+            return "<div class='log-line error'>❌ Formato inválido de clasificación ASTER.</div>"
+
+        removidos = session.get("aster_sql_removidos") or []
+
+        cobranza: list[dict[str, Any]] = []
+        integral: list[dict[str, Any]] = []
+        no_seleccionados: list[dict[str, Any]] = []
+
+        for item in clasificaciones:
+            entidad = str(item.get("entidad") or "").strip()
+            numero = int(item.get("numero") or 0)
+            sss = str(item.get("SSS") or f"'{entidad}'")
+            clasificacion = str(item.get("clasificacion") or "").strip()
+
+            fila = {
+                "entidad": entidad,
+                "numero": numero,
+                "SSS": sss,
+            }
+
+            if clasificacion == "cobranza":
+                cobranza.append(fila)
+            elif clasificacion == "integral":
+                integral.append(fila)
+            else:
+                no_seleccionados.append(fila)
+
+        session["aster_bases_cobranza"] = cobranza
+        session["aster_bases_integral"] = integral
+        session["aster_bases_no_seleccionadas"] = no_seleccionados
+
+        return _generar_html_clasificacion_final_aster(
+            removidos=removidos,
+            cobranza=cobranza,
+            integral=integral,
+            no_seleccionados=no_seleccionados,
+        )
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error guardando clasificación ASTER: {escape(str(exc))}</div>"
+    
+    
+    
