@@ -342,6 +342,10 @@ def accion_comparar_lotes():
 
         wb = Workbook()
         ws = wb.active
+
+        if ws is None:
+            ws = wb.create_sheet("Comparación")
+
         ws.title = "Comparación"
         ws.append(["Lote", "En Discador", "En Lotes"])
         for fila in datos_comparacion:

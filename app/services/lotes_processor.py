@@ -53,7 +53,7 @@ class LotesProcessor:
         df_largo.rename(columns={'Telefono': 'phone_number'}, inplace=True)
         return df_largo.reset_index(drop=True)
 
-    def limpiar_cuenta(self, df: pd.DataFrame) -> (pd.DataFrame, int):
+    def limpiar_cuenta(self, df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
         """
         Vacía la columna 'Cuenta' si existe.
         Retorna (DataFrame, número de filas que tenían dato antes de vaciar).
