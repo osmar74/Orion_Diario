@@ -624,9 +624,8 @@ function seleccionarConexionConsolidado(tipo) {
                     ? "badge-conexion badge-verde"
                     : "badge-conexion badge-rojo";
 
-                badge.textContent = `${exito ? "✅" : "❌"} ${
-                    conexionConsolidado === "local" ? "Local" : "Remoto"
-                }`;
+                badge.textContent = `${exito ? "✅" : "❌"} ${conexionConsolidado === "local" ? "Local" : "Remoto"
+                    }`;
             }
         })
         .catch(() => {
@@ -634,9 +633,8 @@ function seleccionarConexionConsolidado(tipo) {
 
             if (badge) {
                 badge.className = "badge-conexion badge-rojo";
-                badge.textContent = `❌ ${
-                    conexionConsolidado === "local" ? "Local" : "Remoto"
-                }`;
+                badge.textContent = `❌ ${conexionConsolidado === "local" ? "Local" : "Remoto"
+                    }`;
             }
         });
 }
@@ -765,6 +763,288 @@ document.addEventListener("DOMContentLoaded", () => {
 
     actualizarBadgesConexion(false);
 });
+
+
+/* ============================================================
+   SELECTOR TEMPORAL DE MÓDULOS
+   ============================================================ */
+
+const MODULOS_UI = {
+    orion: {
+        botonId: "btnModuloOrion",
+        tituloMonitor: "Monitor de Ejecución",
+    },
+    aister: {
+        botonId: "btnModuloAister",
+        tituloSidebar: "Fases y Pasos de Gestión Diaria de Aister",
+        tituloMonitor: "Monitor de ejecución de Gestión diaria de Aister",
+        descripcion:
+            "Este módulo queda reservado para implementar el flujo diario de Aister. Momentáneamente no ejecuta procesos.",
+        pasos: [
+            "1. Recepción de archivos Aister",
+            "2. Validación de estructura",
+            "3. Procesamiento diario",
+            "4. Comparación y control",
+            "5. Exportación de resultados",
+        ],
+    },
+    consolidar: {
+        botonId: "btnModuloConsolidar",
+        tituloSidebar: "Fases y Pasos para Consolidar Gestión",
+        tituloMonitor: "Monitor de ejecución de Consolidación de gestión",
+        descripcion:
+            "Este módulo queda reservado para consolidar gestiones. Momentáneamente no ejecuta procesos.",
+        pasos: [
+            "1. Selección de gestión",
+            "2. Lectura de archivos consolidados",
+            "3. Validación de datos",
+            "4. Cruce de información",
+            "5. Exportación de consolidado final",
+        ],
+    },
+};
+
+let sidebarOrionOriginal = null;
+let monitorOrionOriginal = null;
+let tituloMonitorOrionOriginal = null;
+
+function obtenerSidebarPrincipal() {
+    return document.getElementById("sidebar");
+}
+
+function obtenerMonitorCentral() {
+    return document.getElementById("monitor-content");
+}
+
+function estaEnPaginaPrincipal() {
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+
+    const rutaActual = window.location.pathname;
+    const esRutaInicio =
+        rutaActual === "/" ||
+        rutaActual === "" ||
+        rutaActual.endsWith("/index");
+
+    return Boolean(sidebar && monitor && esRutaInicio);
+}
+
+function estaEnPaginaLogs() {
+    const rutaActual = window.location.pathname.toLowerCase();
+
+    return (
+        rutaActual.includes("logs") ||
+        rutaActual.includes("log")
+    );
+}
+
+function actualizarLayoutPorPagina() {
+    const sidebar = obtenerSidebarPrincipal();
+    const mainLayout = document.querySelector(".main-layout");
+
+    if (!sidebar) {
+        return;
+    }
+
+    if (estaEnPaginaLogs()) {
+        sidebar.style.display = "none";
+
+        if (mainLayout) {
+            mainLayout.classList.add("sin-sidebar");
+        }
+
+        return;
+    }
+
+    sidebar.style.display = "";
+
+    if (mainLayout) {
+        mainLayout.classList.remove("sin-sidebar");
+    }
+}
+
+
+function obtenerTituloMonitor() {
+    return (
+        document.querySelector(".monitor-header h2") ||
+        document.querySelector(".monitor h2")
+    );
+}
+
+function guardarVistaOrionOriginal() {
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+    const titulo = obtenerTituloMonitor();
+
+    if (sidebar && sidebarOrionOriginal === null) {
+        sidebarOrionOriginal = sidebar.innerHTML;
+    }
+
+    if (monitor && monitorOrionOriginal === null) {
+        monitorOrionOriginal = monitor.innerHTML;
+    }
+
+    if (titulo && tituloMonitorOrionOriginal === null) {
+        tituloMonitorOrionOriginal = titulo.textContent;
+    }
+}
+
+function activarBotonModulo(moduloActivo) {
+    Object.entries(MODULOS_UI).forEach(([modulo, config]) => {
+        const boton = document.getElementById(config.botonId);
+
+        if (boton) {
+            boton.classList.toggle("active", modulo === moduloActivo);
+        }
+    });
+}
+
+function construirSidebarTemporal(config) {
+    const pasosHtml = config.pasos
+        .map((paso) => `<li>${paso}</li>`)
+        .join("");
+
+    return `
+        <div class="sidebar-columns modulo-placeholder-sidebar">
+            <div class="sidebar-fases-col" style="width:100%; padding-left:0;">
+                <details open>
+                    <summary>${config.tituloSidebar}</summary>
+                    <div class="fase-actions">
+                        <div class="log-line info">
+                            ⏳ Módulo en preparación.
+                        </div>
+                        <ul style="margin-left:16px; line-height:1.8; color:#ccc;">
+                            ${pasosHtml}
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </div>
+    `;
+}
+
+function construirMonitorTemporal(config) {
+    const pasosHtml = config.pasos
+        .map((paso) => `<li>${paso}</li>`)
+        .join("");
+
+    return `
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">🧩</span>
+                ${config.tituloMonitor}
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    ${config.descripcion}
+                </div>
+
+                <table class="dataframe" style="width:100%; margin-top:10px;">
+                    <tr style="background:#1e3a5f; color:#fff;">
+                        <th>Estado</th>
+                        <th>Descripción</th>
+                    </tr>
+                    <tr>
+                        <td><b>Temporal</b></td>
+                        <td>La interfaz del módulo ya está separada visualmente.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Siguiente paso</b></td>
+                        <td>Implementar sus fases reales cuando se defina el flujo operativo.</td>
+                    </tr>
+                </table>
+
+                <div style="margin-top:12px;">
+                    <b>Fases previstas:</b>
+                    <ul style="margin-left:18px; margin-top:6px; line-height:1.8;">
+                        ${pasosHtml}
+                    </ul>
+                </div>
+            </div>
+        </details>
+    `;
+}
+
+function restaurarModuloOrion() {
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+    const titulo = obtenerTituloMonitor();
+
+    if (sidebar && sidebarOrionOriginal !== null) {
+        sidebar.innerHTML = sidebarOrionOriginal;
+    }
+
+    if (monitor && monitorOrionOriginal !== null) {
+        monitor.innerHTML = monitorOrionOriginal;
+    }
+
+    if (titulo) {
+        titulo.textContent = tituloMonitorOrionOriginal || "Monitor de Ejecución";
+    }
+}
+
+function mostrarModuloTemporal(modulo) {
+    const config = MODULOS_UI[modulo];
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+    const titulo = obtenerTituloMonitor();
+
+    if (!config || modulo === "orion") {
+        restaurarModuloOrion();
+        return;
+    }
+
+    if (sidebar) {
+        sidebar.innerHTML = construirSidebarTemporal(config);
+    }
+
+    if (monitor) {
+        monitor.innerHTML = construirMonitorTemporal(config);
+    }
+
+    if (titulo) {
+        titulo.textContent = config.tituloMonitor;
+    }
+}
+
+function seleccionarModulo(modulo) {
+    const moduloNormalizado = MODULOS_UI[modulo] ? modulo : "orion";
+
+    localStorage.setItem("moduloActivoOrionDiario", moduloNormalizado);
+
+    if (!estaEnPaginaPrincipal()) {
+        window.location.href = "/";
+        return;
+    }
+
+    actualizarLayoutPorPagina();
+    guardarVistaOrionOriginal();
+
+    if (moduloNormalizado === "orion") {
+        restaurarModuloOrion();
+    } else {
+        mostrarModuloTemporal(moduloNormalizado);
+    }
+
+    activarBotonModulo(moduloNormalizado);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    actualizarLayoutPorPagina();
+    guardarVistaOrionOriginal();
+
+    const moduloGuardado =
+        localStorage.getItem("moduloActivoOrionDiario") || "orion";
+
+    if (estaEnPaginaPrincipal()) {
+        seleccionarModulo(moduloGuardado);
+    } else {
+        activarBotonModulo(moduloGuardado);
+    }
+});
+
+window.seleccionarModulo = seleccionarModulo;
+
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 
