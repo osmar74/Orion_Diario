@@ -1142,6 +1142,30 @@ function construirMonitorAster(config) {
             </div>
         </details>
 
+                <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">⚙️</span>
+                FASE C. Normalización del Excel ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Normalice los encabezados del archivo ASTER copiado: se quitarán acentos y se reemplazarán espacios, /, *, - por guion bajo.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button type="button" onclick="normalizarEncabezadosAster()">
+                        Normalizar encabezados ASTER
+                    </button>
+                </div>
+
+                <div id="aster-normalizacion-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Encabezados ASTER pendientes de normalización.
+                    </div>
+                </div>
+            </div>
+        </details>
+
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -1442,6 +1466,34 @@ function buscarYCopiarArchivoAster() {
 }
 
 
+/* ---------- ASTER - FASE C: NORMALIZACIÓN DE ENCABEZADOS ---------- */
+
+function normalizarEncabezadosAster() {
+    const resultado = document.getElementById("aster-normalizacion-resultado");
+    const archivoData = document.getElementById("aster-archivo-data");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de normalización ASTER.");
+        return;
+    }
+
+    const rutaArchivo = archivoData?.getAttribute("data-ruta") || "";
+
+    const formData = new FormData();
+    formData.append("ruta_archivo", rutaArchivo);
+
+    resultado.innerHTML = htmlLoading("Normalizando encabezados ASTER...");
+
+    postFormTexto("/accion/aster-normalizar-encabezados", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error normalizando encabezados ASTER: ${err}`);
+        });
+}
+
+
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
 window.normalizar = normalizar;
@@ -1468,3 +1520,4 @@ window.subirOCRAster = subirOCRAster;
 window.consolidarTotalAster = consolidarTotalAster;
 window.actualizarTotalAsterDesdeRespuesta = actualizarTotalAsterDesdeRespuesta;
 window.buscarYCopiarArchivoAster = buscarYCopiarArchivoAster;
+window.normalizarEncabezadosAster = normalizarEncabezadosAster;

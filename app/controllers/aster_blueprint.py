@@ -10,7 +10,10 @@ import base64
 import os
 import re
 import shutil
+import unicodedata
 from typing import Any
+
+import pandas as pd
 
 from flask import Blueprint, request, session
 from werkzeug.utils import secure_filename
@@ -245,6 +248,107 @@ def _generar_html_archivo_aster(
     return html
 
 
+def _normalizar_encabezado_aster(encabezado: Any) -> str:
+    """
+    Normaliza un encabezado ASTER.
+
+    Reglas:
+    - Quitar acentos.
+    - Reemplazar espacios, /, *, - por _
+    - Eliminar caracteres especiales no necesarios.
+    - Colapsar múltiples guiones bajos.
+    """
+    texto = str(encabezado).strip()
+
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(car for car in texto if not unicodedata.combining(car))
+
+    texto = re.sub(r"[\s/\*\-]+", "_", texto)
+    texto = re.sub(r"[^A-Za-z0-9_]", "", texto)
+    texto = re.sub(r"_+", "_", texto)
+    texto = texto.strip("_")
+
+    if not texto:
+        texto = "Columna"
+
+    return texto
+
+
+def _normalizar_lista_encabezados_aster(columnas: list[Any]) -> list[str]:
+    """
+    Normaliza una lista de encabezados y evita nombres duplicados.
+    """
+    columnas_normalizadas: list[str] = []
+    contador: dict[str, int] = {}
+
+    for columna in columnas:
+        nombre_base = _normalizar_encabezado_aster(columna)
+
+        if nombre_base not in contador:
+            contador[nombre_base] = 1
+            columnas_normalizadas.append(nombre_base)
+            continue
+
+        contador[nombre_base] += 1
+        columnas_normalizadas.append(f"{nombre_base}_{contador[nombre_base]}")
+
+    return columnas_normalizadas
+
+
+def _generar_html_normalizacion_aster(
+    ruta_archivo: str,
+    columnas_originales: list[Any],
+    columnas_normalizadas: list[str],
+) -> str:
+    """
+    Genera HTML con tabla comparativa de encabezados originales y normalizados.
+    """
+    html = "<div class='log-line success'>✅ Encabezados ASTER normalizados correctamente.</div>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='3' style='background:#1e3a5f; color:#fff;'>
+                Comparación de encabezados ASTER
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Encabezado original</th>
+            <th>Encabezado normalizado</th>
+        </tr>
+    """
+
+    for idx, (original, normalizado) in enumerate(
+        zip(columnas_originales, columnas_normalizadas),
+        start=1,
+    ):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{original}</td>
+            <td><b>{normalizado}</b></td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += f"""
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Archivo actualizado
+            </th>
+        </tr>
+        <tr>
+            <td><b>Ruta</b></td>
+            <td style='font-size:0.75rem; word-break:break-all;'>{ruta_archivo}</td>
+        </tr>
+    </table>
+    """
+
+    return html
+
 @aster_bp.route("/accion/aster-ocr-subir", methods=["POST"])
 def accion_aster_ocr_subir():
     """
@@ -439,6 +543,57 @@ def accion_aster_buscar_archivo():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error buscando archivo ASTER: {exc}</div>"
+
+
+@aster_bp.route("/accion/aster-normalizar-encabezados", methods=["POST"])
+def accion_aster_normalizar_encabezados():
+    """
+    Normaliza los encabezados del archivo ASTER copiado en Fase B.
+    """
+    try:
+        ruta_archivo = request.form.get("ruta_archivo", "").strip()
+
+        if not ruta_archivo:
+            ruta_archivo = str(session.get("aster_archivo_copiado") or "")
+
+        if not ruta_archivo:
+            return """
+            <div class='log-line error'>
+                ❌ No hay archivo ASTER copiado en sesión. Primero ejecute la Fase B.
+            </div>
+            """
+
+        if not os.path.isfile(ruta_archivo):
+            return f"""
+            <div class='log-line error'>
+                ❌ El archivo ASTER no existe en la ruta indicada.
+            </div>
+            <div class='log-line warning'>
+                Ruta: <code>{ruta_archivo}</code>
+            </div>
+            """
+
+        df = pd.read_excel(ruta_archivo, dtype=str)
+
+        columnas_originales = list(df.columns)
+        columnas_normalizadas = _normalizar_lista_encabezados_aster(columnas_originales)
+
+        df.columns = columnas_normalizadas
+        df.to_excel(ruta_archivo, index=False)
+
+        session["aster_archivo_normalizado"] = ruta_archivo
+        session["aster_columnas_originales"] = [str(col) for col in columnas_originales]
+        session["aster_columnas_normalizadas"] = columnas_normalizadas
+
+        return _generar_html_normalizacion_aster(
+            ruta_archivo=ruta_archivo,
+            columnas_originales=columnas_originales,
+            columnas_normalizadas=columnas_normalizadas,
+        )
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error normalizando encabezados ASTER: {exc}</div>"
+
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])
 def accion_aster_total_actual():
