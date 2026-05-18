@@ -776,16 +776,99 @@ const MODULOS_UI = {
     },
     aister: {
         botonId: "btnModuloAister",
-        tituloSidebar: "Fases y Pasos de Gestión Diaria de Aister",
-        tituloMonitor: "Monitor de ejecución de Gestión diaria de Aister",
+        tituloSidebar: "Fases y Pasos de Gestión Diaria ASTER",
+        tituloMonitor: "Monitor de ejecución de Gestión Diaria ASTER",
         descripcion:
-            "Este módulo queda reservado para implementar el flujo diario de Aister. Momentáneamente no ejecuta procesos.",
-        pasos: [
-            "1. Recepción de archivos Aister",
-            "2. Validación de estructura",
-            "3. Procesamiento diario",
-            "4. Comparación y control",
-            "5. Exportación de resultados",
+            "Módulo para gestionar el proceso diario ASTER: captura del total, búsqueda del archivo After, normalización, conciliación de entidades e inserción final.",
+        fases: [
+            {
+                letra: "A",
+                titulo: "Captura del total diario",
+                icono: "📱",
+                pasos: [
+                    "Verificar en WhatsApp cuántos se hicieron",
+                    "Reconocimiento OCR",
+                    "Ingreso manual del total general",
+                ],
+            },
+            {
+                letra: "B",
+                titulo: "Ubicación y copia del archivo",
+                icono: "📁",
+                pasos: [
+                    "Ubicar ruta local o de red",
+                    "Buscar archivo Excel del día",
+                    "Validar formato AfterYYYYMMDD.xlsx",
+                    "Copiar a data\\YYYYMMDD\\Aster\\aster_YYYYMMDD",
+                    "Crear carpeta si no existe",
+                ],
+            },
+            {
+                letra: "C",
+                titulo: "Normalización del Excel",
+                icono: "⚙️",
+                pasos: [
+                    "Cambiar encabezados",
+                    "Quitar acentos",
+                    "Reemplazar espacios, /, *, - por _",
+                ],
+            },
+            {
+                letra: "D",
+                titulo: "Validación de entidades del Excel",
+                icono: "🧾",
+                pasos: [
+                    "Obtener valores únicos de la columna Entidad",
+                    "Contar cuántas entidades únicas existen",
+                ],
+            },
+            {
+                letra: "E",
+                titulo: "Conexión y consulta ASTER",
+                icono: "🗄️",
+                pasos: [
+                    "Conectar a 10.24.90.101",
+                    "Usuario root",
+                    "Base gestioncomercial",
+                    "Ejecutar consulta SQL por fecha",
+                    "Agregar columna SSS",
+                ],
+            },
+            {
+                letra: "F",
+                titulo: "Depuración y clasificación",
+                icono: "🔎",
+                pasos: [
+                    "Seleccionar registros que no son de cobranzas %",
+                    "Generar tabla filtrada",
+                    "Seleccionar bases de cobranza % e integral",
+                    "Mostrar tablas removidas, seleccionadas y no seleccionadas",
+                ],
+            },
+            {
+                letra: "G",
+                titulo: "Conciliación y validación",
+                icono: "⚖️",
+                pasos: [
+                    "Comparar entidades Excel vs SQL",
+                    "Validar cantidad y match",
+                    "Detectar faltantes o sobrantes",
+                    "Mostrar advertencias",
+                    "Confirmar Información Verificada",
+                ],
+            },
+            {
+                letra: "H",
+                titulo: "Inserción de datos",
+                icono: "⬆️",
+                pasos: [
+                    "Comparar encabezados Excel vs tabla aster_dia_nc",
+                    "Comparar tipos de datos",
+                    "Convertir columnas",
+                    "Validar duplicados",
+                    "Insertar en Aster_Apo.aster_dia_nc",
+                ],
+            },
         ],
     },
     consolidar: {
@@ -899,6 +982,90 @@ function activarBotonModulo(moduloActivo) {
     });
 }
 
+function construirSidebarAster(config) {
+    const fasesHtml = config.fases
+        .map((fase) => {
+            const pasosHtml = fase.pasos
+                .map((paso) => `<li>${paso}</li>`)
+                .join("");
+
+            return `
+                <details class="aster-fase-card" open>
+                    <summary>
+                        <span style="font-weight:700; color:#1e90ff;">
+                            ${fase.letra}
+                        </span>
+                        ${fase.icono} FASE ${fase.letra}. ${fase.titulo}
+                    </summary>
+                    <div class="fase-actions">
+                        <ul style="margin-left:16px; line-height:1.7; color:#ccc;">
+                            ${pasosHtml}
+                        </ul>
+                    </div>
+                </details>
+            `;
+        })
+        .join("");
+
+    return `
+        <div class="sidebar-columns modulo-placeholder-sidebar">
+            <div class="sidebar-fases-col" style="width:100%; padding-left:0;">
+                <div class="log-line info" style="margin-bottom:10px;">
+                    🧩 ${config.tituloSidebar}
+                </div>
+                ${fasesHtml}
+            </div>
+        </div>
+    `;
+}
+
+function construirMonitorAster(config) {
+    const tarjetasFases = config.fases
+        .map((fase) => {
+            const pasosHtml = fase.pasos
+                .map((paso) => `<li>${paso}</li>`)
+                .join("");
+
+            return `
+                <details class="panel-monitor" open>
+                    <summary>
+                        <span class="panel-icon">${fase.icono}</span>
+                        FASE ${fase.letra}. ${fase.titulo}
+                    </summary>
+                    <div class="panel-body">
+                        <ul style="margin-left:18px; line-height:1.8;">
+                            ${pasosHtml}
+                        </ul>
+                    </div>
+                </details>
+            `;
+        })
+        .join("");
+
+    return `
+        <div class="log-line info" style="margin-bottom:12px;">
+            ${config.descripcion}
+        </div>
+
+        <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
+            <tr style="background:#1e3a5f; color:#fff;">
+                <th>Estado del módulo</th>
+                <th>Descripción</th>
+            </tr>
+            <tr>
+                <td><b>En construcción</b></td>
+                <td>La estructura visual ASTER ya está separada del flujo Orion.</td>
+            </tr>
+            <tr>
+                <td><b>Siguiente implementación</b></td>
+                <td>Captura del total diario por OCR o ingreso manual.</td>
+            </tr>
+        </table>
+
+        ${tarjetasFases}
+    `;
+}
+
 function construirSidebarTemporal(config) {
     const pasosHtml = config.pasos
         .map((paso) => `<li>${paso}</li>`)
@@ -994,6 +1161,22 @@ function mostrarModuloTemporal(modulo) {
         return;
     }
 
+    if (modulo === "aister") {
+        if (sidebar) {
+            sidebar.innerHTML = construirSidebarAster(config);
+        }
+
+        if (monitor) {
+            monitor.innerHTML = construirMonitorAster(config);
+        }
+
+        if (titulo) {
+            titulo.textContent = config.tituloMonitor;
+        }
+
+        return;
+    }
+
     if (sidebar) {
         sidebar.innerHTML = construirSidebarTemporal(config);
     }
@@ -1006,6 +1189,8 @@ function mostrarModuloTemporal(modulo) {
         titulo.textContent = config.tituloMonitor;
     }
 }
+
+
 
 function seleccionarModulo(modulo) {
     const moduloNormalizado = MODULOS_UI[modulo] ? modulo : "orion";
