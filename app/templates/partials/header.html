@@ -6,9 +6,20 @@
         <div class="subheader-left">
             <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar panel">☰</button>
             <div class="modulos">
-                <button class="modulo-btn active" data-modulo="orion">🔹 Gestión Diaria Orion</button>
-                <button class="modulo-btn" data-modulo="aister">🔸 Gestión Diaria Aister</button>
-                <button class="modulo-btn" data-modulo="consolidar">📊 Consolidar Gestión</button>
+                <button id="btnModuloOrion" type="button" class="modulo-btn active" data-modulo="orion"
+                    onclick="seleccionarModulo('orion')">
+                    Gestión Diaria Orion
+                </button>
+
+                <button id="btnModuloAister" type="button" class="modulo-btn" data-modulo="aister"
+                    onclick="seleccionarModulo('aister')">
+                    Gestión Diaria Aister
+                </button>
+
+                <button id="btnModuloConsolidar" type="button" class="modulo-btn" data-modulo="consolidar"
+                    onclick="seleccionarModulo('consolidar')">
+                    Consolidar Gestión
+                </button>
             </div>
         </div>
         <div class="subheader-right">
