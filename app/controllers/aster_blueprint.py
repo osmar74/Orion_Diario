@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import unicodedata
+from html import escape
 from typing import Any
 
 import pandas as pd
@@ -349,6 +350,77 @@ def _generar_html_normalizacion_aster(
 
     return html
 
+def _generar_html_entidades_excel_aster(
+    ruta_archivo: str,
+    total_registros: int,
+    conteo_entidades: list[tuple[str, int]],
+) -> str:
+    """
+    Genera HTML con entidades únicas del Excel ASTER.
+    """
+    total_entidades = len(conteo_entidades)
+    total_registros_con_entidad = sum(cantidad for _, cantidad in conteo_entidades)
+    total_registros_sin_entidad = total_registros - total_registros_con_entidad
+
+    html = "<div class='log-line success'>✅ Entidades ASTER analizadas correctamente.</div>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen de entidades del Excel ASTER
+            </th>
+        </tr>
+    """
+
+    filas_resumen = [
+        ("Archivo analizado", ruta_archivo),
+        ("Registros totales del Excel", total_registros),
+        ("Registros con Entidad", total_registros_con_entidad),
+        ("Registros sin Entidad", total_registros_sin_entidad),
+        ("Entidades únicas encontradas", total_entidades),
+    ]
+
+    for etiqueta, valor in filas_resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Entidad</th>
+            <th>Cantidad de registros</th>
+        </tr>
+    """
+
+    for idx, (entidad, cantidad) in enumerate(conteo_entidades, start=1):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(str(entidad))}</b></td>
+            <td style='font-weight:bold;'>{cantidad}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += (
+        "<div id='aster-entidades-excel-data' style='display:none;' "
+        f"data-total-entidades='{total_entidades}' "
+        f"data-total-registros='{total_registros}'>"
+        "</div>"
+    )
+
+    return html
+
+
 @aster_bp.route("/accion/aster-ocr-subir", methods=["POST"])
 def accion_aster_ocr_subir():
     """
@@ -593,6 +665,81 @@ def accion_aster_normalizar_encabezados():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error normalizando encabezados ASTER: {exc}</div>"
+
+
+@aster_bp.route("/accion/aster-entidades-excel", methods=["POST"])
+def accion_aster_entidades_excel():
+    """
+    Obtiene valores únicos de la columna Entidad del Excel ASTER normalizado.
+    """
+    try:
+        ruta_archivo = request.form.get("ruta_archivo", "").strip()
+
+        if not ruta_archivo:
+            ruta_archivo = str(
+                session.get("aster_archivo_normalizado")
+                or session.get("aster_archivo_copiado")
+                or ""
+            )
+
+        if not ruta_archivo:
+            return """
+            <div class='log-line error'>
+                ❌ No hay archivo ASTER disponible. Ejecute primero Fase B y Fase C.
+            </div>
+            """
+
+        if not os.path.isfile(ruta_archivo):
+            return f"""
+            <div class='log-line error'>
+                ❌ El archivo ASTER no existe en la ruta indicada.
+            </div>
+            <div class='log-line warning'>
+                Ruta: <code>{escape(ruta_archivo)}</code>
+            </div>
+            """
+
+        df = pd.read_excel(ruta_archivo, dtype=str)
+        columnas = list(df.columns)
+
+        if "Entidad" not in columnas:
+            columnas_html = "<br>".join(
+                f"<code>{escape(str(col))}</code>" for col in columnas
+            )
+
+            return f"""
+            <div class='log-line error'>
+                ❌ No se encontró la columna <b>Entidad</b> en el Excel ASTER.
+            </div>
+            <div class='log-line warning'>
+                Columnas disponibles:<br>{columnas_html}
+            </div>
+            """
+
+        serie_entidad = df["Entidad"].fillna("").astype(str).str.strip()
+        serie_valida = serie_entidad[serie_entidad != ""]
+
+        conteo_series = serie_valida.value_counts()
+
+        conteo_entidades = [
+            (str(entidad), int(cantidad))
+            for entidad, cantidad in conteo_series.items()
+        ]
+
+        session["aster_entidades_excel"] = [
+            entidad for entidad, _ in conteo_entidades
+        ]
+        session["aster_total_entidades_excel"] = len(conteo_entidades)
+        session["aster_total_registros_excel"] = len(df)
+
+        return _generar_html_entidades_excel_aster(
+            ruta_archivo=ruta_archivo,
+            total_registros=len(df),
+            conteo_entidades=conteo_entidades,
+        )
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error analizando entidades ASTER: {exc}</div>"
 
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])

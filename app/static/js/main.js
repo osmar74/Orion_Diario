@@ -1065,7 +1065,7 @@ function construirMonitorAster(config) {
                         multiple
                         style="font-size:0.75rem;"
                     >
-                    <button type="button" onclick="subirOCRAster()">
+                    <button type="button" onclick="subirOCRAster(this)">
                         Reconocer OCR ASTER
                     </button>
                 </div>
@@ -1081,7 +1081,7 @@ function construirMonitorAster(config) {
                         placeholder="Ingrese total"
                         style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
                     >
-                    <button type="button" onclick="consolidarTotalAster()">
+                    <button type="button" onclick="consolidarTotalAster(this)">
                         Guardar total ASTER
                     </button>
                 </div>
@@ -1125,7 +1125,7 @@ function construirMonitorAster(config) {
                         style="min-width:320px; padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
                     >
 
-                    <button type="button" onclick="buscarYCopiarArchivoAster()">
+                    <button type="button" onclick="buscarYCopiarArchivoAster(this)">
                         Buscar y copiar archivo ASTER
                     </button>
                 </div>
@@ -1153,7 +1153,7 @@ function construirMonitorAster(config) {
                 </div>
 
                 <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <button type="button" onclick="normalizarEncabezadosAster()">
+                    <button type="button" onclick="normalizarEncabezadosAster(this)">
                         Normalizar encabezados ASTER
                     </button>
                 </div>
@@ -1161,6 +1161,29 @@ function construirMonitorAster(config) {
                 <div id="aster-normalizacion-resultado" style="margin-top:10px;">
                     <div class="log-line warning">
                         ⚠️ Encabezados ASTER pendientes de normalización.
+                    </div>
+                </div>
+            </div>
+        </details>
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">🧾</span>
+                FASE D. Validación de entidades del Excel ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Obtenga las entidades únicas de la columna Entidad y revise cuántos registros tiene cada una.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button type="button" onclick="analizarEntidadesAster(this)">
+                        Analizar entidades ASTER
+                    </button>
+                </div>
+
+                <div id="aster-entidades-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Entidades ASTER pendientes de análisis.
                     </div>
                 </div>
             </div>
@@ -1347,7 +1370,67 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+/* ---------- ASTER - ESTADO VISUAL DE BOTONES ---------- */
 
+function prepararBotonAster(boton) {
+    if (!boton) {
+        return;
+    }
+
+    if (!boton.dataset.textoOriginal) {
+        boton.dataset.textoOriginal = boton.innerHTML;
+    }
+}
+
+function marcarBotonAsterProcesando(boton) {
+    if (!boton) {
+        return;
+    }
+
+    prepararBotonAster(boton);
+
+    boton.disabled = true;
+    boton.innerHTML = "⏳ Procesando...";
+    boton.style.background = "#ffc107";
+    boton.style.borderColor = "#ffc107";
+    boton.style.color = "#111";
+}
+
+function marcarBotonAsterExito(boton) {
+    if (!boton) {
+        return;
+    }
+
+    prepararBotonAster(boton);
+
+    boton.disabled = false;
+    boton.innerHTML = `${boton.dataset.textoOriginal} ✅`;
+    boton.style.background = "#28a745";
+    boton.style.borderColor = "#28a745";
+    boton.style.color = "#fff";
+}
+
+function marcarBotonAsterError(boton) {
+    if (!boton) {
+        return;
+    }
+
+    prepararBotonAster(boton);
+
+    boton.disabled = false;
+    boton.innerHTML = `${boton.dataset.textoOriginal} ❌`;
+    boton.style.background = "#dc3545";
+    boton.style.borderColor = "#dc3545";
+    boton.style.color = "#fff";
+}
+
+function marcarBotonAsterSegunRespuesta(boton, html) {
+    if (esRespuestaExitosa(html)) {
+        marcarBotonAsterExito(boton);
+    } else {
+        marcarBotonAsterError(boton);
+    }
+}
 
 /* ---------- ASTER - FASE A: TOTAL DIARIO ---------- */
 
@@ -1366,7 +1449,7 @@ function actualizarTotalAsterDesdeRespuesta() {
     }
 }
 
-function subirOCRAster() {
+function subirOCRAster(boton) {
     const inputFiles = document.getElementById("asterOcrFiles");
     const resultado = document.getElementById("aster-total-resultado");
 
@@ -1389,19 +1472,22 @@ function subirOCRAster() {
         formData.append("imagenes", inputFiles.files[i]);
     }
 
+    marcarBotonAsterProcesando(boton);
     resultado.innerHTML = htmlLoading("Procesando OCR ASTER...");
 
     postFormTexto("/accion/aster-ocr-subir", formData)
         .then((html) => {
             resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
             actualizarTotalAsterDesdeRespuesta();
         })
         .catch((err) => {
             resultado.innerHTML = htmlError(`Error OCR ASTER: ${err}`);
+            marcarBotonAsterError(boton);
         });
 }
 
-function consolidarTotalAster() {
+function consolidarTotalAster(boton) {
     const input = document.getElementById("manualTotalAster");
     const resultado = document.getElementById("aster-total-resultado");
 
@@ -1423,16 +1509,18 @@ function consolidarTotalAster() {
     postFormTexto("/accion/aster-consolidar-total", formData)
         .then((html) => {
             resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
             actualizarTotalAsterDesdeRespuesta();
         })
         .catch((err) => {
             resultado.innerHTML = htmlError(`Error al guardar total ASTER: ${err}`);
+            marcarBotonAsterError(boton);
         });
 }
 
 /* ---------- ASTER - FASE B: ARCHIVO DEL DÍA ---------- */
 
-function buscarYCopiarArchivoAster() {
+function buscarYCopiarArchivoAster(boton) {
     const fechaInput = document.getElementById("asterFechaProceso");
     const rutaInput = document.getElementById("asterRutaBase");
     const resultado = document.getElementById("aster-archivo-resultado");
@@ -1459,16 +1547,18 @@ function buscarYCopiarArchivoAster() {
     postFormTexto("/accion/aster-buscar-archivo", formData)
         .then((html) => {
             resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
         })
         .catch((err) => {
             resultado.innerHTML = htmlError(`Error buscando archivo ASTER: ${err}`);
+            marcarBotonAsterError(boton);
         });
 }
 
 
 /* ---------- ASTER - FASE C: NORMALIZACIÓN DE ENCABEZADOS ---------- */
 
-function normalizarEncabezadosAster() {
+function normalizarEncabezadosAster(boton) {
     const resultado = document.getElementById("aster-normalizacion-resultado");
     const archivoData = document.getElementById("aster-archivo-data");
 
@@ -1487,9 +1577,41 @@ function normalizarEncabezadosAster() {
     postFormTexto("/accion/aster-normalizar-encabezados", formData)
         .then((html) => {
             resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
         })
         .catch((err) => {
             resultado.innerHTML = htmlError(`Error normalizando encabezados ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+/* ---------- ASTER - FASE D: ENTIDADES DEL EXCEL ---------- */
+
+function analizarEntidadesAster(boton) {
+    const resultado = document.getElementById("aster-entidades-resultado");
+    const archivoData = document.getElementById("aster-archivo-data");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de entidades ASTER.");
+        return;
+    }
+
+    const rutaArchivo = archivoData?.getAttribute("data-ruta") || "";
+
+    const formData = new FormData();
+    formData.append("ruta_archivo", rutaArchivo);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Analizando entidades ASTER...");
+
+    postFormTexto("/accion/aster-entidades-excel", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error analizando entidades ASTER: ${err}`);
+            marcarBotonAsterError(boton);
         });
 }
 
@@ -1521,3 +1643,7 @@ window.consolidarTotalAster = consolidarTotalAster;
 window.actualizarTotalAsterDesdeRespuesta = actualizarTotalAsterDesdeRespuesta;
 window.buscarYCopiarArchivoAster = buscarYCopiarArchivoAster;
 window.normalizarEncabezadosAster = normalizarEncabezadosAster;
+window.analizarEntidadesAster = analizarEntidadesAster;
+window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
+window.marcarBotonAsterExito = marcarBotonAsterExito;
+window.marcarBotonAsterError = marcarBotonAsterError;
