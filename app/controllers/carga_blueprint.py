@@ -32,7 +32,40 @@ from app.services.schema_validator import (
 )
 
 carga_bp = Blueprint("carga", __name__)
+def generar_tabla_estadisticas_consolidado(titulo, filas):
+    """
+    Genera una tabla HTML simple para mostrar estadísticas del consolidado.
 
+    filas debe ser una lista de tuplas:
+    [
+        ("Descripción", valor),
+        ...
+    ]
+    """
+    html = f"""
+    <div style='margin-top:10px; margin-bottom:10px;'>
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr>
+                <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                    {titulo}
+                </th>
+            </tr>
+    """
+
+    for descripcion, valor in filas:
+        html += f"""
+            <tr>
+                <td><b>{descripcion}</b></td>
+                <td style='font-size:1rem; font-weight:bold;'>{valor}</td>
+            </tr>
+        """
+
+    html += """
+        </table>
+    </div>
+    """
+
+    return html
 
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
 def accion_probar_conexion():
@@ -694,18 +727,63 @@ def accion_consolidar_aplicar():
 
     # Aplicar limpieza: para las filas con fecha de compromiso y cuyo Descripción esté en seleccionados,
     # reemplazar la fecha por vacío
-    mask_fecha = df["Fecha_Compromiso"].notna() & (df["Fecha_Compromiso"] != "")
+
+    # Estadísticas antes de aplicar limpieza
+    total_inicial = len(df)
+
+    mask_fecha_antes = (
+        df["Fecha_Compromiso"].notna()
+        & (df["Fecha_Compromiso"].astype(str).str.strip() != "")
+    )
+
+    registros_con_fecha_antes = int(mask_fecha_antes.sum())
+    registros_sin_fecha_antes = int(total_inicial - registros_con_fecha_antes)
+
+    # Aplicar limpieza: para las filas con fecha de compromiso y cuyo Descripción esté en seleccionados,
+    # reemplazar la fecha por vacío
     mask_seleccionados = df["Descripcion Codigo De Gestion"].isin(seleccionados)
-    df.loc[mask_fecha & mask_seleccionados, "Fecha_Compromiso"] = None
+    mask_limpiar = mask_fecha_antes & mask_seleccionados
+
+    registros_seleccionados_por_filtro = int(mask_seleccionados.sum())
+    registros_limpiados = int(mask_limpiar.sum())
+
+    df.loc[mask_limpiar, "Fecha_Compromiso"] = None
+
+    # Estadísticas después de aplicar limpieza
+    mask_fecha_despues = (
+        df["Fecha_Compromiso"].notna()
+        & (df["Fecha_Compromiso"].astype(str).str.strip() != "")
+    )
+
+    registros_con_fecha_despues = int(mask_fecha_despues.sum())
+    registros_sin_fecha_despues = int(total_inicial - registros_con_fecha_despues)
+    registros_exportados = len(df)
+
+    html_estadisticas = generar_tabla_estadisticas_consolidado(
+        "Estadísticas después de aplicar filtro y exportar",
+        [
+            ("Registros cargados desde consulta temporal", total_inicial),
+            ("Descripciones seleccionadas", len(seleccionados)),
+            ("Registros con Fecha_Compromiso antes", registros_con_fecha_antes),
+            ("Registros sin Fecha_Compromiso antes", registros_sin_fecha_antes),
+            ("Registros que coinciden con las descripciones seleccionadas", registros_seleccionados_por_filtro),
+            ("Registros limpiados", registros_limpiados),
+            ("Registros con Fecha_Compromiso después", registros_con_fecha_despues),
+            ("Registros sin Fecha_Compromiso después", registros_sin_fecha_despues),
+            ("Registros exportados", registros_exportados),
+        ],
+    )
 
     # Exportar a Excel
     nombre_archivo = f"{fecha.replace('-', '')}_Gestion_orion.xlsx"
     ruta_guardado = os.path.join(DATA_DIR, nombre_archivo)
     df.to_excel(ruta_guardado, index=False)
 
+    html = html_estadisticas
     # Generar enlace de descarga
     html = "<div class='log-line success'>✅ Excel generado correctamente.</div>"
     html += f"<p style='font-size:0.8rem;'><b>Archivo:</b> {nombre_archivo}</p>"
     html += f"<p><a href='/descargar/{nombre_archivo}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
     html += f"<p style='font-size:0.7rem; color:#888;'>Ruta: {ruta_guardado}</p>"
+    html = html_estadisticas + html
     return html
