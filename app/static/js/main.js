@@ -1094,6 +1094,54 @@ function construirMonitorAster(config) {
             </div>
         </details>
 
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">📁</span>
+                FASE B. Ubicación y copia del archivo ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Busque el archivo Excel del día con formato AfterYYYYMMDD.xlsx y cópielo a la carpeta local del proceso.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="asterFechaProceso" style="font-size:0.8rem;">
+                        Fecha proceso:
+                    </label>
+                    <input
+                        id="asterFechaProceso"
+                        type="text"
+                        placeholder="Ejemplo: 20260429"
+                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+
+                    <label for="asterRutaBase" style="font-size:0.8rem;">
+                        Ruta base opcional:
+                    </label>
+                    <input
+                        id="asterRutaBase"
+                        type="text"
+                        placeholder="Opcional: ruta local o red"
+                        style="min-width:320px; padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+
+                    <button type="button" onclick="buscarYCopiarArchivoAster()">
+                        Buscar y copiar archivo ASTER
+                    </button>
+                </div>
+
+                <div class="log-line warning" style="margin-top:8px;">
+                    Rutas por defecto: Z:\\COBRANZA %\\... o \\\\10.24.90.118\\COBRANZA %\\...
+                </div>
+
+                <div id="aster-archivo-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Archivo ASTER pendiente de búsqueda.
+                    </div>
+                </div>
+            </div>
+        </details>
+
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -1358,7 +1406,40 @@ function consolidarTotalAster() {
         });
 }
 
+/* ---------- ASTER - FASE B: ARCHIVO DEL DÍA ---------- */
 
+function buscarYCopiarArchivoAster() {
+    const fechaInput = document.getElementById("asterFechaProceso");
+    const rutaInput = document.getElementById("asterRutaBase");
+    const resultado = document.getElementById("aster-archivo-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de resultado del archivo ASTER.");
+        return;
+    }
+
+    const fechaProceso = fechaInput?.value || getInputValue("fechaInput");
+    const rutaBase = rutaInput?.value || "";
+
+    if (!fechaProceso) {
+        alert("Ingrese la fecha del proceso ASTER. Ejemplo: 20260429.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("fecha_proceso", fechaProceso);
+    formData.append("ruta_base", rutaBase);
+
+    resultado.innerHTML = htmlLoading("Buscando y copiando archivo ASTER...");
+
+    postFormTexto("/accion/aster-buscar-archivo", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error buscando archivo ASTER: ${err}`);
+        });
+}
 
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
@@ -1386,3 +1467,4 @@ window.aplicarFiltroYExportar = aplicarFiltroYExportar;
 window.subirOCRAster = subirOCRAster;
 window.consolidarTotalAster = consolidarTotalAster;
 window.actualizarTotalAsterDesdeRespuesta = actualizarTotalAsterDesdeRespuesta;
+window.buscarYCopiarArchivoAster = buscarYCopiarArchivoAster;
