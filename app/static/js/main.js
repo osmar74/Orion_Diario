@@ -1047,6 +1047,53 @@ function construirMonitorAster(config) {
             ${config.descripcion}
         </div>
 
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">📱</span>
+                FASE A. Captura del total diario ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Verifique en WhatsApp cuántos registros se realizaron. Puede usar OCR o ingresar el total manualmente.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <input
+                        id="asterOcrFiles"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style="font-size:0.75rem;"
+                    >
+                    <button type="button" onclick="subirOCRAster()">
+                        Reconocer OCR ASTER
+                    </button>
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="manualTotalAster" style="font-size:0.8rem;">
+                        Total general ASTER:
+                    </label>
+                    <input
+                        id="manualTotalAster"
+                        type="number"
+                        min="0"
+                        placeholder="Ingrese total"
+                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+                    <button type="button" onclick="consolidarTotalAster()">
+                        Guardar total ASTER
+                    </button>
+                </div>
+
+                <div id="aster-total-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Total ASTER pendiente de captura.
+                    </div>
+                </div>
+            </div>
+        </details>
+
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -1228,11 +1275,94 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-window.seleccionarModulo = seleccionarModulo;
+
+
+/* ---------- ASTER - FASE A: TOTAL DIARIO ---------- */
+
+function actualizarTotalAsterDesdeRespuesta() {
+    const data = document.getElementById("aster-total-data");
+
+    if (!data) {
+        return;
+    }
+
+    const total = data.getAttribute("data-total");
+    const input = document.getElementById("manualTotalAster");
+
+    if (total && input) {
+        input.value = total;
+    }
+}
+
+function subirOCRAster() {
+    const inputFiles = document.getElementById("asterOcrFiles");
+    const resultado = document.getElementById("aster-total-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de resultado ASTER.");
+        return;
+    }
+
+    if (!inputFiles || !inputFiles.files || inputFiles.files.length === 0) {
+        alert("Seleccione al menos una imagen para OCR ASTER.");
+        return;
+    }
+
+    const fecha = getInputValue("fechaInput");
+
+    const formData = new FormData();
+    formData.append("fecha", fecha || "202605_12");
+
+    for (let i = 0; i < inputFiles.files.length; i++) {
+        formData.append("imagenes", inputFiles.files[i]);
+    }
+
+    resultado.innerHTML = htmlLoading("Procesando OCR ASTER...");
+
+    postFormTexto("/accion/aster-ocr-subir", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            actualizarTotalAsterDesdeRespuesta();
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error OCR ASTER: ${err}`);
+        });
+}
+
+function consolidarTotalAster() {
+    const input = document.getElementById("manualTotalAster");
+    const resultado = document.getElementById("aster-total-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de resultado ASTER.");
+        return;
+    }
+
+    if (!input || !input.value) {
+        alert("Ingrese el Total general ASTER.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("total_aster", input.value);
+
+    resultado.innerHTML = htmlLoading("Guardando total ASTER...");
+
+    postFormTexto("/accion/aster-consolidar-total", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            actualizarTotalAsterDesdeRespuesta();
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error al guardar total ASTER: ${err}`);
+        });
+}
+
+
 
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
-
+window.seleccionarModulo = seleccionarModulo;
 window.normalizar = normalizar;
 window.insertarEnPanel = insertarEnPanel;
 window.actualizarTotalesHeader = actualizarTotalesHeader;
@@ -1253,3 +1383,6 @@ window.abrirConsolidado = abrirConsolidado;
 window.seleccionarConexionConsolidado = seleccionarConexionConsolidado;
 window.ejecutarConsultaConsolidado = ejecutarConsultaConsolidado;
 window.aplicarFiltroYExportar = aplicarFiltroYExportar;
+window.subirOCRAster = subirOCRAster;
+window.consolidarTotalAster = consolidarTotalAster;
+window.actualizarTotalAsterDesdeRespuesta = actualizarTotalAsterDesdeRespuesta;
