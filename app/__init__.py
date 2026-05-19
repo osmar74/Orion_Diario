@@ -12,11 +12,13 @@ def create_app():
     from app.controllers.ocr_blueprint import ocr_bp
     from app.controllers.procesamiento_blueprint import proc_bp
     from app.controllers.carga_blueprint import carga_bp
+    from app.controllers.aster_blueprint import aster_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(fases_ab_bp)
     app.register_blueprint(ocr_bp)
     app.register_blueprint(proc_bp)
     app.register_blueprint(carga_bp)
+    app.register_blueprint(aster_bp)
 
     return app
