@@ -1308,6 +1308,12 @@ function construirMonitorAster(config) {
                     <button type="button" onclick="prepararInsercionAster(this)">
                         Preparar inserción ASTER
                     </button>
+                    <button type="button" onclick="insertarDatosAster(this)">
+                        Insertar datos ASTER
+                    </button>
+                    <div class="log-line warning" style="margin-top:8px;">
+                        La inserción requiere que la Fase G esté validada como Información Verificada.
+                    </div>
                 </div>
                 <div id="aster-conexion-insercion-resultado" style="margin-top:10px;">
                     <div class="log-line warning">
@@ -2014,6 +2020,66 @@ function prepararInsercionAster(boton) {
         });
 }
 
+function insertarDatosAster(boton) {
+    const resultado = document.getElementById("aster-insercion-resultado");
+    const conexionSelect = document.getElementById("asterConexionInsercion");
+    const archivoData = document.getElementById("aster-archivo-data");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de inserción ASTER.");
+        return;
+    }
+
+    const conexion = conexionSelect?.value || "local";
+    const rutaArchivo = archivoData?.getAttribute("data-ruta") || "";
+
+    let confirmarRemoto = "";
+
+    if (conexion === "remoto") {
+        const confirma = confirm(
+            "ATENCIÓN: REMOTO es producción. No se debe usar para pruebas. ¿Confirma insertar datos en REMOTO?"
+        );
+
+        if (!confirma) {
+            return;
+        }
+
+        const texto = prompt(
+            "Para confirmar inserción REMOTA escriba exactamente: SI"
+        );
+
+        if (texto !== "SI") {
+            resultado.innerHTML = htmlError(
+                "Inserción remota cancelada. Confirmación inválida."
+            );
+            marcarBotonAsterError(boton);
+            return;
+        }
+
+        confirmarRemoto = "SI";
+    }
+
+    const formData = new FormData();
+    formData.append("conexion", conexion);
+    formData.append("ruta_archivo", rutaArchivo);
+    formData.append("confirmar_remoto", confirmarRemoto);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Insertando datos ASTER...");
+
+    postFormTexto("/accion/aster-insertar-datos", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error insertando datos ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+
+
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
@@ -2052,5 +2118,7 @@ window.ajustarConciliacionAster = ajustarConciliacionAster;
 window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
 window.prepararInsercionAster = prepararInsercionAster;
 window.probarConexionInsercionAster = probarConexionInsercionAster;
+window.insertarDatosAster = insertarDatosAster;
+
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;

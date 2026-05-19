@@ -12,7 +12,8 @@ import os
 import re
 import shutil
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from html import escape
 from typing import Any
 
@@ -1179,20 +1180,6 @@ def _generar_html_conciliacion_aster(
 
     return html
 
-def _obtener_cadena_sqlserver_aster(conexion: str) -> str:
-    """
-    Devuelve la cadena SQL Server según conexión solicitada.
-
-    local  = pruebas
-    remoto = producción
-    """
-    conexion_normalizada = (conexion or "local").strip().lower()
-
-    if conexion_normalizada == "remoto":
-        return SQL_REMOTO
-
-    return SQL_LOCAL
-
 
 def _valor_config_sql(config: Any, *nombres: str) -> str:
     """
@@ -1277,21 +1264,27 @@ def _obtener_columnas_sqlserver_aster(conexion: str) -> list[dict[str, Any]]:
     cadena = _obtener_cadena_sqlserver_aster(conexion)
 
     sql = """
-        SELECT
-            COLUMN_NAME,
-            DATA_TYPE,
-            IS_NULLABLE,
-            CHARACTER_MAXIMUM_LENGTH,
-            NUMERIC_PRECISION,
-            NUMERIC_SCALE,
-            ORDINAL_POSITION
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = ?
-          AND TABLE_NAME = ?
-        ORDER BY ORDINAL_POSITION
-    """
+            SELECT
+                COLUMN_NAME,
+                DATA_TYPE,
+                IS_NULLABLE,
+                CHARACTER_MAXIMUM_LENGTH,
+                NUMERIC_PRECISION,
+                NUMERIC_SCALE,
+                ORDINAL_POSITION,
+                COLUMNPROPERTY(
+                    OBJECT_ID(TABLE_SCHEMA + '.' + TABLE_NAME),
+                    COLUMN_NAME,
+                    'IsIdentity'
+                ) AS IS_IDENTITY
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = ?
+            AND TABLE_NAME = ?
+            ORDER BY ORDINAL_POSITION
+        """
 
-    conn = pyodbc.connect(cadena)
+    conn = pyodbc.connect(cadena,timeout=10)
+    conn.timeout=120
 
     try:
         cursor = conn.cursor()
@@ -1316,6 +1309,7 @@ def _obtener_columnas_sqlserver_aster(conexion: str) -> list[dict[str, Any]]:
                     "precision": row.NUMERIC_PRECISION,
                     "escala": row.NUMERIC_SCALE,
                     "orden": int(row.ORDINAL_POSITION),
+                    "is_identity": int(row.IS_IDENTITY or 0),
                 }
             )
 
@@ -1346,46 +1340,52 @@ def _obtener_cadena_sqlserver_aster(conexion: str) -> str:
 
 def _tipo_excel_aster(serie: pd.Series) -> str:
     """
-    Detecta un tipo general de columna Excel.
+    Detecta un tipo general de columna Excel sin forzar parseos lentos de fecha.
+
+    Evita warnings de pandas como:
+    Could not infer format...
     """
     serie_no_nula = serie.dropna()
 
     if serie_no_nula.empty:
         return "vacia"
 
-    if pd.api.types.is_integer_dtype(serie_no_nula):
-        return "entero"
-
-    if pd.api.types.is_float_dtype(serie_no_nula):
-        return "decimal"
-
-    if pd.api.types.is_datetime64_any_dtype(serie_no_nula):
-        return "fecha_hora"
-
     valores = serie_no_nula.astype(str).str.strip()
-
-    if valores.empty:
-        return "texto"
-
     valores_no_vacios = valores[valores != ""]
 
     if valores_no_vacios.empty:
         return "texto"
 
-    fechas = pd.to_datetime(valores_no_vacios, errors="coerce", dayfirst=False)
+    muestra = valores_no_vacios.head(200)
 
-    if fechas.notna().mean() >= 0.8:
-        return "fecha_hora"
+    numeros = pd.to_numeric(
+        muestra.str.replace(",", ".", regex=False),
+        errors="coerce",
+    )
 
-    numeros = pd.to_numeric(valores_no_vacios, errors="coerce")
+    porcentaje_numerico = numeros.notna().mean()
 
-    if numeros.notna().mean() >= 0.9:
-        if (numeros.dropna() % 1 == 0).all():
+    if porcentaje_numerico >= 0.9:
+        numeros_validos = numeros.dropna()
+
+        if not numeros_validos.empty and (numeros_validos % 1 == 0).all():
             return "entero"
 
         return "decimal"
 
+    patron_fecha = re.compile(
+        r"^(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})"
+    )
+
+    porcentaje_fecha = muestra.apply(
+        lambda valor: bool(patron_fecha.match(str(valor)))
+    ).mean()
+
+    if porcentaje_fecha >= 0.8:
+        return "fecha_hora"
+
     return "texto"
+
 
 
 def _comparar_excel_vs_sql_aster(
@@ -1554,6 +1554,1155 @@ def _generar_html_preparacion_insercion_aster(
     html += """
     <div id='aster-preparacion-insercion-data' style='display:none;' data-preparado='1'></div>
     """
+
+    return html
+
+
+def _sql_identificador_aster(nombre: str) -> str:
+    """
+    Escapa identificadores SQL Server con corchetes.
+    """
+    return f"[{str(nombre).replace(']', ']]')}]"
+
+
+def _nombre_tabla_sql_aster() -> str:
+    """
+    Devuelve nombre calificado de tabla destino ASTER.
+    """
+    return (
+        f"{_sql_identificador_aster(ASTER_SCHEMA_INSERCION)}."
+        f"{_sql_identificador_aster(ASTER_TABLA_INSERCION)}"
+    )
+
+
+def _es_valor_vacio_aster(valor: Any) -> bool:
+    """
+    Determina si un valor debe enviarse como NULL.
+    """
+    if valor is None:
+        return True
+
+    try:
+        if pd.isna(valor):
+            return True
+    except Exception:
+        pass
+
+    texto = str(valor).strip()
+
+    return texto == "" or texto.lower() in {"nan", "nat", "none", "null"}
+
+def _limpiar_parametro_sql_aster(valor: Any) -> Any:
+    """
+    Limpia valores antes de enviarlos a SQL Server.
+
+    Convierte NaN, NaT, None, 'nan', 'nat', '' a None.
+    Esto evita errores ODBC como Numeric value out of range.
+    """
+    if _es_valor_vacio_aster(valor):
+        return None
+
+    texto = str(valor).strip()
+
+    if texto.lower() in {"nan", "nat", "none", "null"}:
+        return None
+
+    return valor
+
+
+def _normalizar_dataframe_sql_aster(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normaliza un DataFrame antes de INSERT/diagnóstico SQL.
+
+    Fuerza dtype object y reemplaza NaN/NaT por None.
+    """
+    df_normalizado = df.astype(object)
+    df_normalizado = df_normalizado.where(pd.notna(df_normalizado), None)
+
+    return df_normalizado
+
+def _convertir_valor_sql_aster(valor: Any, tipo_sql: str) -> Any:
+    """
+    Convierte un valor del Excel al tipo compatible con SQL Server.
+    """
+    if _es_valor_vacio_aster(valor):
+        return None
+
+    tipo = str(tipo_sql).lower()
+    texto = str(valor).strip()
+
+    if tipo in {"int", "bigint", "smallint", "tinyint"}:
+        numero = pd.to_numeric(texto.replace(",", "."), errors="coerce")
+
+        if pd.isna(numero):
+            return None
+
+        return int(numero)
+
+    if tipo in {"decimal", "numeric", "money", "smallmoney"}:
+        try:
+            return Decimal(texto.replace(",", "."))
+        except InvalidOperation:
+            return None
+
+    if tipo in {"float", "real"}:
+        return float(texto.replace(",", "."))
+
+    if tipo in {"bit"}:
+        texto_lower = texto.lower()
+
+        if texto_lower in {"1", "true", "si", "sí", "yes", "y"}:
+            return 1
+
+        if texto_lower in {"0", "false", "no", "n"}:
+            return 0
+
+        return int(float(texto.replace(",", ".")))
+
+    if tipo in {"date"}:
+        fecha = pd.to_datetime(texto, errors="coerce")
+
+        if pd.isna(fecha):
+            return None
+
+        return fecha.date()
+
+    if tipo in {"datetime", "datetime2", "smalldatetime"}:
+        fecha = pd.to_datetime(texto, errors="coerce")
+
+        if pd.isna(fecha):
+            return None
+
+        return fecha.to_pydatetime()
+
+    if tipo in {"time"}:
+        fecha = pd.to_datetime(texto, errors="coerce")
+
+        if pd.isna(fecha):
+            return texto
+
+        return fecha.time()
+
+    return texto
+
+
+def _preparar_columnas_insert_aster(
+    df: pd.DataFrame,
+    columnas_sql: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Determina columnas comunes entre Excel y SQL para insertar.
+    Excluye columnas identity.
+    Conserva metadatos SQL para validar antes del INSERT.
+    """
+    excel_por_lower = {
+        str(col).lower(): str(col)
+        for col in df.columns
+    }
+
+    columnas_insert: list[dict[str, Any]] = []
+
+    for col_sql in columnas_sql:
+        if int(col_sql.get("is_identity") or 0) == 1:
+            continue
+
+        nombre_sql = str(col_sql["columna"])
+        nombre_excel = excel_por_lower.get(nombre_sql.lower())
+
+        if not nombre_excel:
+            continue
+
+        columnas_insert.append(
+            {
+                "excel": nombre_excel,
+                "sql": nombre_sql,
+                "tipo_sql": str(col_sql["tipo_sql"]),
+                "nullable": str(col_sql["nullable"]),
+                "longitud": col_sql.get("longitud"),
+                "precision": col_sql.get("precision"),
+                "escala": col_sql.get("escala"),
+            }
+        )
+
+    return columnas_insert
+
+
+
+
+def _validar_columnas_minimas_insert_aster(
+    columnas_insert: list[dict[str, Any]],
+) -> str | None:
+    """
+    Valida que existan columnas mínimas para una inserción útil.
+    """
+    nombres = {str(col["sql"]).lower() for col in columnas_insert}
+
+    if not nombres:
+        return "No hay columnas comunes entre Excel y SQL para insertar."
+
+    if "entidad" not in nombres:
+        return "No existe columna Entidad coincidente entre Excel y SQL."
+
+    return None
+
+
+def _construir_dataframe_insert_aster(
+    df: pd.DataFrame,
+    columnas_insert: list[dict[str, Any]],
+) -> pd.DataFrame:
+    """
+    Construye DataFrame con columnas SQL y datos convertidos.
+    """
+    data_convertida: dict[str, list[Any]] = {}
+
+    for col in columnas_insert:
+        nombre_excel = str(col["excel"])
+        nombre_sql = str(col["sql"])
+        tipo_sql = str(col["tipo_sql"])
+
+        data_convertida[nombre_sql] = [
+            _convertir_valor_sql_aster(valor, tipo_sql)
+            for valor in df[nombre_excel].tolist()
+        ]
+
+    return pd.DataFrame(data_convertida)
+
+
+
+def _resolver_columna_sql_aster(
+    columnas_insert: list[dict[str, Any]],
+    posibles_nombres: list[str],
+) -> str | None:
+    """
+    Busca una columna SQL disponible usando varios nombres posibles.
+    """
+    nombres_sql = {
+        str(col["sql"]).lower(): str(col["sql"])
+        for col in columnas_insert
+    }
+
+    for nombre in posibles_nombres:
+        columna = nombres_sql.get(nombre.lower())
+
+        if columna:
+            return columna
+
+    return None
+
+
+def _seleccionar_columnas_clave_duplicados_aster(
+    columnas_insert: list[dict[str, Any]],
+) -> list[str]:
+    """
+    Selecciona la clave obligatoria para validar duplicados ASTER.
+
+    Regla definida:
+    Un registro es duplicado solamente si coinciden estos tres campos:
+
+    - Fecha_Hora
+    - Atendido_por
+    - Codigo
+    """
+    columna_fecha = _resolver_columna_sql_aster(
+        columnas_insert,
+        ["Fecha_Hora", "FechaHora", "Fecha"],
+    )
+
+    columna_atendido_por = _resolver_columna_sql_aster(
+        columnas_insert,
+        [
+            "Atendido_por",
+            "AtendidoPor",
+        ],
+    )
+
+    columna_codigo = _resolver_columna_sql_aster(
+        columnas_insert,
+        ["Codigo", "Código"],
+    )
+
+    columnas_faltantes = []
+
+    if not columna_fecha:
+        columnas_faltantes.append("Fecha_Hora")
+
+    if not columna_atendido_por:
+        columnas_faltantes.append("Atendido_por")
+
+    if not columna_codigo:
+        columnas_faltantes.append("Codigo")
+
+    if columnas_faltantes:
+        raise ValueError(
+            "No se puede validar duplicados ASTER. "
+            "Faltan columnas clave en la comparación Excel vs SQL: "
+            + ", ".join(columnas_faltantes)
+        )
+
+    return [
+        columna_fecha,
+        columna_atendido_por,
+        columna_codigo,
+    ]
+    
+def _info_columna_insert_aster(
+    columna: str,
+    columnas_insert: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """
+    Obtiene metadatos SQL de una columna insertable.
+    """
+    for col in columnas_insert:
+        if str(col["sql"]).lower() == str(columna).lower():
+            return col
+
+    return None
+
+
+def _es_tipo_texto_sql_aster(tipo_sql: str) -> bool:
+    """
+    Indica si un tipo SQL Server es texto y puede requerir COLLATE.
+    """
+    return str(tipo_sql).lower() in {
+        "varchar",
+        "nvarchar",
+        "char",
+        "nchar",
+        "text",
+        "ntext",
+    }
+    
+    
+def _tipo_sql_temporal_aster(columna: str, columnas_insert: list[dict[str, Any]]) -> str:
+    """
+    Devuelve tipo SQL seguro para crear columna en tabla temporal.
+
+    En columnas texto se agrega COLLATE DATABASE_DEFAULT para evitar conflictos
+    entre la base real y tempdb.
+    """
+    info = _info_columna_insert_aster(columna, columnas_insert)
+
+    if not info:
+        return "NVARCHAR(4000) COLLATE DATABASE_DEFAULT"
+
+    tipo = str(info.get("tipo_sql") or "").lower()
+    longitud = info.get("longitud")
+    precision = info.get("precision")
+    escala = info.get("escala")
+
+    if tipo in {"varchar", "char"}:
+        if not longitud or int(longitud) <= 0 or int(longitud) > 4000:
+            return "VARCHAR(4000) COLLATE DATABASE_DEFAULT"
+        return f"VARCHAR({int(longitud)}) COLLATE DATABASE_DEFAULT"
+
+    if tipo in {"nvarchar", "nchar"}:
+        if not longitud or int(longitud) <= 0 or int(longitud) > 4000:
+            return "NVARCHAR(4000) COLLATE DATABASE_DEFAULT"
+        return f"NVARCHAR({int(longitud)}) COLLATE DATABASE_DEFAULT"
+
+    if tipo in {"int", "bigint", "smallint", "tinyint"}:
+        return tipo.upper()
+
+    if tipo in {"decimal", "numeric"}:
+        p = int(precision or 18)
+        s = int(escala or 0)
+        return f"DECIMAL({p},{s})"
+
+    if tipo in {"float", "real"}:
+        return "FLOAT"
+
+    if tipo in {"bit"}:
+        return "BIT"
+
+    if tipo in {"date"}:
+        return "DATE"
+
+    if tipo in {"datetime", "datetime2", "smalldatetime"}:
+        return "DATETIME2"
+
+    if tipo in {"time"}:
+        return "TIME"
+
+    return "NVARCHAR(4000) COLLATE DATABASE_DEFAULT"
+
+
+
+
+def _contar_duplicados_sql_aster(
+    cursor: Any,
+    df_insert: pd.DataFrame,
+    columnas_clave: list[str],
+    columnas_insert: list[dict[str, Any]],
+    limite_ejemplos: int = 10,
+) -> tuple[int, list[dict[str, Any]]]:
+    """
+    Verifica duplicados usando tabla temporal SQL Server.
+
+    Clave definida:
+    Fecha_Hora + Atendido_por + Codigo
+
+    Se detiene rápido si encuentra duplicados.
+    """
+    if df_insert.empty or not columnas_clave:
+        return 0, []
+
+    # 1. Detectar duplicados dentro del mismo Excel primero.
+    duplicados_excel = df_insert.duplicated(subset=columnas_clave, keep=False)
+
+    if duplicados_excel.any():
+        ejemplos: list[dict[str, Any]] = []
+
+        for _, fila in df_insert.loc[duplicados_excel, columnas_clave].head(
+            limite_ejemplos
+        ).iterrows():
+            ejemplos.append(
+                {
+                    columna: fila[columna]
+                    for columna in columnas_clave
+                }
+            )
+
+        return int(duplicados_excel.sum()), ejemplos
+
+    # 2. Crear tabla temporal con claves únicas del Excel.
+    cursor.execute(
+        "IF OBJECT_ID('tempdb..#aster_claves') IS NOT NULL DROP TABLE #aster_claves"
+    )
+
+    columnas_temp = []
+
+    for columna in columnas_clave:
+        tipo_temp = _tipo_sql_temporal_aster(columna, columnas_insert)
+        columnas_temp.append(f"{_sql_identificador_aster(columna)} {tipo_temp} NULL")
+
+    cursor.execute(
+        "CREATE TABLE #aster_claves ("
+        + ", ".join(columnas_temp)
+        + ")"
+    )
+
+    df_claves = df_insert[columnas_clave].drop_duplicates().copy()
+    df_claves = df_claves.where(pd.notna(df_claves), None)
+
+    columnas_sql = ", ".join(
+        _sql_identificador_aster(columna)
+        for columna in columnas_clave
+    )
+    placeholders = ", ".join("?" for _ in columnas_clave)
+
+    sql_insert_temp = f"""
+        INSERT INTO #aster_claves ({columnas_sql})
+        VALUES ({placeholders})
+    """
+
+    valores_temp = [
+        tuple(
+            _limpiar_parametro_sql_aster(row[columna])
+            for columna in columnas_clave
+        )
+        for _, row in df_claves.iterrows()
+    ]
+
+    cursor.fast_executemany = True
+    cursor.executemany(sql_insert_temp, valores_temp)
+
+    # 3. Buscar solo primeros duplicados y detener.
+    tabla = _nombre_tabla_sql_aster()
+
+    condiciones_join = []
+
+    for columna in columnas_clave:
+        col = _sql_identificador_aster(columna)
+        info_columna = _info_columna_insert_aster(columna, columnas_insert)
+        tipo_sql = str(info_columna.get("tipo_sql") or "") if info_columna else ""
+
+        if _es_tipo_texto_sql_aster(tipo_sql):
+            condiciones_join.append(
+                f"""(
+                    (t.{col} COLLATE DATABASE_DEFAULT = k.{col} COLLATE DATABASE_DEFAULT)
+                    OR (t.{col} IS NULL AND k.{col} IS NULL)
+                )"""
+            )
+        else:
+            condiciones_join.append(
+                f"((t.{col} = k.{col}) OR (t.{col} IS NULL AND k.{col} IS NULL))"
+            )
+
+    join_sql = " AND ".join(condiciones_join)
+
+    columnas_select = ", ".join(
+        f"t.{_sql_identificador_aster(columna)}"
+        for columna in columnas_clave
+    )
+
+    sql_ejemplos = f"""
+        SELECT TOP ({limite_ejemplos})
+            {columnas_select}
+        FROM {tabla} t
+        INNER JOIN #aster_claves k
+            ON {join_sql}
+    """
+
+    cursor.execute(sql_ejemplos)
+    rows = cursor.fetchall()
+
+    ejemplos: list[dict[str, Any]] = []
+
+    for row in rows:
+        ejemplo = {}
+
+        for idx, columna in enumerate(columnas_clave):
+            ejemplo[columna] = row[idx]
+
+        ejemplos.append(ejemplo)
+
+    if ejemplos:
+        # No hacemos COUNT completo para evitar demoras.
+        # Con encontrar duplicados ya se bloquea la inserción.
+        return len(ejemplos), ejemplos
+
+    return 0, []
+
+
+
+
+def _generar_html_duplicados_aster(
+    total_duplicados: int,
+    columnas_clave: list[str],
+    ejemplos: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML de bloqueo por duplicados.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Inserción ASTER bloqueada. Se detectaron {total_duplicados} registros posiblemente duplicados.
+    </div>
+    <div class='log-line warning'>
+        No se insertó ningún registro. Revise los datos o limpie la carga previa si corresponde.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Validación anti-duplicados ASTER
+            </th>
+        </tr>
+        <tr>
+            <td><b>Columnas usadas como clave</b></td>
+            <td>{escape(", ".join(columnas_clave))}</td>
+        </tr>
+        <tr>
+            <td><b>Duplicados detectados</b></td>
+            <td>{total_duplicados}</td>
+        </tr>
+    </table>
+    """
+
+    if ejemplos:
+        html += """
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr style='background:#1e3a5f; color:#fff;'>
+                <th>#</th>
+        """
+
+        for columna in columnas_clave:
+            html += f"<th>{escape(columna)}</th>"
+
+        html += "</tr>"
+
+        for idx, ejemplo in enumerate(ejemplos, start=1):
+            html += f"<tr><td>{idx}</td>"
+
+            for columna in columnas_clave:
+                html += f"<td>{escape(str(ejemplo.get(columna, '')))}</td>"
+
+            html += "</tr>"
+
+        html += "</table>"
+
+    return html
+
+
+def _crear_tabla_temporal_debug_aster(
+    cursor: Any,
+    columnas: list[str],
+    nombre_temp: str = "#aster_insert_debug",
+) -> None:
+    """
+    Crea una tabla temporal con los mismos tipos de columnas que la tabla real.
+    No toca la tabla destino.
+    """
+    tabla = _nombre_tabla_sql_aster()
+
+    columnas_select = ", ".join(
+        _sql_identificador_aster(columna)
+        for columna in columnas
+    )
+
+    cursor.execute(
+        f"IF OBJECT_ID('tempdb..{nombre_temp}') IS NOT NULL DROP TABLE {nombre_temp}"
+    )
+
+    cursor.execute(
+        f"""
+        SELECT TOP 0 {columnas_select}
+        INTO {nombre_temp}
+        FROM {tabla}
+        """
+    )
+
+
+def _probar_insert_temporal_aster(
+    cursor: Any,
+    df_prueba: pd.DataFrame,
+    nombre_temp: str = "#aster_insert_debug",
+) -> None:
+    """
+    Intenta insertar en tabla temporal para validar conversión SQL Server.
+    """
+    columnas = list(df_prueba.columns)
+
+    columnas_sql = ", ".join(
+        _sql_identificador_aster(columna)
+        for columna in columnas
+    )
+    placeholders = ", ".join("?" for _ in columnas)
+
+    sql_insert = f"""
+        INSERT INTO {nombre_temp} ({columnas_sql})
+        VALUES ({placeholders})
+    """
+
+    valores = [
+        tuple(
+            _limpiar_parametro_sql_aster(row[columna])
+            for columna in columnas
+        )
+        for _, row in df_prueba.iterrows()
+    ]
+
+    cursor.fast_executemany = True
+    cursor.executemany(sql_insert, valores)
+
+
+def _diagnosticar_insert_sql_aster(
+    conn: Any,
+    df_insert: pd.DataFrame,
+    columnas_insert: list[dict[str, Any]],
+    tamano_lote: int = 500,
+) -> list[dict[str, Any]]:
+    """
+    Diagnostica errores reales de SQL Server antes de insertar en la tabla real.
+
+    Usa una tabla temporal con los mismos tipos de columnas.
+    Si SQL Server rechaza algún valor, identifica fila y columna probable.
+    """
+    errores: list[dict[str, Any]] = []
+
+    if df_insert.empty:
+        return errores
+
+    columnas = list(df_insert.columns)
+
+    cursor = conn.cursor()
+    
+
+    for inicio in range(0, len(df_insert), tamano_lote):
+        bloque = df_insert.iloc[inicio : inicio + tamano_lote].copy()
+
+        try:
+            _crear_tabla_temporal_debug_aster(cursor, columnas)
+            _probar_insert_temporal_aster(cursor, bloque)
+            cursor.execute("DROP TABLE #aster_insert_debug")
+            continue
+
+        except Exception:
+            conn.rollback()
+
+            # Buscar fila exacta dentro del lote.
+            for idx, fila in bloque.iterrows():
+                fila_df = pd.DataFrame([fila.to_dict()])
+
+                try:
+                    _crear_tabla_temporal_debug_aster(cursor, columnas)
+                    _probar_insert_temporal_aster(cursor, fila_df)
+                    cursor.execute("DROP TABLE #aster_insert_debug")
+                    continue
+
+                except Exception as exc_fila:
+                    conn.rollback()
+
+                    # Buscar columna probable dentro de esa fila.
+                    errores_columna = []
+
+                    for columna in columnas:
+                        valor = fila[columna]
+                        columna_df = pd.DataFrame([{columna: valor}])
+
+                        try:
+                            _crear_tabla_temporal_debug_aster(
+                                cursor,
+                                [columna],
+                            )
+                            _probar_insert_temporal_aster(cursor, columna_df)
+                            cursor.execute("DROP TABLE #aster_insert_debug")
+
+                        except Exception as exc_columna:
+                            conn.rollback()
+
+                            errores_columna.append(
+                                {
+                                    "fila": int(idx) + 2,
+                                    "columna": columna,
+                                    "tipo_sql": _tipo_sql_columna_insert_aster(
+                                        columna,
+                                        columnas_insert,
+                                    ),
+                                    "valor": valor,
+                                    "problema": str(exc_columna),
+                                }
+                            )
+
+                            break
+
+                    if errores_columna:
+                        return errores_columna
+
+                    return [
+                        {
+                            "fila": int(idx) + 2,
+                            "columna": "No identificada",
+                            "tipo_sql": "",
+                            "valor": "",
+                            "problema": str(exc_fila),
+                        }
+                    ]
+
+    return errores
+
+
+
+
+def _insertar_dataframe_sql_aster(
+    conn: Any,
+    df_insert: pd.DataFrame,
+    tamano_lote: int = 1000,
+) -> int:
+    """
+    Inserta DataFrame en SQL Server por lotes.
+    """
+    if df_insert.empty:
+        return 0
+
+    columnas = list(df_insert.columns)
+    tabla = _nombre_tabla_sql_aster()
+
+    columnas_sql = ", ".join(_sql_identificador_aster(col) for col in columnas)
+    placeholders = ", ".join("?" for _ in columnas)
+
+    sql_insert = f"""
+        INSERT INTO {tabla} ({columnas_sql})
+        VALUES ({placeholders})
+    """
+
+    total_insertados = 0
+    cursor = conn.cursor()
+    cursor.fast_executemany = True
+
+    for inicio in range(0, len(df_insert), tamano_lote):
+        bloque = df_insert.iloc[inicio : inicio + tamano_lote]
+
+        valores = [
+            tuple(
+                _limpiar_parametro_sql_aster(row[col])
+                for col in columnas
+            )
+            for _, row in bloque.iterrows()
+        ]
+
+        cursor.executemany(sql_insert, valores)
+        total_insertados += len(valores)
+
+    return total_insertados
+
+def _rango_entero_sql_aster(tipo_sql: str) -> tuple[int, int] | None:
+    """
+    Devuelve rango permitido para tipos enteros SQL Server.
+    """
+    tipo = str(tipo_sql).lower()
+
+    rangos = {
+        "tinyint": (0, 255),
+        "smallint": (-32768, 32767),
+        "int": (-2147483648, 2147483647),
+        "bigint": (-9223372036854775808, 9223372036854775807),
+    }
+
+    return rangos.get(tipo)
+
+
+def _decimal_excede_precision_aster(
+    valor: Any,
+    precision: Any,
+    escala: Any,
+) -> bool:
+    """
+    Valida si un decimal excede precision/scale de SQL Server.
+
+    Ejemplo:
+    decimal(6,2) permite hasta 9999.99
+    """
+    if valor is None:
+        return False
+
+    try:
+        decimal_valor = Decimal(str(valor))
+    except Exception:
+        return True
+
+    if precision is None:
+        return False
+
+    p = int(precision or 18)
+    s = int(escala or 0)
+
+    valor_abs = abs(decimal_valor)
+
+    partes = format(valor_abs, "f").split(".")
+    enteros = partes[0].lstrip("0")
+    decimales = partes[1].rstrip("0") if len(partes) > 1 else ""
+
+    digitos_enteros = len(enteros) if enteros else 1
+    digitos_decimales = len(decimales)
+
+    max_enteros = p - s
+
+    if digitos_enteros > max_enteros:
+        return True
+
+    if digitos_decimales > s:
+        return True
+
+    return False
+
+
+def _validar_dataframe_insert_aster(
+    df_insert: pd.DataFrame,
+    columnas_insert: list[dict[str, Any]],
+    limite_errores: int = 100,
+) -> list[dict[str, Any]]:
+    """
+    Valida datos antes del INSERT usando tipos reales de SQL Server.
+
+    Detecta:
+    - NULL en columnas NOT NULL.
+    - tinyint/smallint/int/bigint fuera de rango.
+    - decimal/numeric fuera de precisión/escala.
+    - money/smallmoney fuera de rango.
+    - texto más largo que varchar/nvarchar/char/nchar.
+    """
+    errores: list[dict[str, Any]] = []
+
+    info_por_columna = {
+        str(col["sql"]): col
+        for col in columnas_insert
+    }
+
+    rangos_enteros = {
+        "tinyint": (0, 255),
+        "smallint": (-32768, 32767),
+        "int": (-2147483648, 2147483647),
+        "bigint": (-9223372036854775808, 9223372036854775807),
+    }
+
+    rangos_money = {
+        "smallmoney": (Decimal("-214748.3648"), Decimal("214748.3647")),
+        "money": (
+            Decimal("-922337203685477.5808"),
+            Decimal("922337203685477.5807"),
+        ),
+    }
+
+    for idx, row in df_insert.iterrows():
+        fila_excel = int(idx) + 2
+
+        for columna in df_insert.columns:
+            info = info_por_columna.get(str(columna))
+
+            if not info:
+                continue
+
+            valor = row[columna]
+            tipo_sql = str(info.get("tipo_sql") or "").lower()
+            nullable = str(info.get("nullable") or "YES").upper()
+            longitud = info.get("longitud")
+            precision = info.get("precision")
+            escala = info.get("escala")
+
+            
+            if _es_valor_vacio_aster(valor):
+                valor = None          
+            
+            if valor is None:
+                if nullable == "NO":
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": tipo_sql,
+                            "valor": "",
+                            "problema": "La columna no permite NULL",
+                        }
+                    )
+                if len(errores) >= limite_errores:
+                    return errores
+                continue
+
+            if tipo_sql in rangos_enteros:
+                minimo, maximo = rangos_enteros[tipo_sql]
+
+                try:
+                    valor_entero = int(valor)
+                except Exception:
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": tipo_sql,
+                            "valor": valor,
+                            "problema": "No se puede convertir a entero",
+                        }
+                    )
+                    if len(errores) >= limite_errores:
+                        return errores
+                    continue
+
+                if valor_entero < minimo or valor_entero > maximo:
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": tipo_sql,
+                            "valor": valor,
+                            "problema": f"Valor fuera de rango permitido ({minimo} a {maximo})",
+                        }
+                    )
+
+            elif tipo_sql in {"decimal", "numeric"}:
+                try:
+                    valor_decimal = Decimal(str(valor))
+                except Exception:
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": tipo_sql,
+                            "valor": valor,
+                            "problema": "No se puede convertir a decimal",
+                        }
+                    )
+                    if len(errores) >= limite_errores:
+                        return errores
+                    continue
+
+                p = int(precision or 18)
+                s = int(escala or 0)
+                max_enteros = p - s
+
+                texto_decimal = format(abs(valor_decimal), "f")
+                partes = texto_decimal.split(".")
+                parte_entera = partes[0].lstrip("0")
+                parte_decimal = partes[1].rstrip("0") if len(partes) > 1 else ""
+
+                digitos_enteros = len(parte_entera) if parte_entera else 1
+                digitos_decimales = len(parte_decimal)
+
+                if digitos_enteros > max_enteros or digitos_decimales > s:
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": f"{tipo_sql}({p},{s})",
+                            "valor": valor,
+                            "problema": "Valor excede precisión/escala permitida",
+                        }
+                    )
+
+            elif tipo_sql in rangos_money:
+                minimo, maximo = rangos_money[tipo_sql]
+
+                try:
+                    valor_decimal = Decimal(str(valor))
+                except Exception:
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": tipo_sql,
+                            "valor": valor,
+                            "problema": "No se puede convertir a money/smallmoney",
+                        }
+                    )
+                    if len(errores) >= limite_errores:
+                        return errores
+                    continue
+
+                if valor_decimal < minimo or valor_decimal > maximo:
+                    errores.append(
+                        {
+                            "fila": fila_excel,
+                            "columna": columna,
+                            "tipo_sql": tipo_sql,
+                            "valor": valor,
+                            "problema": f"Valor fuera de rango permitido ({minimo} a {maximo})",
+                        }
+                    )
+
+            elif tipo_sql in {"varchar", "nvarchar", "char", "nchar"}:
+                if longitud not in {None, -1, ""}:
+                    texto = str(valor)
+
+                    if len(texto) > int(longitud):
+                        errores.append(
+                            {
+                                "fila": fila_excel,
+                                "columna": columna,
+                                "tipo_sql": f"{tipo_sql}({longitud})",
+                                "valor": texto[:150],
+                                "problema": f"Texto excede longitud máxima ({longitud})",
+                            }
+                        )
+
+            if len(errores) >= limite_errores:
+                return errores
+
+    return errores
+
+
+def _tipo_sql_columna_insert_aster(
+    columna: str,
+    columnas_insert: list[dict[str, Any]],
+) -> str:
+    """
+    Devuelve descripción del tipo SQL para una columna insertable.
+    """
+    for col in columnas_insert:
+        if str(col["sql"]).lower() == str(columna).lower():
+            tipo = str(col.get("tipo_sql") or "")
+            precision = col.get("precision")
+            escala = col.get("escala")
+            longitud = col.get("longitud")
+
+            if tipo.lower() in {"decimal", "numeric"}:
+                return f"{tipo}({precision},{escala})"
+
+            if tipo.lower() in {"varchar", "nvarchar", "char", "nchar"}:
+                return f"{tipo}({longitud})"
+
+            return tipo
+
+    return ""
+
+
+
+def _generar_html_errores_validacion_insert_aster(
+    errores: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML con errores de validación previa.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Preparación de inserción ASTER bloqueada. Se detectaron {len(errores)} errores de datos.
+    </div>
+    <div class='log-line warning'>
+        No se debe insertar hasta corregir estos valores o ajustar los tipos/longitudes de la tabla SQL.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Fila Excel</th>
+            <th>Columna</th>
+            <th>Tipo SQL</th>
+            <th>Valor</th>
+            <th>Problema</th>
+        </tr>
+    """
+
+    for idx, error in enumerate(errores, start=1):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(error.get("fila", "")))}</td>
+            <td><b>{escape(str(error.get("columna", "")))}</b></td>
+            <td>{escape(str(error.get("tipo_sql", "")))}</td>
+            <td style='word-break:break-all;'>{escape(str(error.get("valor", "")))}</td>
+            <td style='color:#dc3545; font-weight:bold;'>{escape(str(error.get("problema", "")))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div id='aster-preparacion-insercion-data' style='display:none;' data-preparado='0'></div>
+    """
+
+    return html
+
+
+
+
+def _generar_html_insert_ok_aster(
+    conexion: str,
+    ruta_archivo: str,
+    total_leidos: int,
+    total_insertados: int,
+    columnas_insertadas: list[str],
+    columnas_clave: list[str],
+) -> str:
+    """
+    Genera HTML de inserción exitosa ASTER.
+    """
+    conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - PRUEBAS"
+
+    html = """
+    <div class='log-line success'>
+        ✅ Inserción ASTER completada correctamente.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen inserción ASTER
+            </th>
+        </tr>
+    """
+
+    resumen = [
+        ("Conexión usada", conexion_txt),
+        ("Tabla destino", f"{ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}"),
+        ("Archivo", ruta_archivo),
+        ("Registros leídos del Excel", total_leidos),
+        ("Registros duplicados detectados", 0),
+        ("Registros insertados", total_insertados),
+        ("Columnas insertadas", ", ".join(columnas_insertadas)),
+        ("Clave anti-duplicados", ", ".join(columnas_clave)),
+    ]
+
+    for etiqueta, valor in resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.8rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
 
     return html
 
@@ -1995,7 +3144,8 @@ def accion_aster_probar_conexion_insercion():
 
         cadena = _obtener_cadena_sqlserver_aster(conexion)
 
-        conn = pyodbc.connect(cadena)
+        conn = pyodbc.connect(cadena, timeout=10)
+        conn.timeout = 120
 
         try:
             cursor = conn.cursor()
@@ -2118,6 +3268,29 @@ def accion_aster_preparar_insercion():
         columnas_sql = _obtener_columnas_sqlserver_aster(conexion)
         comparacion = _comparar_excel_vs_sql_aster(df, columnas_sql)
 
+        columnas_insert = _preparar_columnas_insert_aster(df, columnas_sql)
+        error_columnas = _validar_columnas_minimas_insert_aster(columnas_insert)
+
+        if error_columnas:
+            session["aster_preparacion_insercion_ok"] = False
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(error_columnas)}
+            </div>
+            """
+
+        df_insert = _construir_dataframe_insert_aster(df, columnas_insert)
+        df_insert = _normalizar_dataframe_sql_aster(df_insert)
+
+        errores_validacion = _validar_dataframe_insert_aster(
+            df_insert=df_insert,
+            columnas_insert=columnas_insert,
+        )
+
+        if errores_validacion:
+            session["aster_preparacion_insercion_ok"] = False
+            return _generar_html_errores_validacion_insert_aster(errores_validacion)
+
         session["aster_conexion_insercion"] = conexion
         session["aster_preparacion_insercion_ok"] = True
         session["aster_columnas_comparacion_sql"] = comparacion
@@ -2132,6 +3305,163 @@ def accion_aster_preparar_insercion():
     except Exception as exc:
         session["aster_preparacion_insercion_ok"] = False
         return f"<div class='log-line error'>❌ Error preparando inserción ASTER: {escape(str(exc))}</div>"
+
+
+@aster_bp.route("/accion/aster-insertar-datos", methods=["POST"])
+def accion_aster_insertar_datos():
+    """
+    Inserta datos ASTER en SQL Server con validación anti-duplicados.
+    """
+    conn = None
+
+    try:
+        conexion = request.form.get("conexion", "local").strip().lower()
+        confirmar_remoto = request.form.get("confirmar_remoto", "").strip().upper()
+        ruta_archivo = request.form.get("ruta_archivo", "").strip()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        if conexion == "remoto" and confirmar_remoto != "SI":
+            return """
+            <div class='log-line error'>
+                ❌ Inserción remota bloqueada. REMOTO es producción.
+            </div>
+            <div class='log-line warning'>
+                Para insertar en remoto debe confirmar explícitamente. No use remoto para pruebas.
+            </div>
+            """
+            
+        if not bool(session.get("aster_informacion_verificada")):
+            return """
+            <div class='log-line error'>
+                ❌ No se puede insertar. Primero debe completar Fase G con Información Verificada.
+            </div>
+            """
+
+        if not bool(session.get("aster_preparacion_insercion_ok")):
+            return """
+            <div class='log-line error'>
+                ❌ No se puede insertar. Primero debe ejecutar Preparar inserción ASTER sin errores.
+            </div>
+            """
+
+        if not ruta_archivo:
+            ruta_archivo = str(
+                session.get("aster_archivo_normalizado")
+                or session.get("aster_archivo_copiado")
+                or ""
+            )
+
+        if not ruta_archivo:
+            return """
+            <div class='log-line error'>
+                ❌ No hay archivo ASTER disponible para insertar.
+            </div>
+            """
+
+        if not os.path.isfile(ruta_archivo):
+            return f"""
+            <div class='log-line error'>
+                ❌ El archivo ASTER no existe.
+            </div>
+            <div class='log-line warning'>
+                Ruta: <code>{escape(ruta_archivo)}</code>
+            </div>
+            """
+
+        df = pd.read_excel(ruta_archivo, dtype=str)
+
+        if df.empty:
+            return """
+            <div class='log-line error'>
+                ❌ El archivo ASTER no tiene registros para insertar.
+            </div>
+            """
+
+        columnas_sql = _obtener_columnas_sqlserver_aster(conexion)
+        columnas_insert = _preparar_columnas_insert_aster(df, columnas_sql)
+
+        error_columnas = _validar_columnas_minimas_insert_aster(columnas_insert)
+
+        if error_columnas:
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(error_columnas)}
+            </div>
+            """
+
+        df_insert = _construir_dataframe_insert_aster(df, columnas_insert)
+        df_insert = _normalizar_dataframe_sql_aster(df_insert)
+
+        errores_validacion = _validar_dataframe_insert_aster(
+            df_insert=df_insert,
+            columnas_insert=columnas_insert,
+        )
+
+        if errores_validacion:
+            return _generar_html_errores_validacion_insert_aster(errores_validacion)
+
+        columnas_clave = _seleccionar_columnas_clave_duplicados_aster(columnas_insert)
+
+        cadena = _obtener_cadena_sqlserver_aster(conexion)
+        conn = pyodbc.connect(cadena, timeout=10)
+        conn.timeout = 120
+
+        cursor = conn.cursor()
+        cursor.execute(f"USE [{ASTER_BASE_INSERCION}]")
+
+        errores_sql_reales = _diagnosticar_insert_sql_aster(
+            conn=conn,
+            df_insert=df_insert,
+            columnas_insert=columnas_insert,
+        )
+
+        if errores_sql_reales:
+            conn.rollback()
+            return _generar_html_errores_validacion_insert_aster(errores_sql_reales)
+
+        total_duplicados, ejemplos_duplicados = _contar_duplicados_sql_aster(
+            cursor=cursor,
+            df_insert=df_insert,
+            columnas_clave=columnas_clave,
+            columnas_insert=columnas_insert,
+        )
+
+        if total_duplicados > 0:
+            conn.rollback()
+
+            return _generar_html_duplicados_aster(
+                total_duplicados=total_duplicados,
+                columnas_clave=columnas_clave,
+                ejemplos=ejemplos_duplicados,
+            )
+
+        total_insertados = _insertar_dataframe_sql_aster(conn, df_insert)
+        conn.commit()
+
+        session["aster_ultimo_insert_conexion"] = conexion
+        session["aster_ultimo_insert_total"] = total_insertados
+
+        return _generar_html_insert_ok_aster(
+            conexion=conexion,
+            ruta_archivo=ruta_archivo,
+            total_leidos=len(df),
+            total_insertados=total_insertados,
+            columnas_insertadas=list(df_insert.columns),
+            columnas_clave=columnas_clave,
+        )
+
+    except Exception as exc:
+        if conn is not None:
+            conn.rollback()
+
+        return f"<div class='log-line error'>❌ Error insertando datos ASTER: {escape(str(exc))}</div>"
+
+    finally:
+        if conn is not None:
+            conn.close()
+            
 
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])
