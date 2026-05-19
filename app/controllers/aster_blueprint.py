@@ -17,6 +17,9 @@ from html import escape
 from typing import Any
 
 import pandas as pd
+import pyodbc
+
+from app.config import SQL_LOCAL, SQL_REMOTO
 
 from flask import Blueprint, request, session
 from werkzeug.utils import secure_filename
@@ -31,8 +34,12 @@ aster_bp = Blueprint("aster", __name__)
 RUTAS_ASTER_DEFAULT = [
     r"Z:\COBRANZA %\2024\0. Avance Masivo y Llamadas Efectivas\2024\MAYO\AFTER_MAYO_CONSOLIDADO",
     r"\\10.24.90.118\COBRANZA %\2024\0. Avance Masivo y Llamadas Efectivas\2024\MAYO\AFTER_MAYO_CONSOLIDADO",
-    r"F:\Vencorp\ff\unidad_red_Data\COBRANZA %\2024\0. Avance Masivo y Llamadas Efectivas\2024\MAYO\AFTER_MAYO_CONSOLIDADO"
+    r"D:\Develop\ETL\Nicaragua_Proceso\unidad_red_aster\COBRANZA %\2024\0. Avance Masivo y Llamadas Efectivas\2024\MAYO\AFTER_MAYO_CONSOLIDADO"
 ]
+
+ASTER_TABLA_INSERCION = "aster_dia_nc"
+ASTER_SCHEMA_INSERCION = "dbo"
+ASTER_BASE_INSERCION = "Aster_Api"
 
 
 def _crear_html_total_aster(total: int | None, origen: str, previews: list[tuple[str, str]]) -> str:
@@ -1172,6 +1179,385 @@ def _generar_html_conciliacion_aster(
 
     return html
 
+def _obtener_cadena_sqlserver_aster(conexion: str) -> str:
+    """
+    Devuelve la cadena SQL Server según conexión solicitada.
+
+    local  = pruebas
+    remoto = producción
+    """
+    conexion_normalizada = (conexion or "local").strip().lower()
+
+    if conexion_normalizada == "remoto":
+        return SQL_REMOTO
+
+    return SQL_LOCAL
+
+
+def _valor_config_sql(config: Any, *nombres: str) -> str:
+    """
+    Lee un valor desde una configuración tipo dict de forma flexible.
+    """
+    if not isinstance(config, dict):
+        return ""
+
+    claves = {str(k).lower(): v for k, v in config.items()}
+
+    for nombre in nombres:
+        valor = claves.get(nombre.lower())
+
+        if valor is not None:
+            return str(valor).strip()
+
+    return ""
+
+
+def _construir_cadena_pyodbc_aster(config: Any) -> str:
+    """
+    Convierte SQL_LOCAL / SQL_REMOTO a cadena pyodbc.
+
+    Soporta:
+    - string directo
+    - diccionario con server/database/user/password/driver
+    """
+    if isinstance(config, str):
+        cadena = config.strip()
+
+        if not cadena:
+            raise ValueError("La cadena de conexión SQL Server está vacía.")
+
+        return cadena
+
+    if not isinstance(config, dict):
+        raise TypeError(
+            "La configuración SQL Server debe ser string o dict. "
+            f"Tipo recibido: {type(config).__name__}"
+        )
+
+    driver = _valor_config_sql(config, "driver", "DRIVER") or "ODBC Driver 17 for SQL Server"
+    server = _valor_config_sql(config, "server", "SERVER", "host", "HOST")
+    database = (
+        _valor_config_sql(config, "database", "DATABASE", "db", "DB")
+        or ASTER_BASE_INSERCION
+    )
+    user = _valor_config_sql(config, "user", "USER", "uid", "UID", "username")
+    password = _valor_config_sql(config, "password", "PASSWORD", "pwd", "PWD")
+    trusted = _valor_config_sql(
+        config,
+        "trusted_connection",
+        "Trusted_Connection",
+        "trusted",
+    )
+
+    if not server:
+        raise ValueError("Falta SERVER en la configuración SQL Server.")
+
+    partes = [
+        f"DRIVER={{{driver}}}",
+        f"SERVER={server}",
+        f"DATABASE={database}",
+        "TrustServerCertificate=yes",
+    ]
+
+    if trusted.lower() in {"yes", "true", "1", "si", "sí"}:
+        partes.append("Trusted_Connection=yes")
+    else:
+        if not user:
+            raise ValueError("Falta USER/UID en la configuración SQL Server.")
+        partes.append(f"UID={user}")
+        partes.append(f"PWD={password}")
+
+    return ";".join(partes)
+
+
+def _obtener_columnas_sqlserver_aster(conexion: str) -> list[dict[str, Any]]:
+    """
+    Obtiene columnas de la tabla destino ASTER desde SQL Server.
+    """
+    cadena = _obtener_cadena_sqlserver_aster(conexion)
+
+    sql = """
+        SELECT
+            COLUMN_NAME,
+            DATA_TYPE,
+            IS_NULLABLE,
+            CHARACTER_MAXIMUM_LENGTH,
+            NUMERIC_PRECISION,
+            NUMERIC_SCALE,
+            ORDINAL_POSITION
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ?
+          AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION
+    """
+
+    conn = pyodbc.connect(cadena)
+
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(f"USE [{ASTER_BASE_INSERCION}]")
+
+        cursor.execute(
+            sql,
+            ASTER_SCHEMA_INSERCION,
+            ASTER_TABLA_INSERCION,
+        )
+
+        columnas: list[dict[str, Any]] = []
+
+        for row in cursor.fetchall():
+            columnas.append(
+                {
+                    "columna": str(row.COLUMN_NAME),
+                    "tipo_sql": str(row.DATA_TYPE),
+                    "nullable": str(row.IS_NULLABLE),
+                    "longitud": row.CHARACTER_MAXIMUM_LENGTH,
+                    "precision": row.NUMERIC_PRECISION,
+                    "escala": row.NUMERIC_SCALE,
+                    "orden": int(row.ORDINAL_POSITION),
+                }
+            )
+
+        if not columnas:
+            raise ValueError(
+                "No se encontraron columnas para la tabla "
+                f"{ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}."
+            )
+
+        return columnas
+
+    finally:
+        conn.close()
+
+def _obtener_cadena_sqlserver_aster(conexion: str) -> str:
+    """
+    Devuelve cadena pyodbc según conexión solicitada.
+
+    local  = pruebas
+    remoto = producción
+    """
+    conexion_normalizada = (conexion or "local").strip().lower()
+
+    config = SQL_REMOTO if conexion_normalizada == "remoto" else SQL_LOCAL
+
+    return _construir_cadena_pyodbc_aster(config)
+
+
+def _tipo_excel_aster(serie: pd.Series) -> str:
+    """
+    Detecta un tipo general de columna Excel.
+    """
+    serie_no_nula = serie.dropna()
+
+    if serie_no_nula.empty:
+        return "vacia"
+
+    if pd.api.types.is_integer_dtype(serie_no_nula):
+        return "entero"
+
+    if pd.api.types.is_float_dtype(serie_no_nula):
+        return "decimal"
+
+    if pd.api.types.is_datetime64_any_dtype(serie_no_nula):
+        return "fecha_hora"
+
+    valores = serie_no_nula.astype(str).str.strip()
+
+    if valores.empty:
+        return "texto"
+
+    valores_no_vacios = valores[valores != ""]
+
+    if valores_no_vacios.empty:
+        return "texto"
+
+    fechas = pd.to_datetime(valores_no_vacios, errors="coerce", dayfirst=False)
+
+    if fechas.notna().mean() >= 0.8:
+        return "fecha_hora"
+
+    numeros = pd.to_numeric(valores_no_vacios, errors="coerce")
+
+    if numeros.notna().mean() >= 0.9:
+        if (numeros.dropna() % 1 == 0).all():
+            return "entero"
+
+        return "decimal"
+
+    return "texto"
+
+
+def _comparar_excel_vs_sql_aster(
+    df: pd.DataFrame,
+    columnas_sql: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Compara columnas del Excel ASTER contra columnas SQL.
+    """
+    sql_por_nombre = {
+        str(col["columna"]).lower(): col
+        for col in columnas_sql
+    }
+
+    comparacion: list[dict[str, Any]] = []
+
+    for columna_excel in df.columns:
+        clave = str(columna_excel).lower()
+        col_sql = sql_por_nombre.get(clave)
+
+        existe = col_sql is not None
+
+        comparacion.append(
+            {
+                "columna_excel": str(columna_excel),
+                "tipo_excel": _tipo_excel_aster(df[columna_excel]),
+                "existe_sql": existe,
+                "columna_sql": str(col_sql["columna"]) if col_sql else "",
+                "tipo_sql": str(col_sql["tipo_sql"]) if col_sql else "",
+                "nullable": str(col_sql["nullable"]) if col_sql else "",
+                "longitud": col_sql["longitud"] if col_sql else "",
+                "estado": "OK" if existe else "NO_EXISTE_EN_SQL",
+            }
+        )
+
+    columnas_excel_lower = {
+        str(col).lower()
+        for col in df.columns
+    }
+
+    for col_sql in columnas_sql:
+        clave_sql = str(col_sql["columna"]).lower()
+
+        if clave_sql in columnas_excel_lower:
+            continue
+
+        comparacion.append(
+            {
+                "columna_excel": "",
+                "tipo_excel": "",
+                "existe_sql": False,
+                "columna_sql": str(col_sql["columna"]),
+                "tipo_sql": str(col_sql["tipo_sql"]),
+                "nullable": str(col_sql["nullable"]),
+                "longitud": col_sql["longitud"],
+                "estado": "NO_EXISTE_EN_EXCEL",
+            }
+        )
+
+    return comparacion
+
+
+def _generar_html_preparacion_insercion_aster(
+    conexion: str,
+    ruta_archivo: str,
+    total_registros: int,
+    comparacion: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML de comparación previa a inserción ASTER.
+    """
+    conexion_normalizada = (conexion or "local").strip().lower()
+    es_remoto = conexion_normalizada == "remoto"
+
+    html = ""
+
+    if es_remoto:
+        html += """
+        <div class='log-line warning'>
+            ⚠️ Atención: seleccionó conexión REMOTA. Esta conexión es producción.
+            No se debe usar para pruebas.
+        </div>
+        """
+    else:
+        html += """
+        <div class='log-line success'>
+            ✅ Conexión LOCAL seleccionada para pruebas.
+        </div>
+        """
+
+    total_ok = sum(1 for fila in comparacion if fila["estado"] == "OK")
+    total_no_sql = sum(1 for fila in comparacion if fila["estado"] == "NO_EXISTE_EN_SQL")
+    total_no_excel = sum(1 for fila in comparacion if fila["estado"] == "NO_EXISTE_EN_EXCEL")
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen preparación inserción ASTER
+            </th>
+        </tr>
+    """
+
+    filas_resumen = [
+        ("Conexión seleccionada", conexion_normalizada.upper()),
+        ("Tabla destino", f"{ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}"),
+        ("Archivo Excel", ruta_archivo),
+        ("Registros en Excel", total_registros),
+        ("Columnas coincidentes", total_ok),
+        ("Columnas Excel sin campo SQL", total_no_sql),
+        ("Campos SQL sin columna Excel", total_no_excel),
+    ]
+
+    for etiqueta, valor in filas_resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.8rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Columna Excel</th>
+            <th>Tipo Excel</th>
+            <th>Campo SQL</th>
+            <th>Tipo SQL</th>
+            <th>Nullable</th>
+            <th>Longitud</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(comparacion, start=1):
+        estado = str(fila["estado"])
+
+        if estado == "OK":
+            color = "#28a745"
+            texto_estado = "✅ OK"
+        elif estado == "NO_EXISTE_EN_SQL":
+            color = "#dc3545"
+            texto_estado = "❌ No existe en SQL"
+        else:
+            color = "#ffc107"
+            texto_estado = "⚠️ No existe en Excel"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(str(fila["columna_excel"]))}</b></td>
+            <td>{escape(str(fila["tipo_excel"]))}</td>
+            <td><b>{escape(str(fila["columna_sql"]))}</b></td>
+            <td>{escape(str(fila["tipo_sql"]))}</td>
+            <td>{escape(str(fila["nullable"]))}</td>
+            <td>{escape(str(fila["longitud"]))}</td>
+            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div id='aster-preparacion-insercion-data' style='display:none;' data-preparado='1'></div>
+    """
+
+    return html
+
+
 @aster_bp.route("/accion/aster-ocr-subir", methods=["POST"])
 def accion_aster_ocr_subir():
     """
@@ -1593,6 +1979,159 @@ def accion_aster_ajustar_conciliacion():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error ajustando conciliación ASTER: {escape(str(exc))}</div>"
+
+
+@aster_bp.route("/accion/aster-probar-conexion-insercion", methods=["POST"])
+def accion_aster_probar_conexion_insercion():
+    """
+    Prueba conexión SQL Server ASTER para inserción.
+    No inserta datos.
+    """
+    try:
+        conexion = request.form.get("conexion", "local").strip().lower()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        cadena = _obtener_cadena_sqlserver_aster(conexion)
+
+        conn = pyodbc.connect(cadena)
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f"USE [{ASTER_BASE_INSERCION}]")
+            cursor.execute("SELECT DB_NAME() AS base_actual")
+            row = cursor.fetchone()
+            base_actual = str(row.base_actual)
+
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS total_columnas
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = ?
+                  AND TABLE_NAME = ?
+                """,
+                ASTER_SCHEMA_INSERCION,
+                ASTER_TABLA_INSERCION,
+            )
+            row_cols = cursor.fetchone()
+            total_columnas = int(row_cols.total_columnas or 0)
+
+        finally:
+            conn.close()
+
+        if total_columnas <= 0:
+            return f"""
+            <div class='log-line error'>
+                ❌ Conexión ASTER correcta, pero no se encontró la tabla
+                {ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}.
+            </div>
+            """
+
+        tipo = "REMOTA - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - PRUEBAS"
+
+        advertencia = ""
+
+        if conexion == "remoto":
+            advertencia = """
+            <div class='log-line warning'>
+                ⚠️ Esta conexión es REMOTA y corresponde a producción. No usar para pruebas.
+            </div>
+            """
+
+        return f"""
+        <div class='log-line success'>
+            ✅ Conexión ASTER verificada correctamente.
+        </div>
+        {advertencia}
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr>
+                <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                    Verificación de conexión ASTER
+                </th>
+            </tr>
+            <tr>
+                <td><b>Conexión</b></td>
+                <td>{escape(tipo)}</td>
+            </tr>
+            <tr>
+                <td><b>Base actual</b></td>
+                <td>{escape(base_actual)}</td>
+            </tr>
+            <tr>
+                <td><b>Tabla destino</b></td>
+                <td>{escape(f'{ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}')}</td>
+            </tr>
+            <tr>
+                <td><b>Columnas detectadas</b></td>
+                <td>{total_columnas}</td>
+            </tr>
+        </table>
+        """
+
+    except Exception as exc:
+        return f"""
+        <div class='log-line error'>
+            ❌ Error verificando conexión ASTER: {escape(str(exc))}
+        </div>
+        """
+
+@aster_bp.route("/accion/aster-preparar-insercion", methods=["POST"])
+def accion_aster_preparar_insercion():
+    """
+    Prepara inserción ASTER comparando Excel normalizado vs tabla SQL.
+    No inserta datos.
+    """
+    try:
+        conexion = request.form.get("conexion", "local").strip().lower()
+        ruta_archivo = request.form.get("ruta_archivo", "").strip()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        if not ruta_archivo:
+            ruta_archivo = str(
+                session.get("aster_archivo_normalizado")
+                or session.get("aster_archivo_copiado")
+                or ""
+            )
+
+        if not ruta_archivo:
+            return """
+            <div class='log-line error'>
+                ❌ No hay archivo ASTER disponible. Ejecute primero Fase B y Fase C.
+            </div>
+            """
+
+        if not os.path.isfile(ruta_archivo):
+            return f"""
+            <div class='log-line error'>
+                ❌ El archivo ASTER no existe.
+            </div>
+            <div class='log-line warning'>
+                Ruta: <code>{escape(ruta_archivo)}</code>
+            </div>
+            """
+
+        df = pd.read_excel(ruta_archivo, dtype=str)
+
+        columnas_sql = _obtener_columnas_sqlserver_aster(conexion)
+        comparacion = _comparar_excel_vs_sql_aster(df, columnas_sql)
+
+        session["aster_conexion_insercion"] = conexion
+        session["aster_preparacion_insercion_ok"] = True
+        session["aster_columnas_comparacion_sql"] = comparacion
+
+        return _generar_html_preparacion_insercion_aster(
+            conexion=conexion,
+            ruta_archivo=ruta_archivo,
+            total_registros=len(df),
+            comparacion=comparacion,
+        )
+
+    except Exception as exc:
+        session["aster_preparacion_insercion_ok"] = False
+        return f"<div class='log-line error'>❌ Error preparando inserción ASTER: {escape(str(exc))}</div>"
 
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])

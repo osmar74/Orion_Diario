@@ -27,7 +27,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 RED_BASE_PATHS = [
     r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
     r"Z:\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
-    r"F:\Vencorp\ff\unidad_red_Data",
+    r"D:\Develop\ETL\Nicaragua_Proceso\unidad_red_orion\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
 ]
 
 

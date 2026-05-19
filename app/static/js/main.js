@@ -1276,6 +1276,51 @@ function construirMonitorAster(config) {
             </div>
         </details>
 
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">⬆️</span>
+                FASE H. Inserción de datos ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Prepare la inserción comparando el archivo Excel ASTER contra la tabla SQL Server Aster_Apo.dbo.aster_dia_nc.
+                </div>
+
+                <div class="log-line warning" style="margin-top:8px;">
+                    Las pruebas deben realizarse en LOCAL. REMOTO es producción.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="asterConexionInsercion" style="font-size:0.8rem;">
+                        Conexión:
+                    </label>
+
+                    <select
+                        id="asterConexionInsercion"
+                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+                        <option value="local" selected>Local - pruebas</option>
+                        <option value="remoto">Remoto - producción</option>
+                    </select>
+                    <button type="button" onclick="probarConexionInsercionAster(this)">
+                        Probar conexión ASTER
+                    </button>
+                    <button type="button" onclick="prepararInsercionAster(this)">
+                        Preparar inserción ASTER
+                    </button>
+                </div>
+                <div id="aster-conexion-insercion-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Conexión ASTER pendiente de verificación.
+                    </div>
+                </div>
+                <div id="aster-insercion-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Inserción ASTER pendiente de preparación.
+                    </div>
+                </div>
+            </div>
+        </details>
 
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
@@ -1888,6 +1933,87 @@ function ajustarConciliacionAster(boton) {
         });
 }
 
+/* ---------- ASTER - FASE H: INSERCIÓN DE DATOS ---------- */
+
+function probarConexionInsercionAster(boton) {
+    const resultado = document.getElementById("aster-conexion-insercion-resultado");
+    const conexionSelect = document.getElementById("asterConexionInsercion");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de conexión ASTER.");
+        return;
+    }
+
+    const conexion = conexionSelect?.value || "local";
+
+    if (conexion === "remoto") {
+        const confirma = confirm(
+            "Seleccionó REMOTO. Esta conexión es producción. No debe usarse para pruebas. ¿Desea probar conexión de todos modos?"
+        );
+
+        if (!confirma) {
+            return;
+        }
+    }
+
+    const formData = new FormData();
+    formData.append("conexion", conexion);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Verificando conexión ASTER...");
+
+    postFormTexto("/accion/aster-probar-conexion-insercion", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error verificando conexión ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+function prepararInsercionAster(boton) {
+    const resultado = document.getElementById("aster-insercion-resultado");
+    const conexionSelect = document.getElementById("asterConexionInsercion");
+    const archivoData = document.getElementById("aster-archivo-data");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de inserción ASTER.");
+        return;
+    }
+
+    const conexion = conexionSelect?.value || "local";
+    const rutaArchivo = archivoData?.getAttribute("data-ruta") || "";
+
+    if (conexion === "remoto") {
+        const confirma = confirm(
+            "Seleccionó REMOTO. Esta conexión es producción. No debe usarse para pruebas. ¿Desea continuar solo con la preparación?"
+        );
+
+        if (!confirma) {
+            return;
+        }
+    }
+
+    const formData = new FormData();
+    formData.append("conexion", conexion);
+    formData.append("ruta_archivo", rutaArchivo);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Preparando inserción ASTER...");
+
+    postFormTexto("/accion/aster-preparar-insercion", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error preparando inserción ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
@@ -1924,5 +2050,7 @@ window.guardarClasificacionAster = guardarClasificacionAster;
 window.conciliarEntidadesAster = conciliarEntidadesAster;
 window.ajustarConciliacionAster = ajustarConciliacionAster;
 window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
+window.prepararInsercionAster = prepararInsercionAster;
+window.probarConexionInsercionAster = probarConexionInsercionAster;
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
