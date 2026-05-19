@@ -1252,6 +1252,31 @@ function construirMonitorAster(config) {
             </div>
         </details>
 
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">⚖️</span>
+                FASE G. Conciliación y validación ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Compare las entidades únicas del Excel contra las entidades SQL depuradas y clasificadas.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button type="button" onclick="conciliarEntidadesAster(this)">
+                        Conciliar entidades ASTER
+                    </button>
+                </div>
+
+                <div id="aster-conciliacion-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Conciliación ASTER pendiente de validación.
+                    </div>
+                </div>
+            </div>
+        </details>
+
+
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -1808,7 +1833,60 @@ function guardarClasificacionAster(boton) {
         });
 }
 
+/* ---------- ASTER - FASE G: CONCILIACIÓN Y VALIDACIÓN ---------- */
 
+function conciliarEntidadesAster(boton) {
+    const resultado = document.getElementById("aster-conciliacion-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de conciliación ASTER.");
+        return;
+    }
+
+    const formData = new FormData();
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Conciliando entidades ASTER...");
+
+    postFormTexto("/accion/aster-conciliar-entidades", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error conciliando entidades ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+function ajustarConciliacionAster(boton) {
+    const resultado = document.getElementById("aster-conciliacion-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de conciliación ASTER.");
+        return;
+    }
+
+    const checks = document.querySelectorAll(".aster-no-tomar-checkbox:checked");
+    const formData = new FormData();
+
+    checks.forEach((check) => {
+        formData.append("entidades_no_tomar", check.value);
+    });
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Aplicando ajuste de conciliación ASTER...");
+
+    postFormTexto("/accion/aster-ajustar-conciliacion", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error ajustando conciliación ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
 
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
@@ -1843,6 +1921,8 @@ window.ejecutarConsultaSqlAster = ejecutarConsultaSqlAster;
 window.prepararDepuracionAster = prepararDepuracionAster;
 window.aplicarExclusionesAster = aplicarExclusionesAster;
 window.guardarClasificacionAster = guardarClasificacionAster;
+window.conciliarEntidadesAster = conciliarEntidadesAster;
+window.ajustarConciliacionAster = ajustarConciliacionAster;
 window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
