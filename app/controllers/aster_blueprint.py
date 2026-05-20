@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import unicodedata
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -41,6 +42,8 @@ RUTAS_ASTER_DEFAULT = [
 ASTER_TABLA_INSERCION = "aster_dia_nc"
 ASTER_SCHEMA_INSERCION = "dbo"
 ASTER_BASE_INSERCION = "Aster_Api"
+
+ASTER_HISTORIAL_DB = os.path.join(DATA_DIR, "aster_load_history.db")
 
 
 def _crear_html_total_aster(total: int | None, origen: str, previews: list[tuple[str, str]]) -> str:
@@ -2781,6 +2784,225 @@ def _validar_cuadre_final_aster(
     return cumple, detalle
 
 
+def _inicializar_historial_aster() -> None:
+    """
+    Crea la base SQLite local para historial de cargas ASTER si no existe.
+    """
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    conn = sqlite3.connect(ASTER_HISTORIAL_DB)
+
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS aster_load_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fecha_hora_registro TEXT NOT NULL,
+                fecha_proceso TEXT,
+                archivo_excel TEXT,
+                conexion TEXT,
+                total_general_aster INTEGER,
+                filas_excel INTEGER,
+                registros_insertados INTEGER,
+                estado TEXT,
+                mensaje TEXT,
+                archivo_reporte_entidades TEXT,
+                ruta_reporte_entidades TEXT
+            )
+            """
+        )
+
+        conn.commit()
+
+    finally:
+        conn.close()
+
+
+def _registrar_historial_carga_aster(
+    fecha_proceso: str,
+    archivo_excel: str,
+    conexion: str,
+    total_general_aster: int | None,
+    filas_excel: int,
+    registros_insertados: int,
+    estado: str,
+    mensaje: str,
+    archivo_reporte_entidades: str = "",
+    ruta_reporte_entidades: str = "",
+) -> None:
+    """
+    Registra una carga o intento de carga ASTER en SQLite local.
+    """
+    _inicializar_historial_aster()
+
+    conn = sqlite3.connect(ASTER_HISTORIAL_DB)
+
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO aster_load_history (
+                fecha_hora_registro,
+                fecha_proceso,
+                archivo_excel,
+                conexion,
+                total_general_aster,
+                filas_excel,
+                registros_insertados,
+                estado,
+                mensaje,
+                archivo_reporte_entidades,
+                ruta_reporte_entidades
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                fecha_proceso,
+                archivo_excel,
+                conexion,
+                total_general_aster,
+                int(filas_excel or 0),
+                int(registros_insertados or 0),
+                estado,
+                mensaje,
+                archivo_reporte_entidades,
+                ruta_reporte_entidades,
+            ),
+        )
+
+        conn.commit()
+
+    finally:
+        conn.close()
+
+
+def _obtener_historial_cargas_aster(limite: int = 30) -> list[dict[str, Any]]:
+    """
+    Obtiene los últimos registros del historial ASTER.
+    """
+    _inicializar_historial_aster()
+
+    conn = sqlite3.connect(ASTER_HISTORIAL_DB)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                fecha_hora_registro,
+                fecha_proceso,
+                archivo_excel,
+                conexion,
+                total_general_aster,
+                filas_excel,
+                registros_insertados,
+                estado,
+                mensaje,
+                archivo_reporte_entidades,
+                ruta_reporte_entidades
+            FROM aster_load_history
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limite,),
+        )
+
+        return [dict(row) for row in cursor.fetchall()]
+
+    finally:
+        conn.close()
+
+
+def _generar_html_historial_cargas_aster(
+    registros: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML del historial de cargas ASTER.
+    """
+    html = """
+    <div class='log-line info'>
+        📜 Historial local de cargas ASTER.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='12' style='background:#1e3a5f; color:#fff;'>
+                Últimas cargas ASTER
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Fecha registro</th>
+            <th>Fecha proceso</th>
+            <th>Conexión</th>
+            <th>Total ASTER</th>
+            <th>Filas Excel</th>
+            <th>Insertados</th>
+            <th>Estado</th>
+            <th>Archivo Excel</th>
+            <th>Reporte entidades</th>
+            <th>Ruta reporte</th>
+            <th>Mensaje</th>
+        </tr>
+    """
+
+    if not registros:
+        html += """
+        <tr>
+            <td colspan='12' style='text-align:center; color:#888;'>
+                Todavía no hay cargas ASTER registradas.
+            </td>
+        </tr>
+        """
+
+    for idx, registro in enumerate(registros, start=1):
+        estado = str(registro.get("estado") or "")
+
+        if estado == "CORRECTO":
+            color = "#28a745"
+        elif estado in {"FALLÓ_CUADRE", "ERROR_DATOS"}:
+            color = "#dc3545"
+        else:
+            color = "#ffc107"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(registro.get("fecha_hora_registro") or ""))}</td>
+            <td>{escape(str(registro.get("fecha_proceso") or ""))}</td>
+            <td>{escape(str(registro.get("conexion") or ""))}</td>
+            <td>{escape(str(registro.get("total_general_aster") or ""))}</td>
+            <td>{escape(str(registro.get("filas_excel") or ""))}</td>
+            <td>{escape(str(registro.get("registros_insertados") or ""))}</td>
+            <td style='font-weight:bold; color:{color};'>{escape(estado)}</td>
+            <td style='word-break:break-all;'>{escape(str(registro.get("archivo_excel") or ""))}</td>
+            <td>{escape(str(registro.get("archivo_reporte_entidades") or ""))}</td>
+            <td style='word-break:break-all;'>{escape(str(registro.get("ruta_reporte_entidades") or ""))}</td>
+            <td style='word-break:break-all;'>{escape(str(registro.get("mensaje") or ""))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += f"""
+    <div class='log-line info' style='margin-top:10px;'>
+        Base local historial: <code>{escape(ASTER_HISTORIAL_DB)}</code>
+    </div>
+    """
+
+    return html
+
+
+
 def _generar_html_reporte_final_aster(
     fecha_yyyymmdd: str,
     detalle_cuadre: dict[str, Any],
@@ -3657,6 +3879,19 @@ def accion_aster_insertar_datos():
                 fecha_yyyymmdd
             )
 
+            _registrar_historial_carga_aster(
+                fecha_proceso=fecha_yyyymmdd,
+                archivo_excel=os.path.basename(ruta_archivo),
+                conexion=conexion,
+                total_general_aster=detalle_cuadre.get("total_general_aster"),
+                filas_excel=detalle_cuadre.get("filas_excel") or 0,
+                registros_insertados=detalle_cuadre.get("registros_insertados") or 0,
+                estado="FALLÓ_CUADRE",
+                mensaje="No coincide filas Excel = registros insertados = Total general ASTER.",
+                archivo_reporte_entidades=nombre_entidades,
+                ruta_reporte_entidades=ruta_entidades,
+            )
+
             html_reporte = _generar_html_reporte_final_aster(
                 fecha_yyyymmdd=fecha_yyyymmdd,
                 detalle_cuadre=detalle_cuadre,
@@ -3677,6 +3912,19 @@ def accion_aster_insertar_datos():
         session["aster_ultimo_insert_conexion"] = conexion
         session["aster_ultimo_insert_total"] = total_insertados
         session["aster_reporte_entidades"] = ruta_entidades
+        
+        _registrar_historial_carga_aster(
+            fecha_proceso=fecha_yyyymmdd,
+            archivo_excel=os.path.basename(ruta_archivo),
+            conexion=conexion,
+            total_general_aster=detalle_cuadre.get("total_general_aster"),
+            filas_excel=detalle_cuadre.get("filas_excel") or 0,
+            registros_insertados=detalle_cuadre.get("registros_insertados") or 0,
+            estado="CORRECTO",
+            mensaje="Proceso ASTER correcto. Coinciden Excel, registros insertados y Total general ASTER.",
+            archivo_reporte_entidades=nombre_entidades,
+            ruta_reporte_entidades=ruta_entidades,
+        )
 
         return _generar_html_insert_ok_aster(
             conexion=conexion,
@@ -3701,6 +3949,29 @@ def accion_aster_insertar_datos():
         if conn is not None:
             conn.close()
             
+
+@aster_bp.route("/accion/aster-historial-cargas", methods=["POST", "GET"])
+def accion_aster_historial_cargas():
+    """
+    Muestra historial local de cargas ASTER.
+    """
+    try:
+        limite_raw = request.form.get("limite", "30").strip()
+
+        try:
+            limite = int(limite_raw)
+        except Exception:
+            limite = 30
+
+        if limite <= 0:
+            limite = 30
+
+        registros = _obtener_historial_cargas_aster(limite=limite)
+
+        return _generar_html_historial_cargas_aster(registros)
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error consultando historial ASTER: {escape(str(exc))}</div>"
 
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])
