@@ -1327,6 +1327,40 @@ function construirMonitorAster(config) {
                 </div>
             </div>
         </details>
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">📜</span>
+                Historial de cargas ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Consulte las últimas cargas ASTER registradas localmente.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="asterHistorialLimite" style="font-size:0.8rem;">
+                        Últimos registros:
+                    </label>
+                    <input
+                        id="asterHistorialLimite"
+                        type="number"
+                        min="1"
+                        value="30"
+                        style="width:90px; padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+
+                    <button type="button" onclick="consultarHistorialAster(this)">
+                        Ver historial ASTER
+                    </button>
+                </div>
+
+                <div id="aster-historial-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Historial ASTER pendiente de consulta.
+                    </div>
+                </div>
+            </div>
+        </details>
 
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
@@ -2078,6 +2112,35 @@ function insertarDatosAster(boton) {
         });
 }
 
+/* ---------- ASTER - HISTORIAL DE CARGAS ---------- */
+
+function consultarHistorialAster(boton) {
+    const resultado = document.getElementById("aster-historial-resultado");
+    const limiteInput = document.getElementById("asterHistorialLimite");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de historial ASTER.");
+        return;
+    }
+
+    const limite = limiteInput?.value || "30";
+
+    const formData = new FormData();
+    formData.append("limite", limite);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Consultando historial ASTER...");
+
+    postFormTexto("/accion/aster-historial-cargas", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error consultando historial ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
 
 
 
@@ -2119,6 +2182,7 @@ window.marcarBotonAsterProcesando = marcarBotonAsterProcesando;
 window.prepararInsercionAster = prepararInsercionAster;
 window.probarConexionInsercionAster = probarConexionInsercionAster;
 window.insertarDatosAster = insertarDatosAster;
+window.consultarHistorialAster = consultarHistorialAster;
 
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
