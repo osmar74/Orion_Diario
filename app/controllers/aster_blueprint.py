@@ -2653,6 +2653,198 @@ def _generar_html_errores_validacion_insert_aster(
     return html
 
 
+def _obtener_fecha_proceso_aster() -> str:
+    """
+    Obtiene la fecha del proceso ASTER en formato YYYYMMDD.
+    """
+    fecha = str(
+        session.get("aster_fecha_proceso")
+        or session.get("ultima_fecha_aster")
+        or session.get("aster_fecha_sql")
+        or ""
+    ).strip()
+
+    fecha_limpia = re.sub(r"[^0-9]", "", fecha)
+
+    if len(fecha_limpia) >= 8:
+        return fecha_limpia[:8]
+
+    return datetime.now().strftime("%Y%m%d")
+
+
+def _obtener_carpeta_proceso_aster(fecha_yyyymmdd: str) -> str:
+    """
+    Devuelve la carpeta del proceso ASTER.
+    """
+    carpeta = os.path.join(
+        DATA_DIR,
+        fecha_yyyymmdd,
+        "Aster",
+        f"aster_{fecha_yyyymmdd}",
+    )
+
+    os.makedirs(carpeta, exist_ok=True)
+
+    return carpeta
+
+
+def _obtener_entidades_filtradas_finales_aster() -> list[dict[str, Any]]:
+    """
+    Obtiene las entidades filtradas finales que quedaron para ASTER.
+
+    Prioridad:
+    1. Entidades SQL validadas por conciliación.
+    2. Bases Cobranza + Integral + No seleccionadas.
+    """
+    entidades_validadas = session.get("aster_entidades_sql_validadas") or []
+
+    if entidades_validadas:
+        return entidades_validadas
+
+    cobranza = session.get("aster_bases_cobranza") or []
+    integral = session.get("aster_bases_integral") or []
+    no_seleccionadas = session.get("aster_bases_no_seleccionadas") or []
+
+    return cobranza + integral + no_seleccionadas
+
+
+def _generar_excel_entidades_aster(
+    fecha_yyyymmdd: str,
+) -> tuple[str, str, int]:
+    """
+    Genera Excel con las entidades filtradas finales de ASTER.
+
+    Archivo:
+    entidades_aster_YYYYMMDD.xlsx
+    """
+    carpeta = _obtener_carpeta_proceso_aster(fecha_yyyymmdd)
+    nombre_archivo = f"entidades_aster_{fecha_yyyymmdd}.xlsx"
+    ruta_archivo = os.path.join(carpeta, nombre_archivo)
+
+    entidades = _obtener_entidades_filtradas_finales_aster()
+
+    filas = []
+
+    for idx, entidad_info in enumerate(entidades, start=1):
+        entidad = str(entidad_info.get("entidad") or "").strip()
+
+        if not entidad:
+            continue
+
+        filas.append(
+            {
+                "Nro": idx,
+                "Entidad": entidad,
+                "Numero": int(entidad_info.get("numero") or 0),
+                "SSS": str(entidad_info.get("SSS") or f"'{entidad}'"),
+            }
+        )
+
+    df_entidades = pd.DataFrame(
+        filas,
+        columns=["Nro", "Entidad", "Numero", "SSS"],
+    )
+
+    df_entidades.to_excel(ruta_archivo, index=False)
+
+    return ruta_archivo, nombre_archivo, len(df_entidades)
+
+
+def _validar_cuadre_final_aster(
+    total_filas_excel: int,
+    total_insertados: int,
+) -> tuple[bool, dict[str, Any]]:
+    """
+    Valida que:
+    registros insertados = filas Excel = Total general ASTER
+    """
+    total_aster = session.get("total_aster")
+
+    try:
+        total_aster_int = int(total_aster)
+    except Exception:
+        total_aster_int = None
+
+    cumple = (
+        total_aster_int is not None
+        and int(total_filas_excel) == int(total_insertados)
+        and int(total_insertados) == int(total_aster_int)
+    )
+
+    detalle = {
+        "filas_excel": int(total_filas_excel),
+        "registros_insertados": int(total_insertados),
+        "total_general_aster": total_aster_int,
+        "cumple": cumple,
+    }
+
+    return cumple, detalle
+
+
+def _generar_html_reporte_final_aster(
+    fecha_yyyymmdd: str,
+    detalle_cuadre: dict[str, Any],
+    ruta_entidades: str,
+    nombre_entidades: str,
+    total_entidades: int,
+) -> str:
+    """
+    Genera reporte visual final de Fase H ASTER.
+    """
+    cumple = bool(detalle_cuadre.get("cumple"))
+
+    if cumple:
+        html = """
+        <div class='log-line success'>
+            ✅ Proceso ASTER correcto. La cantidad insertada coincide con el Excel y con el Total general ASTER.
+        </div>
+        """
+    else:
+        html = """
+        <div class='log-line error'>
+            ❌ Proceso ASTER falló. La cantidad insertada no coincide con el Excel o con el Total general ASTER.
+        </div>
+        """
+
+    filas = [
+        ("Fecha proceso", fecha_yyyymmdd),
+        ("Filas del archivo Excel", detalle_cuadre.get("filas_excel")),
+        ("Registros insertados", detalle_cuadre.get("registros_insertados")),
+        ("Total general ASTER", detalle_cuadre.get("total_general_aster")),
+        ("Resultado de comparación", "CORRECTO" if cumple else "FALLÓ"),
+        ("Archivo de entidades creado", nombre_entidades),
+        ("Ruta archivo entidades", ruta_entidades),
+        ("Entidades filtradas exportadas", total_entidades),
+    ]
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Reporte final Fase H ASTER
+            </th>
+        </tr>
+    """
+
+    for etiqueta, valor in filas:
+        color = ""
+
+        if etiqueta == "Resultado de comparación":
+            color = "color:#28a745;" if cumple else "color:#dc3545;"
+
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all; font-weight:bold; {color}'>
+                {escape(str(valor))}
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
 
 
 def _generar_html_insert_ok_aster(
@@ -2662,9 +2854,13 @@ def _generar_html_insert_ok_aster(
     total_insertados: int,
     columnas_insertadas: list[str],
     columnas_clave: list[str],
+    detalle_cuadre: dict[str, Any],
+    ruta_entidades: str,
+    nombre_entidades: str,
+    total_entidades: int,
 ) -> str:
     """
-    Genera HTML de inserción exitosa ASTER.
+    Genera HTML de inserción exitosa ASTER con validación final.
     """
     conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - PRUEBAS"
 
@@ -2704,7 +2900,16 @@ def _generar_html_insert_ok_aster(
 
     html += "</table>"
 
+    html += _generar_html_reporte_final_aster(
+        fecha_yyyymmdd=_obtener_fecha_proceso_aster(),
+        detalle_cuadre=detalle_cuadre,
+        ruta_entidades=ruta_entidades,
+        nombre_entidades=nombre_entidades,
+        total_entidades=total_entidades,
+    )
+
     return html
+
 
 
 @aster_bp.route("/accion/aster-ocr-subir", methods=["POST"])
@@ -3438,10 +3643,40 @@ def accion_aster_insertar_datos():
             )
 
         total_insertados = _insertar_dataframe_sql_aster(conn, df_insert)
+
+        cuadre_ok, detalle_cuadre = _validar_cuadre_final_aster(
+            total_filas_excel=len(df),
+            total_insertados=total_insertados,
+        )
+
+        if not cuadre_ok:
+            conn.rollback()
+
+            fecha_yyyymmdd = _obtener_fecha_proceso_aster()
+            ruta_entidades, nombre_entidades, total_entidades = _generar_excel_entidades_aster(
+                fecha_yyyymmdd
+            )
+
+            html_reporte = _generar_html_reporte_final_aster(
+                fecha_yyyymmdd=fecha_yyyymmdd,
+                detalle_cuadre=detalle_cuadre,
+                ruta_entidades=ruta_entidades,
+                nombre_entidades=nombre_entidades,
+                total_entidades=total_entidades,
+            )
+
+            return html_reporte
+
         conn.commit()
+
+        fecha_yyyymmdd = _obtener_fecha_proceso_aster()
+        ruta_entidades, nombre_entidades, total_entidades = _generar_excel_entidades_aster(
+            fecha_yyyymmdd
+        )
 
         session["aster_ultimo_insert_conexion"] = conexion
         session["aster_ultimo_insert_total"] = total_insertados
+        session["aster_reporte_entidades"] = ruta_entidades
 
         return _generar_html_insert_ok_aster(
             conexion=conexion,
@@ -3450,6 +3685,10 @@ def accion_aster_insertar_datos():
             total_insertados=total_insertados,
             columnas_insertadas=list(df_insert.columns),
             columnas_clave=columnas_clave,
+            detalle_cuadre=detalle_cuadre,
+            ruta_entidades=ruta_entidades,
+            nombre_entidades=nombre_entidades,
+            total_entidades=total_entidades,
         )
 
     except Exception as exc:
