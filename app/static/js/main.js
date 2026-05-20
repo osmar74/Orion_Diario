@@ -1361,7 +1361,60 @@ function construirMonitorAster(config) {
                 </div>
             </div>
         </details>
+        <details class="panel-monitor" open>
+            <summary>
+                <span class="panel-icon">🔁</span>
+                FASE I. Traer usuarios y gestiones ASTER
+            </summary>
+            <div class="panel-body">
+                <div class="log-line info">
+                    Replica el flujo SSIS: DELETE usuarios, carga usuarios desde MySQL y carga comentarios filtrados por entidades ASTER.
+                </div>
 
+                <div class="log-line warning" style="margin-top:8px;">
+                    MySQL es solo lectura. SQL Server permite local/remoto, pero por ahora se trabaja LOCAL en desarrollo.
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="asterFaseIConexion" style="font-size:0.8rem;">
+                        Conexión SQL Server:
+                    </label>
+
+                    <select
+                        id="asterFaseIConexion"
+                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+                        <option value="local" selected>Local - desarrollo</option>
+                        <option value="remoto">Remoto - producción</option>
+                    </select>
+
+                    <label for="asterFaseIFecha" style="font-size:0.8rem;">
+                        Fecha proceso:
+                    </label>
+
+                    <input
+                        id="asterFaseIFecha"
+                        type="text"
+                        placeholder="Ejemplo: 20260429"
+                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                    >
+
+                    <button type="button" onclick="probarConexionesFaseIAster(this)">
+                        Probar conexiones Fase I
+                    </button>
+
+                    <button type="button" onclick="prepararFaseIAster(this)">
+                        Preparar Fase I
+                    </button>
+                </div>
+
+                <div id="aster-fase-i-resultado" style="margin-top:10px;">
+                    <div class="log-line warning">
+                        ⚠️ Fase I ASTER pendiente de preparación.
+                    </div>
+                </div>
+            </div>
+        </details>
         <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
             <tr style="background:#1e3a5f; color:#fff;">
                 <th>Estado del módulo</th>
@@ -2142,7 +2195,103 @@ function consultarHistorialAster(boton) {
         });
 }
 
+/* ---------- ASTER - FASE I: USUARIOS Y GESTIONES ---------- */
 
+function obtenerDatosFaseIAster() {
+    const conexionSelect = document.getElementById("asterFaseIConexion");
+    const fechaInput = document.getElementById("asterFaseIFecha");
+
+    const conexion = conexionSelect?.value || "local";
+    const fechaProceso =
+        fechaInput?.value ||
+        document.getElementById("asterFechaProceso")?.value ||
+        getInputValue("fechaInput");
+
+    return {
+        conexion,
+        fechaProceso,
+    };
+}
+
+function probarConexionesFaseIAster(boton) {
+    const resultado = document.getElementById("aster-fase-i-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de Fase I ASTER.");
+        return;
+    }
+
+    const datos = obtenerDatosFaseIAster();
+
+    if (datos.conexion === "remoto") {
+        const confirma = confirm(
+            "Seleccionó REMOTO. Está habilitado, pero corresponde a producción. ¿Desea probar conexión de todos modos?"
+        );
+
+        if (!confirma) {
+            return;
+        }
+    }
+
+    const formData = new FormData();
+    formData.append("conexion", datos.conexion);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Probando conexiones Fase I ASTER...");
+
+    postFormTexto("/accion/aster-fase-i-probar-conexiones", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error probando conexiones Fase I ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
+function prepararFaseIAster(boton) {
+    const resultado = document.getElementById("aster-fase-i-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de Fase I ASTER.");
+        return;
+    }
+
+    const datos = obtenerDatosFaseIAster();
+
+    if (!datos.fechaProceso) {
+        alert("Ingrese la fecha del proceso. Ejemplo: 20260429.");
+        return;
+    }
+
+    if (datos.conexion === "remoto") {
+        const confirma = confirm(
+            "Seleccionó REMOTO. Está habilitado, pero corresponde a producción. ¿Desea preparar con conexión remota?"
+        );
+
+        if (!confirma) {
+            return;
+        }
+    }
+
+    const formData = new FormData();
+    formData.append("conexion", datos.conexion);
+    formData.append("fecha_proceso", datos.fechaProceso);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Preparando Fase I ASTER...");
+
+    postFormTexto("/accion/aster-fase-i-preparar", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error preparando Fase I ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
@@ -2183,6 +2332,8 @@ window.prepararInsercionAster = prepararInsercionAster;
 window.probarConexionInsercionAster = probarConexionInsercionAster;
 window.insertarDatosAster = insertarDatosAster;
 window.consultarHistorialAster = consultarHistorialAster;
+window.probarConexionesFaseIAster = probarConexionesFaseIAster;
+window.prepararFaseIAster = prepararFaseIAster;
 
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
