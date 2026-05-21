@@ -4,6 +4,7 @@ Blueprint para la fase F: Procesamiento de Discador, Causales, Lotes y Comparaci
 
 import os
 import pandas as pd
+from html import escape
 from flask import Blueprint, request, session
 
 from app.config import DATA_DIR
@@ -11,6 +12,7 @@ from app.services.discador_processor import DiscadorProcessor
 from app.services.causales_processor import CausalesProcessor
 from app.services.lotes_processor import LotesProcessor
 from app.controllers.helpers import obtener_log_service
+
 
 proc_bp = Blueprint("procesamiento", __name__)
 
@@ -157,21 +159,167 @@ def accion_procesar_causales():
     return html
 
 
+def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
+    """
+    Genera tabla visual de asignación Nombre_Lote desde Discador[Lote].
+    """
+    if not reporte_lotes:
+        return """
+        <div class='log-line warning'>
+            ⚠️ No se generó reporte de asignación Nombre_Lote.
+        </div>
+        """
+
+    html = """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='6' style='background:#1e3a5f; color:#fff;'>
+                Asignación Nombre_Lote desde Discador[Lote]
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Archivo lote</th>
+            <th>Nombre base</th>
+            <th>Nombre_Lote asignado</th>
+            <th>Similitud</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(reporte_lotes, start=1):
+        estado = str(fila.get("estado", ""))
+
+        if estado == "OK":
+            color = "#28a745"
+            texto_estado = "✅ OK"
+        elif estado == "REVISAR":
+            color = "#ffc107"
+            texto_estado = "⚠️ Revisar"
+        else:
+            color = "#dc3545"
+            texto_estado = "❌ Sin coincidencia confiable"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(fila.get("archivo_lote", "")))}</td>
+            <td>{escape(str(fila.get("nombre_base", "")))}</td>
+            <td><b>{escape(str(fila.get("nombre_lote_asignado", "")))}</b></td>
+            <td>{escape(str(fila.get("similitud", "")))}</td>
+            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+def _buscar_archivo_discador_orion(carpeta_diaria: str) -> str | None:
+    """
+    Busca el archivo Discador real para usar sus valores únicos de la columna Lote.
+
+    Prioridad:
+    1. Archivos con 'discador' y 'limpio'
+    2. Archivos con 'discador' y 'consolidado'
+    3. Busca en carpeta raíz del día y en subcarpeta Discador
+    """
+    carpetas_busqueda = [
+        carpeta_diaria,
+        os.path.join(carpeta_diaria, "Discador"),
+    ]
+
+    candidatos = []
+
+    for carpeta in carpetas_busqueda:
+        if not os.path.isdir(carpeta):
+            continue
+
+        for archivo in os.listdir(carpeta):
+            nombre = archivo.lower()
+
+            if not nombre.endswith(".xlsx"):
+                continue
+
+            if "discador" not in nombre:
+                continue
+
+            if "limpio" not in nombre and "consolidado" not in nombre:
+                continue
+
+            ruta = os.path.join(carpeta, archivo)
+
+            prioridad = 0
+
+            if "limpio" in nombre:
+                prioridad += 2
+
+            if "consolidado" in nombre:
+                prioridad += 1
+
+            candidatos.append(
+                {
+                    "ruta": ruta,
+                    "prioridad": prioridad,
+                    "modificado": os.path.getmtime(ruta),
+                }
+            )
+
+    if not candidatos:
+        return None
+
+    candidatos.sort(
+        key=lambda item: (item["prioridad"], item["modificado"]),
+        reverse=True,
+    )
+
+    return candidatos[0]["ruta"]
+
+
+
+
 @proc_bp.route("/accion/procesar-lotes")
 def accion_procesar_lotes():
     fecha = request.args.get("fecha", "202605_12")
     lotes = LotesProcessor(log_service=obtener_log_service())
-    carpeta_lotes = os.path.join(DATA_DIR, f"orion_{fecha}", "Lotes")
+    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_lotes = os.path.join(carpeta_diaria, "Lotes")
+
     if not os.path.isdir(carpeta_lotes):
         return "<div class='log-line error'>❌ No existe la carpeta Lotes.</div>"
 
-    ruta_disc = os.path.join(DATA_DIR, f"orion_{fecha}", "discador_ejemplo_limpio.xlsx")
+    ruta_disc = _buscar_archivo_discador_orion(carpeta_diaria)
+
     res = lotes.procesar_carpeta_lotes(
-        carpeta_lotes, fecha, ruta_disc if os.path.isfile(ruta_disc) else None
+        carpeta_lotes,
+        fecha,
+        ruta_disc,
     )
 
     if res["success"]:
         html = "<div class='log-line success'>✅ Lotes procesados correctamente.</div>"
+
+        if ruta_disc:
+            html += f"""
+            <div class='log-line info'>
+                📌 Discador usado para Nombre_Lote:
+                <code>{escape(str(ruta_disc))}</code>
+            </div>
+            """
+        else:
+            html += """
+            <div class='log-line warning'>
+                ⚠️ No se encontró archivo Discador consolidado/limpio. La asignación Nombre_Lote no pudo compararse contra Discador[Lote].
+            </div>
+            """
+
+        html += f"""
+        <div class='log-line info'>
+            📊 Valores únicos encontrados en Discador[Lote]:
+            <b>{len(res.get("valores_lote_discador", []))}</b>
+        </div>
+        """
+        
         if res.get("estadisticas_archivos"):
             html += "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>📊 Procesamiento por archivo:</p>"
             html += (
@@ -188,11 +336,20 @@ def accion_procesar_lotes():
                     f"<td>{est['filas_originales']}</td><td>{est['filas_despues_pivot']}</td>"
                     f"<td>{cod_cliente}</td><td>{cuenta_dato}</td></tr>"
                 )
+
             html += "</table>"
+
+        if res.get("reporte_lotes"):
+            html += _generar_html_reporte_nombre_lote_orion(
+                res.get("reporte_lotes", [])
+            )
+
         html += (
             "<table class='dataframe' style='width:100%; margin-top:8px;'>"
             "<tr><th>Indicador</th><th>Valor</th></tr>"
         )
+
+
         html += (
             f"<tr><td>Total filas consolidadas</td><td>{res['total_filas']}</td></tr>"
         )
