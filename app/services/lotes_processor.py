@@ -1,8 +1,15 @@
 import os
 import re
-from typing import Dict, List, Optional
+import unicodedata
+from difflib import SequenceMatcher
 
 import pandas as pd
+
+
+import re
+from typing import Dict, List, Optional
+
+
 
 from app.services.log_service import LogService
 
@@ -65,6 +72,116 @@ class LotesProcessor:
             filas_con_dato = int(mask.sum())
             df['Cuenta'] = ''
         return df, filas_con_dato
+
+
+    def normalizar_texto_lote(self, texto: str) -> str:
+        """
+        Normaliza textos para comparar nombres de archivos de lote
+        contra valores de la columna Lote del Discador.
+        """
+        texto = str(texto or "").strip().lower()
+
+        texto = unicodedata.normalize("NFKD", texto)
+        texto = "".join(c for c in texto if not unicodedata.combining(c))
+
+        texto = os.path.splitext(texto)[0]
+
+        texto = re.sub(r"[_\-.]+", " ", texto)
+        texto = re.sub(r"\s+", " ", texto).strip()
+
+        palabras_ruido = {
+            "lote",
+            "lotes",
+            "archivo",
+            "consolidado",
+            "orion",
+            "gestion",
+            "diaria",
+        }
+
+        partes = [
+            parte
+            for parte in texto.split()
+            if parte not in palabras_ruido
+        ]
+
+        return " ".join(partes).strip()
+
+    def obtener_valores_lote_discador(self, ruta_discador_limpio: str) -> list[str]:
+        """
+        Lee el Discador consolidado y devuelve valores únicos de la columna Lote.
+        """
+        if not ruta_discador_limpio or not os.path.isfile(ruta_discador_limpio):
+            return []
+
+        df_discador = pd.read_excel(ruta_discador_limpio, dtype=str)
+
+        columnas = {
+            str(col).strip().lower(): str(col)
+            for col in df_discador.columns
+        }
+
+        columna_lote = columnas.get("lote")
+
+        if not columna_lote:
+            return []
+
+        valores = sorted(
+            {
+                str(valor).strip()
+                for valor in df_discador[columna_lote].dropna().tolist()
+                if str(valor).strip()
+            }
+        )
+
+        return valores
+
+    def seleccionar_nombre_lote_desde_discador(
+        self,
+        nombre_archivo_lote: str,
+        valores_lote_discador: list[str],
+    ) -> dict:
+        """
+        Selecciona el valor de Discador[Lote] más parecido al nombre del archivo de lote.
+        """
+        nombre_base = os.path.splitext(os.path.basename(nombre_archivo_lote))[0]
+        nombre_normalizado = self.normalizar_texto_lote(nombre_base)
+
+        mejor_valor = ""
+        mejor_score = 0.0
+
+        for valor_lote in valores_lote_discador:
+            valor_normalizado = self.normalizar_texto_lote(valor_lote)
+
+            if not valor_normalizado:
+                continue
+
+            score = SequenceMatcher(
+                None,
+                nombre_normalizado,
+                valor_normalizado,
+            ).ratio()
+
+            if score > mejor_score:
+                mejor_score = score
+                mejor_valor = valor_lote
+
+        if mejor_score >= 0.75:
+            estado = "OK"
+        elif mejor_score >= 0.50:
+            estado = "REVISAR"
+        else:
+            estado = "SIN_COINCIDENCIA"
+
+        return {
+            "archivo_lote": os.path.basename(nombre_archivo_lote),
+            "nombre_base": nombre_base,
+            "nombre_lote_asignado": mejor_valor or nombre_base,
+            "similitud": round(mejor_score, 4),
+            "estado": estado,
+        }
+
+
 
     def agregar_metadatos(
         self, df: pd.DataFrame, nombre_lote: str, fecha_str: str
@@ -145,10 +262,19 @@ class LotesProcessor:
             dataframes = []
             mensajes = []
             estadisticas = []
+            
+            valores_lote_discador = self.obtener_valores_lote_discador(ruta_discador_limpio)
+            reporte_lotes = []
 
             for archivo in archivos_csv:
                 ruta_completa = os.path.join(ruta_carpeta, archivo)
-                nombre_lote = os.path.splitext(archivo)[0]
+                coincidencia_lote = self.seleccionar_nombre_lote_desde_discador(
+                    archivo,
+                    valores_lote_discador,
+                )
+
+                nombre_lote = coincidencia_lote["nombre_lote_asignado"]
+                reporte_lotes.append(coincidencia_lote)
 
                 try:
                     df = pd.read_csv(ruta_completa, sep=';', dtype=str, encoding='latin-1')
@@ -254,5 +380,8 @@ class LotesProcessor:
             if self.log_service:
                 self.log_service.log('4.3', 'Procesar Lotes', 'error', str(e))
             resultado['mensajes'].append(f"Error general: {e}")
+        
+        resultado["reporte_lotes"] = reporte_lotes
+        resultado["valores_lote_discador"] = valores_lote_discador
 
         return resultado

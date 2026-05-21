@@ -67,6 +67,65 @@ def generar_tabla_estadisticas_consolidado(titulo, filas):
 
     return html
 
+def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
+    """
+    Genera tabla visual de asignación Nombre_Lote desde Discador[Lote].
+    """
+    if not reporte_lotes:
+        return """
+        <div class='log-line warning'>
+            ⚠️ No se generó reporte de asignación Nombre_Lote.
+        </div>
+        """
+
+    html = """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='6' style='background:#1e3a5f; color:#fff;'>
+                Asignación Nombre_Lote desde Discador[Lote]
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Archivo lote</th>
+            <th>Nombre base</th>
+            <th>Nombre_Lote asignado</th>
+            <th>Similitud</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(reporte_lotes, start=1):
+        estado = str(fila.get("estado", ""))
+
+        if estado == "OK":
+            color = "#28a745"
+            texto_estado = "✅ OK"
+        elif estado == "REVISAR":
+            color = "#ffc107"
+            texto_estado = "⚠️ Revisar"
+        else:
+            color = "#dc3545"
+            texto_estado = "❌ Sin coincidencia confiable"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{fila.get("archivo_lote", "")}</td>
+            <td>{fila.get("nombre_base", "")}</td>
+            <td><b>{fila.get("nombre_lote_asignado", "")}</b></td>
+            <td>{fila.get("similitud", "")}</td>
+            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+
+
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
 def accion_probar_conexion():
     servidor = request.form.get("servidor", "")
@@ -697,6 +756,35 @@ def accion_consolidar_consulta():
     html += "<button onclick='aplicarFiltroYExportar()' style='background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;'>Aplicar Filtro y Exportar a Excel</button>"
     return html
 
+def _obtener_carpeta_diaria_orion_desde_fecha(fecha: str) -> str:
+    """
+    Devuelve la carpeta diaria ORION.
+
+    Entrada:
+    20260429
+
+    Salida:
+    data\\orion_202604_29
+    """
+    fecha_limpia = "".join(ch for ch in str(fecha or "") if ch.isdigit())
+
+    if len(fecha_limpia) != 8:
+        raise ValueError(
+            f"Fecha inválida para carpeta ORION: {fecha}. Se esperaba YYYYMMDD."
+        )
+
+    anio_mes = fecha_limpia[:6]
+    dia = fecha_limpia[6:8]
+
+    carpeta = os.path.join(
+        DATA_DIR,
+        f"orion_{anio_mes}_{dia}",
+    )
+
+    os.makedirs(carpeta, exist_ok=True)
+
+    return carpeta
+
 
 @carga_bp.route("/accion/consolidar-aplicar", methods=["POST"])
 def accion_consolidar_aplicar():
@@ -775,15 +863,24 @@ def accion_consolidar_aplicar():
     )
 
     # Exportar a Excel
-    nombre_archivo = f"{fecha.replace('-', '')}_Gestion_orion.xlsx"
-    ruta_guardado = os.path.join(DATA_DIR, nombre_archivo)
-    df.to_excel(ruta_guardado, index=False)
+    fecha_limpia = "".join(ch for ch in str(fecha or "") if ch.isdigit())
+
+    carpeta_diaria_orion = _obtener_carpeta_diaria_orion_desde_fecha(fecha_limpia)
+
+    nombre_archivo = f"{fecha_limpia}_Gestion_orion.xlsx"
+
+    ruta_salida = os.path.join(
+        carpeta_diaria_orion,
+        nombre_archivo,
+    )
+    
+    df.to_excel(ruta_salida, index=False)
 
     html = html_estadisticas
     # Generar enlace de descarga
     html = "<div class='log-line success'>✅ Excel generado correctamente.</div>"
     html += f"<p style='font-size:0.8rem;'><b>Archivo:</b> {nombre_archivo}</p>"
     html += f"<p><a href='/descargar/{nombre_archivo}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
-    html += f"<p style='font-size:0.7rem; color:#888;'>Ruta: {ruta_guardado}</p>"
+    html += f"<p style='font-size:0.7rem; color:#888;'>Ruta: {ruta_salida}</p>"
     html = html_estadisticas + html
     return html
