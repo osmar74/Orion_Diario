@@ -1402,10 +1402,15 @@ function construirMonitorAster(config) {
                     <button type="button" onclick="probarConexionesFaseIAster(this)">
                         Probar conexiones Fase I
                     </button>
-
                     <button type="button" onclick="prepararFaseIAster(this)">
                         Preparar Fase I
                     </button>
+                    
+                    <button type="button" onclick="ejecutarFaseIAster(this)">
+                        Ejecutar Fase I completa
+                    </button>
+
+
                 </div>
 
                 <div id="aster-fase-i-resultado" style="margin-top:10px;">
@@ -2293,6 +2298,74 @@ function prepararFaseIAster(boton) {
         });
 }
 
+
+function ejecutarFaseIAster(boton) {
+    const resultado = document.getElementById("aster-fase-i-resultado");
+
+    if (!resultado) {
+        alert("No se encontró el contenedor de Fase I ASTER.");
+        return;
+    }
+
+    const datos = obtenerDatosFaseIAster();
+    let confirmarRemoto = "";
+
+    if (!datos.fechaProceso) {
+        alert("Ingrese la fecha del proceso. Ejemplo: 20260429.");
+        return;
+    }
+
+    if (datos.conexion === "remoto") {
+        const confirma = confirm(
+            "ATENCIÓN: REMOTO es producción. Esta acción ejecutará DELETE FROM usuarios e INSERT en SQL Server remoto. ¿Desea continuar?"
+        );
+
+        if (!confirma) {
+            return;
+        }
+
+        const texto = prompt(
+            "Para confirmar ejecución REMOTA escriba exactamente: SI"
+        );
+
+        if (texto !== "SI") {
+            resultado.innerHTML = htmlError(
+                "Ejecución remota cancelada. Confirmación inválida."
+            );
+            marcarBotonAsterError(boton);
+            return;
+        }
+
+        confirmarRemoto = "SI";
+    }
+
+    const confirmaLocal = confirm(
+        "Se ejecutará Fase I completa: DELETE FROM usuarios, INSERT usuarios e INSERT comentarios. ¿Desea continuar?"
+    );
+
+    if (!confirmaLocal) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("conexion", datos.conexion);
+    formData.append("fecha_proceso", datos.fechaProceso);
+    formData.append("confirmar_remoto", confirmarRemoto);
+
+    marcarBotonAsterProcesando(boton);
+    resultado.innerHTML = htmlLoading("Ejecutando Fase I ASTER completa...");
+
+    postFormTexto("/accion/aster-fase-i-ejecutar", formData)
+        .then((html) => {
+            resultado.innerHTML = html;
+            marcarBotonAsterSegunRespuesta(boton, html);
+        })
+        .catch((err) => {
+            resultado.innerHTML = htmlError(`Error ejecutando Fase I ASTER: ${err}`);
+            marcarBotonAsterError(boton);
+        });
+}
+
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
 window.seleccionarModulo = seleccionarModulo;
 window.normalizar = normalizar;
@@ -2334,6 +2407,6 @@ window.insertarDatosAster = insertarDatosAster;
 window.consultarHistorialAster = consultarHistorialAster;
 window.probarConexionesFaseIAster = probarConexionesFaseIAster;
 window.prepararFaseIAster = prepararFaseIAster;
-
+window.ejecutarFaseIAster = ejecutarFaseIAster;
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
