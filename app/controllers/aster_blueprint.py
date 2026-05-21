@@ -45,6 +45,14 @@ ASTER_BASE_INSERCION = "Aster_Api"
 
 ASTER_HISTORIAL_DB = os.path.join(DATA_DIR, "aster_load_history.db")
 
+ASTER_FASE_I_BASE = "Aster_Api"
+ASTER_FASE_I_SCHEMA = "dbo"
+ASTER_FASE_I_TABLA_USUARIOS = "usuarios"
+ASTER_FASE_I_TABLA_COMENTARIOS = "comentarios"
+
+ASTER_MYSQL_DB_USUARIOS = os.getenv("ASTER_MYSQL_DB_USUARIOS", "usuarios")
+ASTER_MYSQL_DB_GESTION = os.getenv("ASTER_MYSQL_DB_GESTION", "gestioncomercial")
+
 
 def _crear_html_total_aster(total: int | None, origen: str, previews: list[tuple[str, str]]) -> str:
     """
@@ -3972,6 +3980,1504 @@ def accion_aster_historial_cargas():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error consultando historial ASTER: {escape(str(exc))}</div>"
+
+
+def _columnas_mysql_usuarios_fase_i() -> list[str]:
+    """
+    Columnas explícitas para traer usuarios desde MySQL usuarios.crm.
+    """
+    return [
+        "id",
+        "usuario",
+        "pass",
+        "perfil",
+        "nombre",
+        "owned_by",
+        "type",
+        "web",
+        "created_at",
+        "updated_at",
+    ]
+
+
+def _columnas_mysql_comentarios_fase_i() -> list[str]:
+    """
+    Columnas explícitas para traer comentarios desde MySQL gestioncomercial.comentarios.
+    """
+    return [
+        "id",
+        "data",
+        "fecha",
+        "comentario",
+        "resultado1",
+        "resultado2",
+        "entidad",
+        "usuario",
+        "fechaagenda",
+        "unico",
+        "fechainicio",
+        "telefono",
+        "uniqueid",
+        "linkedid",
+        "datafijos",
+        "datapers",
+    ]
+
+
+def _obtener_config_mysql_fase_i(database: str) -> dict[str, Any]:
+    """
+    Obtiene conexión MySQL desde .env.
+
+    Usa las variables ya definidas:
+    ASTER_DB_HOST
+    ASTER_DB_USER
+    ASTER_DB_PASSWORD
+
+    Y permite separar bases:
+    ASTER_MYSQL_DB_USUARIOS=usuarios
+    ASTER_MYSQL_DB_GESTION=gestioncomercial
+    """
+    host = os.getenv("ASTER_DB_HOST", "").strip()
+    user = os.getenv("ASTER_DB_USER", "").strip()
+    password = os.getenv("ASTER_DB_PASSWORD", "").strip()
+    port_raw = os.getenv("ASTER_DB_PORT", "3306").strip()
+
+    if not host or not user:
+        raise ValueError("Faltan variables MySQL ASTER en .env: ASTER_DB_HOST / ASTER_DB_USER")
+
+    try:
+        port = int(port_raw)
+    except Exception:
+        port = 3306
+
+    return {
+        "host": host,
+        "user": user,
+        "password": password,
+        "database": database,
+        "port": port,
+        "charset": "utf8mb4",
+    }
+
+
+def _conectar_mysql_fase_i(database: str):
+    """
+    Conecta a MySQL para lectura.
+    """
+    try:
+        import pymysql
+    except ImportError as exc:
+        raise RuntimeError("No está instalado PyMySQL. Ejecute: pip install PyMySQL") from exc
+
+    config = _obtener_config_mysql_fase_i(database)
+
+    return pymysql.connect(
+        host=config["host"],
+        user=config["user"],
+        password=config["password"],
+        database=config["database"],
+        port=config["port"],
+        charset=config["charset"],
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+
+
+def _validar_sql_mysql_solo_select(sql: str) -> None:
+    """
+    Bloquea cualquier operación que no sea SELECT en MySQL.
+    """
+    sql_limpio = re.sub(r"\s+", " ", sql or "").strip().lower()
+
+    if not sql_limpio.startswith("select "):
+        raise ValueError("MySQL solo permite SELECT en Fase I.")
+
+    prohibidas = [
+        "delete ",
+        "insert ",
+        "update ",
+        "drop ",
+        "alter ",
+        "truncate ",
+        "create ",
+        "replace ",
+    ]
+
+    for palabra in prohibidas:
+        if palabra in sql_limpio:
+            raise ValueError(f"Operación MySQL prohibida detectada: {palabra.strip().upper()}")
+
+
+def _obtener_fecha_fase_i(fecha_raw: str = "") -> str:
+    """
+    Obtiene fecha de proceso para Fase I en YYYYMMDD.
+    """
+    if fecha_raw:
+        return _normalizar_fecha_aster(fecha_raw)
+
+    return _obtener_fecha_proceso_aster()
+
+
+def _ruta_entidades_fase_i(fecha_yyyymmdd: str) -> str:
+    """
+    Ruta esperada del archivo entidades_aster_YYYYMMDD.xlsx.
+    """
+    carpeta = _obtener_carpeta_proceso_aster(fecha_yyyymmdd)
+
+    return os.path.join(
+        carpeta,
+        f"entidades_aster_{fecha_yyyymmdd}.xlsx",
+    )
+
+
+def _leer_entidades_fase_i(fecha_yyyymmdd: str) -> tuple[list[str], str]:
+    """
+    Lee entidades filtradas finales desde entidades_aster_YYYYMMDD.xlsx.
+    """
+    ruta = _ruta_entidades_fase_i(fecha_yyyymmdd)
+
+    if not os.path.isfile(ruta):
+        raise FileNotFoundError(
+            f"No existe el archivo de entidades ASTER: {ruta}"
+        )
+
+    df = pd.read_excel(ruta, dtype=str)
+
+    if "Entidad" not in df.columns:
+        raise ValueError("El archivo de entidades no tiene columna Entidad.")
+
+    entidades = sorted(
+        {
+            str(valor).strip()
+            for valor in df["Entidad"].dropna().tolist()
+            if str(valor).strip()
+        }
+    )
+
+    if not entidades:
+        raise ValueError("El archivo de entidades no contiene entidades válidas.")
+
+    return entidades, ruta
+
+
+def _obtener_columnas_sqlserver_fase_i(
+    conexion: str,
+    tabla: str,
+) -> list[dict[str, Any]]:
+    """
+    Obtiene columnas de Aster_Api.dbo.usuarios o Aster_Api.dbo.comentarios.
+    """
+    cadena = _obtener_cadena_sqlserver_aster(conexion)
+
+    sql = """
+        SELECT
+            COLUMN_NAME,
+            DATA_TYPE,
+            IS_NULLABLE,
+            CHARACTER_MAXIMUM_LENGTH,
+            NUMERIC_PRECISION,
+            NUMERIC_SCALE,
+            ORDINAL_POSITION,
+            COLUMNPROPERTY(
+                OBJECT_ID(TABLE_SCHEMA + '.' + TABLE_NAME),
+                COLUMN_NAME,
+                'IsIdentity'
+            ) AS IS_IDENTITY
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ?
+          AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION
+    """
+
+    conn = pyodbc.connect(cadena, timeout=10)
+    conn.timeout = 120
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(f"USE [{ASTER_FASE_I_BASE}]")
+        cursor.execute(sql, ASTER_FASE_I_SCHEMA, tabla)
+
+        columnas: list[dict[str, Any]] = []
+
+        for row in cursor.fetchall():
+            columnas.append(
+                {
+                    "columna": str(row.COLUMN_NAME),
+                    "tipo_sql": str(row.DATA_TYPE),
+                    "nullable": str(row.IS_NULLABLE),
+                    "longitud": row.CHARACTER_MAXIMUM_LENGTH,
+                    "precision": row.NUMERIC_PRECISION,
+                    "escala": row.NUMERIC_SCALE,
+                    "orden": int(row.ORDINAL_POSITION),
+                    "is_identity": int(row.IS_IDENTITY or 0),
+                }
+            )
+
+        if not columnas:
+            raise ValueError(f"No se encontraron columnas para {ASTER_FASE_I_BASE}.dbo.{tabla}")
+
+        return columnas
+
+    finally:
+        conn.close()
+
+
+def _comparar_columnas_fase_i(
+    columnas_origen: list[str],
+    columnas_destino: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Compara columnas origen contra destino SQL Server.
+    """
+    destino_lower = {
+        str(col["columna"]).lower(): col
+        for col in columnas_destino
+    }
+
+    comparacion: list[dict[str, Any]] = []
+
+    for col_origen in columnas_origen:
+        col_sql = destino_lower.get(col_origen.lower())
+
+        comparacion.append(
+            {
+                "columna_origen": col_origen,
+                "columna_destino": str(col_sql["columna"]) if col_sql else "",
+                "tipo_sql": str(col_sql["tipo_sql"]) if col_sql else "",
+                "longitud": col_sql.get("longitud") if col_sql else "",
+                "nullable": str(col_sql["nullable"]) if col_sql else "",
+                "estado": "OK" if col_sql else "NO_EXISTE_EN_DESTINO",
+            }
+        )
+
+    return comparacion
+
+
+def _contar_usuarios_mysql_fase_i() -> int:
+    """
+    Cuenta usuarios desde MySQL usuarios.crm.
+    Solo SELECT.
+    """
+    sql = "SELECT COUNT(*) AS total FROM crm"
+    _validar_sql_mysql_solo_select(sql)
+
+    conn = _conectar_mysql_fase_i(ASTER_MYSQL_DB_USUARIOS)
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            row = cursor.fetchone()
+
+            return int(row.get("total") or 0)
+
+    finally:
+        conn.close()
+
+
+def _contar_comentarios_mysql_fase_i(
+    fecha_yyyymmdd: str,
+    entidades: list[str],
+) -> int:
+    """
+    Cuenta comentarios MySQL filtrados por fecha y entidades.
+    Solo SELECT.
+    """
+    if not entidades:
+        return 0
+
+    fecha_sql = datetime.strptime(fecha_yyyymmdd, "%Y%m%d").strftime("%Y-%m-%d")
+    placeholders = ", ".join(["%s"] * len(entidades))
+
+    sql = f"""
+        SELECT COUNT(*) AS total
+        FROM comentarios
+        WHERE DATE(fecha) = %s
+          AND entidad IN ({placeholders})
+    """
+
+    _validar_sql_mysql_solo_select(sql)
+
+    conn = _conectar_mysql_fase_i(ASTER_MYSQL_DB_GESTION)
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(sql, [fecha_sql, *entidades])
+            row = cursor.fetchone()
+
+            return int(row.get("total") or 0)
+
+    finally:
+        conn.close()
+
+
+def _generar_tabla_comparacion_fase_i(
+    titulo: str,
+    comparacion: list[dict[str, Any]],
+) -> str:
+    """
+    HTML de comparación de columnas Fase I.
+    """
+    html = f"""
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='7' style='background:#1e3a5f; color:#fff;'>
+                {escape(titulo)}
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Columna origen</th>
+            <th>Columna destino</th>
+            <th>Tipo SQL</th>
+            <th>Longitud</th>
+            <th>Nullable</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(comparacion, start=1):
+        estado = str(fila.get("estado") or "")
+
+        if estado == "OK":
+            color = "#28a745"
+            texto_estado = "✅ OK"
+        else:
+            color = "#dc3545"
+            texto_estado = "❌ No existe en destino"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(str(fila.get("columna_origen") or ""))}</b></td>
+            <td><b>{escape(str(fila.get("columna_destino") or ""))}</b></td>
+            <td>{escape(str(fila.get("tipo_sql") or ""))}</td>
+            <td>{escape(str(fila.get("longitud") or ""))}</td>
+            <td>{escape(str(fila.get("nullable") or ""))}</td>
+            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+def _generar_html_preparacion_fase_i(
+    fecha_yyyymmdd: str,
+    conexion: str,
+    ruta_entidades: str,
+    total_entidades: int,
+    total_usuarios: int,
+    total_comentarios: int,
+    comparacion_usuarios: list[dict[str, Any]],
+    comparacion_comentarios: list[dict[str, Any]],
+) -> str:
+    """
+    Reporte visual de preparación Fase I.
+    """
+    conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - DESARROLLO"
+
+    html = """
+    <div class='log-line success'>
+        ✅ Preparación Fase I ASTER completada correctamente. No se ejecutó DELETE ni INSERT.
+    </div>
+    """
+
+    if conexion == "remoto":
+        html += """
+        <div class='log-line warning'>
+            ⚠️ Conexión REMOTA seleccionada. Está habilitada, pero corresponde a producción.
+        </div>
+        """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen preparación Fase I ASTER
+            </th>
+        </tr>
+    """
+
+    filas = [
+        ("Fecha proceso", fecha_yyyymmdd),
+        ("Conexión SQL Server", conexion_txt),
+        ("Base destino", ASTER_FASE_I_BASE),
+        ("Archivo entidades", ruta_entidades),
+        ("Entidades usadas en filtro", total_entidades),
+        ("Usuarios origen MySQL", total_usuarios),
+        ("Comentarios origen MySQL filtrados", total_comentarios),
+        ("Tarea SQL pendiente", "DELETE FROM Aster_Api.dbo.usuarios"),
+        ("Anti-duplicados comentarios", "id + data + usuario"),
+    ]
+
+    for etiqueta, valor in filas:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += _generar_tabla_comparacion_fase_i(
+        "Comparación usuarios.crm → Aster_Api.dbo.usuarios",
+        comparacion_usuarios,
+    )
+
+    html += _generar_tabla_comparacion_fase_i(
+        "Comparación gestioncomercial.comentarios → Aster_Api.dbo.comentarios",
+        comparacion_comentarios,
+    )
+
+    html += """
+    <div id='aster-fase-i-data' style='display:none;' data-preparado='1'></div>
+    """
+
+    return html
+
+
+@aster_bp.route("/accion/aster-fase-i-probar-conexiones", methods=["POST"])
+def accion_aster_fase_i_probar_conexiones():
+    """
+    Prueba conexiones Fase I:
+    - MySQL usuarios
+    - MySQL gestioncomercial
+    - SQL Server Aster_Api
+    """
+    try:
+        conexion = request.form.get("conexion", "local").strip().lower()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        # MySQL usuarios
+        conn_usuarios = _conectar_mysql_fase_i(ASTER_MYSQL_DB_USUARIOS)
+        try:
+            with conn_usuarios.cursor() as cursor:
+                cursor.execute("SELECT 1 AS ok")
+                cursor.fetchone()
+        finally:
+            conn_usuarios.close()
+
+        # MySQL gestioncomercial
+        conn_gestion = _conectar_mysql_fase_i(ASTER_MYSQL_DB_GESTION)
+        try:
+            with conn_gestion.cursor() as cursor:
+                cursor.execute("SELECT 1 AS ok")
+                cursor.fetchone()
+        finally:
+            conn_gestion.close()
+
+        # SQL Server
+        columnas_usuarios = _obtener_columnas_sqlserver_fase_i(
+            conexion,
+            ASTER_FASE_I_TABLA_USUARIOS,
+        )
+        columnas_comentarios = _obtener_columnas_sqlserver_fase_i(
+            conexion,
+            ASTER_FASE_I_TABLA_COMENTARIOS,
+        )
+
+        tipo = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - DESARROLLO"
+
+        html = """
+        <div class='log-line success'>
+            ✅ Conexiones Fase I ASTER verificadas correctamente.
+        </div>
+        """
+
+        if conexion == "remoto":
+            html += """
+            <div class='log-line warning'>
+                ⚠️ REMOTO está habilitado, pero corresponde a producción.
+            </div>
+            """
+
+        html += f"""
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr>
+                <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                    Verificación conexiones Fase I ASTER
+                </th>
+            </tr>
+            <tr>
+                <td><b>MySQL usuarios</b></td>
+                <td>OK - BD {escape(ASTER_MYSQL_DB_USUARIOS)}</td>
+            </tr>
+            <tr>
+                <td><b>MySQL gestioncomercial</b></td>
+                <td>OK - BD {escape(ASTER_MYSQL_DB_GESTION)}</td>
+            </tr>
+            <tr>
+                <td><b>SQL Server destino</b></td>
+                <td>OK - {escape(tipo)} - Base {escape(ASTER_FASE_I_BASE)}</td>
+            </tr>
+            <tr>
+                <td><b>Columnas usuarios</b></td>
+                <td>{len(columnas_usuarios)}</td>
+            </tr>
+            <tr>
+                <td><b>Columnas comentarios</b></td>
+                <td>{len(columnas_comentarios)}</td>
+            </tr>
+        </table>
+        """
+
+        return html
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error probando conexiones Fase I ASTER: {escape(str(exc))}</div>"
+
+
+@aster_bp.route("/accion/aster-fase-i-preparar", methods=["POST"])
+def accion_aster_fase_i_preparar():
+    """
+    Prepara Fase I sin ejecutar DELETE ni INSERT.
+    """
+    try:
+        conexion = request.form.get("conexion", "local").strip().lower()
+        fecha_raw = request.form.get("fecha_proceso", "").strip()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        fecha_yyyymmdd = _obtener_fecha_fase_i(fecha_raw)
+
+        entidades, ruta_entidades = _leer_entidades_fase_i(fecha_yyyymmdd)
+
+        total_usuarios = _contar_usuarios_mysql_fase_i()
+        total_comentarios = _contar_comentarios_mysql_fase_i(
+            fecha_yyyymmdd,
+            entidades,
+        )
+
+        columnas_sql_usuarios = _obtener_columnas_sqlserver_fase_i(
+            conexion,
+            ASTER_FASE_I_TABLA_USUARIOS,
+        )
+        columnas_sql_comentarios = _obtener_columnas_sqlserver_fase_i(
+            conexion,
+            ASTER_FASE_I_TABLA_COMENTARIOS,
+        )
+
+        comparacion_usuarios = _comparar_columnas_fase_i(
+            _columnas_mysql_usuarios_fase_i(),
+            columnas_sql_usuarios,
+        )
+
+        comparacion_comentarios = _comparar_columnas_fase_i(
+            _columnas_mysql_comentarios_fase_i(),
+            columnas_sql_comentarios,
+        )
+
+        session["aster_fase_i_fecha"] = fecha_yyyymmdd
+        session["aster_fase_i_conexion"] = conexion
+        session["aster_fase_i_preparado"] = True
+        session["aster_fase_i_total_entidades"] = len(entidades)
+        session["aster_fase_i_total_usuarios"] = total_usuarios
+        session["aster_fase_i_total_comentarios"] = total_comentarios
+        session["aster_fase_i_ruta_entidades"] = ruta_entidades
+
+        return _generar_html_preparacion_fase_i(
+            fecha_yyyymmdd=fecha_yyyymmdd,
+            conexion=conexion,
+            ruta_entidades=ruta_entidades,
+            total_entidades=len(entidades),
+            total_usuarios=total_usuarios,
+            total_comentarios=total_comentarios,
+            comparacion_usuarios=comparacion_usuarios,
+            comparacion_comentarios=comparacion_comentarios,
+        )
+
+    except Exception as exc:
+        session["aster_fase_i_preparado"] = False
+        return f"<div class='log-line error'>❌ Error preparando Fase I ASTER: {escape(str(exc))}</div>"
+
+
+def _nombre_tabla_sql_fase_i(tabla: str) -> str:
+    """
+    Devuelve nombre calificado para tablas de Fase I.
+    """
+    return (
+        f"{_sql_identificador_aster(ASTER_FASE_I_SCHEMA)}."
+        f"{_sql_identificador_aster(tabla)}"
+    )
+
+
+def _leer_usuarios_mysql_fase_i() -> pd.DataFrame:
+    """
+    Lee usuarios desde MySQL usuarios.crm.
+    Solo SELECT.
+
+    Se usa cursor.fetchall() para evitar problemas de interpretación con pandas.read_sql.
+    """
+    columnas = _columnas_mysql_usuarios_fase_i()
+
+    columnas_sql = ", ".join(
+        f"`{col}` AS `{col}`"
+        for col in columnas
+    )
+
+    sql = f"""
+        SELECT {columnas_sql}
+        FROM crm
+    """
+
+    _validar_sql_mysql_solo_select(sql)
+
+    conn = _conectar_mysql_fase_i(ASTER_MYSQL_DB_USUARIOS)
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            filas = cursor.fetchall()
+
+        return pd.DataFrame(filas, columns=columnas)
+
+    finally:
+        conn.close()
+
+def _leer_comentarios_mysql_fase_i(
+    fecha_yyyymmdd: str,
+    entidades: list[str],
+) -> pd.DataFrame:
+    """
+    Lee comentarios desde MySQL gestioncomercial.comentarios filtrando por fecha y entidad.
+    Solo SELECT.
+
+    Se usa cursor.fetchall() con alias explícitos para evitar que Pandas cambie o interprete mal columnas.
+    """
+    columnas = _columnas_mysql_comentarios_fase_i()
+
+    if not entidades:
+        return pd.DataFrame(columns=columnas)
+
+    columnas_sql = ", ".join(
+        f"`{col}` AS `{col}`"
+        for col in columnas
+    )
+
+    fecha_sql = datetime.strptime(fecha_yyyymmdd, "%Y%m%d").strftime("%Y-%m-%d")
+    placeholders = ", ".join(["%s"] * len(entidades))
+
+    sql = f"""
+        SELECT {columnas_sql}
+        FROM comentarios
+        WHERE DATE(`fecha`) = %s
+          AND `entidad` IN ({placeholders})
+    """
+
+    _validar_sql_mysql_solo_select(sql)
+
+    conn = _conectar_mysql_fase_i(ASTER_MYSQL_DB_GESTION)
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(sql, [fecha_sql, *entidades])
+            filas = cursor.fetchall()
+
+        df = pd.DataFrame(filas, columns=columnas)
+
+        return df
+
+    finally:
+        conn.close()
+
+
+def _transformar_comentarios_fase_i(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aplica transformación de columna derivada del flujo SSIS.
+
+    Regla:
+    fechaagenda = '1900-01-01 00:00:00' -> NULL
+    """
+    df_transformado = df.copy()
+
+    if "fechaagenda" in df_transformado.columns:
+        fechas_agenda = pd.to_datetime(
+            df_transformado["fechaagenda"],
+            errors="coerce",
+        )
+
+        fecha_base = pd.Timestamp("1900-01-01 00:00:00")
+
+        df_transformado.loc[
+            fechas_agenda == fecha_base,
+            "fechaagenda",
+        ] = None
+
+    return df_transformado
+
+
+def _preparar_columnas_insert_fase_i(
+    df: pd.DataFrame,
+    columnas_sql: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Determina columnas comunes entre origen y destino para insertar.
+    Excluye identity.
+    """
+    origen_por_lower = {
+        str(col).lower(): str(col)
+        for col in df.columns
+    }
+
+    columnas_insert: list[dict[str, Any]] = []
+
+    for col_sql in columnas_sql:
+        if int(col_sql.get("is_identity") or 0) == 1:
+            continue
+
+        nombre_sql = str(col_sql["columna"])
+        nombre_origen = origen_por_lower.get(nombre_sql.lower())
+
+        if not nombre_origen:
+            continue
+
+        columnas_insert.append(
+            {
+                "origen": nombre_origen,
+                "sql": nombre_sql,
+                "tipo_sql": str(col_sql["tipo_sql"]),
+                "nullable": str(col_sql["nullable"]),
+                "longitud": col_sql.get("longitud"),
+                "precision": col_sql.get("precision"),
+                "escala": col_sql.get("escala"),
+            }
+        )
+
+    return columnas_insert
+
+
+def _construir_dataframe_insert_fase_i(
+    df: pd.DataFrame,
+    columnas_insert: list[dict[str, Any]],
+) -> pd.DataFrame:
+    """
+    Construye DataFrame listo para insertar en SQL Server.
+    """
+    data_convertida: dict[str, list[Any]] = {}
+
+    for col in columnas_insert:
+        nombre_origen = str(col["origen"])
+        nombre_sql = str(col["sql"])
+        tipo_sql = str(col["tipo_sql"])
+
+        data_convertida[nombre_sql] = [
+            _convertir_valor_sql_aster(valor, tipo_sql)
+            for valor in df[nombre_origen].tolist()
+        ]
+
+    df_insert = pd.DataFrame(data_convertida)
+    df_insert = _normalizar_dataframe_sql_aster(df_insert)
+
+    return df_insert
+
+
+def _validar_columnas_minimas_fase_i(
+    columnas_insert: list[dict[str, Any]],
+    columnas_requeridas: list[str],
+    nombre_tabla: str,
+) -> str | None:
+    """
+    Valida columnas mínimas para insertar.
+    """
+    nombres = {
+        str(col["sql"]).lower()
+        for col in columnas_insert
+    }
+
+    faltantes = [
+        columna
+        for columna in columnas_requeridas
+        if columna.lower() not in nombres
+    ]
+
+    if faltantes:
+        return (
+            f"Faltan columnas requeridas para {nombre_tabla}: "
+            + ", ".join(faltantes)
+        )
+
+    return None
+
+
+def _insertar_dataframe_sql_fase_i(
+    cursor: Any,
+    tabla: str,
+    df_insert: pd.DataFrame,
+    tamano_lote: int = 1000,
+) -> int:
+    """
+    Inserta un DataFrame en SQL Server por lotes.
+    """
+    if df_insert.empty:
+        return 0
+
+    columnas = list(df_insert.columns)
+    tabla_sql = _nombre_tabla_sql_fase_i(tabla)
+
+    columnas_sql = ", ".join(
+        _sql_identificador_aster(columna)
+        for columna in columnas
+    )
+    placeholders = ", ".join("?" for _ in columnas)
+
+    sql_insert = f"""
+        INSERT INTO {tabla_sql} ({columnas_sql})
+        VALUES ({placeholders})
+    """
+
+    total_insertados = 0
+    cursor.fast_executemany = True
+
+    for inicio in range(0, len(df_insert), tamano_lote):
+        bloque = df_insert.iloc[inicio : inicio + tamano_lote]
+
+        valores = [
+            tuple(
+                _limpiar_parametro_sql_aster(row[columna])
+                for columna in columnas
+            )
+            for _, row in bloque.iterrows()
+        ]
+
+        cursor.executemany(sql_insert, valores)
+        total_insertados += len(valores)
+
+    return total_insertados
+
+
+def _validar_columnas_duplicado_comentarios_fase_i(
+    df_insert: pd.DataFrame,
+) -> list[str]:
+    """
+    Valida que existan las columnas de clave anti-duplicados.
+
+    Regla definida:
+    id + data + usuario
+    """
+    columnas_clave = ["id", "data", "usuario"]
+
+    columnas_lower = {
+        str(col).lower(): str(col)
+        for col in df_insert.columns
+    }
+
+    faltantes = [
+        columna
+        for columna in columnas_clave
+        if columna.lower() not in columnas_lower
+    ]
+
+    if faltantes:
+        raise ValueError(
+            "No se puede validar duplicados en comentarios. Faltan columnas: "
+            + ", ".join(faltantes)
+        )
+
+    return [
+        columnas_lower[columna.lower()]
+        for columna in columnas_clave
+    ]
+
+def _validar_claves_comentarios_fase_i(
+    df_insert: pd.DataFrame,
+    limite_ejemplos: int = 20,
+) -> list[dict[str, Any]]:
+    """
+    Valida que la clave anti-duplicados tenga valores reales.
+
+    Clave obligatoria:
+    id + data + usuario
+    """
+    columnas_clave = _validar_columnas_duplicado_comentarios_fase_i(df_insert)
+
+    errores: list[dict[str, Any]] = []
+
+    for idx, row in df_insert.iterrows():
+        faltantes = []
+
+        for columna in columnas_clave:
+            valor = row[columna]
+
+            if _es_valor_vacio_aster(valor):
+                faltantes.append(columna)
+
+        if faltantes:
+            errores.append(
+                {
+                    "fila": int(idx) + 2,
+                    "id": row.get("id", ""),
+                    "data": row.get("data", ""),
+                    "usuario": row.get("usuario", ""),
+                    "problema": "Clave anti-duplicados incompleta: "
+                    + ", ".join(faltantes),
+                }
+            )
+
+        if len(errores) >= limite_ejemplos:
+            return errores
+
+    return errores
+
+
+def _generar_html_claves_invalidas_comentarios_fase_i(
+    errores: list[dict[str, Any]],
+) -> str:
+    """
+    Muestra errores de claves incompletas antes de validar duplicados.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Fase I bloqueada. Se detectaron {len(errores)} registros con clave anti-duplicados incompleta.
+    </div>
+    <div class='log-line warning'>
+        No se ejecutó DELETE ni INSERT. Revise los datos origen de MySQL o la conversión antes de continuar.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Clave anti-duplicados requerida
+            </th>
+        </tr>
+        <tr>
+            <td><b>Columnas</b></td>
+            <td>id + data + usuario</td>
+        </tr>
+    </table>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Fila</th>
+            <th>id</th>
+            <th>data</th>
+            <th>usuario</th>
+            <th>Problema</th>
+        </tr>
+    """
+
+    for idx, error in enumerate(errores, start=1):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(error.get("fila", "")))}</td>
+            <td>{escape(str(error.get("id", "")))}</td>
+            <td>{escape(str(error.get("data", "")))}</td>
+            <td>{escape(str(error.get("usuario", "")))}</td>
+            <td style='color:#dc3545; font-weight:bold;'>
+                {escape(str(error.get("problema", "")))}
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div class='log-line warning' style='margin-top:10px;'>
+        Diagnóstico: id, data y usuario son obligatorios para validar duplicados en comentarios.
+    </div>
+    """
+
+    return html
+
+def _contar_duplicados_comentarios_fase_i(
+    cursor: Any,
+    df_insert: pd.DataFrame,
+    fecha_yyyymmdd: str,
+    limite_ejemplos: int = 10,
+) -> tuple[int, list[dict[str, Any]]]:
+    """
+    Valida duplicados en Aster_Api.dbo.comentarios usando:
+
+    id + data + usuario
+
+    La fecha del proceso se mantiene como parámetro para trazabilidad,
+    pero la clave real de duplicidad es exclusivamente id + data + usuario.
+    """
+    columnas_clave = _validar_columnas_duplicado_comentarios_fase_i(df_insert)
+
+    if df_insert.empty:
+        return 0, []
+
+    df_claves_base = df_insert[columnas_clave].copy()
+    df_claves_base = _normalizar_dataframe_sql_aster(df_claves_base)
+
+    # 1. Duplicados dentro del lote origen MySQL.
+    duplicados_origen = df_claves_base.duplicated(
+        subset=columnas_clave,
+        keep=False,
+    )
+
+    if duplicados_origen.any():
+        ejemplos_origen = []
+
+        for _, fila in df_claves_base.loc[duplicados_origen, columnas_clave].head(
+            limite_ejemplos
+        ).iterrows():
+            ejemplos_origen.append(
+                {
+                    columna: fila[columna]
+                    for columna in columnas_clave
+                }
+            )
+
+        return int(duplicados_origen.sum()), ejemplos_origen
+
+    # 2. Crear tabla temporal con claves del lote.
+    cursor.execute(
+        "IF OBJECT_ID('tempdb..#fase_i_comentarios_claves') IS NOT NULL "
+        "DROP TABLE #fase_i_comentarios_claves"
+    )
+
+    cursor.execute(
+        f"""
+        SELECT TOP 0
+            {_sql_identificador_aster(columnas_clave[0])},
+            {_sql_identificador_aster(columnas_clave[1])},
+            {_sql_identificador_aster(columnas_clave[2])}
+        INTO #fase_i_comentarios_claves
+        FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_COMENTARIOS)}
+        """
+    )
+
+    df_claves = df_claves_base.drop_duplicates().copy()
+
+    columnas_sql = ", ".join(
+        _sql_identificador_aster(columna)
+        for columna in columnas_clave
+    )
+    placeholders = ", ".join("?" for _ in columnas_clave)
+
+    sql_insert_temp = f"""
+        INSERT INTO #fase_i_comentarios_claves ({columnas_sql})
+        VALUES ({placeholders})
+    """
+
+    valores_temp = [
+        tuple(
+            _limpiar_parametro_sql_aster(row[columna])
+            for columna in columnas_clave
+        )
+        for _, row in df_claves.iterrows()
+    ]
+
+    cursor.fast_executemany = True
+    cursor.executemany(sql_insert_temp, valores_temp)
+
+    condiciones_join = []
+
+    for columna in columnas_clave:
+        col = _sql_identificador_aster(columna)
+
+        if columna.lower() in {"data", "usuario"}:
+            condiciones_join.append(
+                f"""(
+                    (t.{col} COLLATE DATABASE_DEFAULT = k.{col} COLLATE DATABASE_DEFAULT)
+                    OR (t.{col} IS NULL AND k.{col} IS NULL)
+                )"""
+            )
+        else:
+            condiciones_join.append(
+                f"((t.{col} = k.{col}) OR (t.{col} IS NULL AND k.{col} IS NULL))"
+            )
+
+    join_sql = " AND ".join(condiciones_join)
+
+    columnas_select = ", ".join(
+        f"t.{_sql_identificador_aster(columna)}"
+        for columna in columnas_clave
+    )
+
+    sql_ejemplos = f"""
+        SELECT TOP ({limite_ejemplos})
+            {columnas_select}
+        FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_COMENTARIOS)} t
+        INNER JOIN #fase_i_comentarios_claves k
+            ON {join_sql}
+    """
+
+    cursor.execute(sql_ejemplos)
+    rows = cursor.fetchall()
+
+    ejemplos: list[dict[str, Any]] = []
+
+    for row in rows:
+        ejemplo = {}
+
+        for idx, columna in enumerate(columnas_clave):
+            ejemplo[columna] = row[idx]
+
+        ejemplos.append(ejemplo)
+
+    if ejemplos:
+        return len(ejemplos), ejemplos
+
+    return 0, []
+
+
+def _generar_html_duplicados_comentarios_fase_i(
+    total_duplicados: int,
+    ejemplos: list[dict[str, Any]],
+) -> str:
+    """
+    HTML de bloqueo por duplicados en comentarios Fase I.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Fase I bloqueada. Se detectaron {total_duplicados} duplicados en comentarios.
+    </div>
+    <div class='log-line warning'>
+        No se ejecutó COMMIT. Se aplicó ROLLBACK de la transacción.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Clave anti-duplicados comentarios
+            </th>
+        </tr>
+        <tr>
+            <td><b>Columnas</b></td>
+            <td>id + data + usuario</td>
+        </tr>
+    </table>
+    """
+
+    if ejemplos:
+        html += """
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr style='background:#1e3a5f; color:#fff;'>
+                <th>#</th>
+                <th>id</th>
+                <th>data</th>
+                <th>usuario</th>
+            </tr>
+        """
+
+        for idx, ejemplo in enumerate(ejemplos, start=1):
+            html += f"""
+            <tr>
+                <td>{idx}</td>
+                <td>{escape(str(ejemplo.get("id", "")))}</td>
+                <td>{escape(str(ejemplo.get("data", "")))}</td>
+                <td>{escape(str(ejemplo.get("usuario", "")))}</td>
+            </tr>
+            """
+
+        html += "</table>"
+
+    return html
+
+
+def _generar_html_reporte_fase_i(
+    fecha_yyyymmdd: str,
+    conexion: str,
+    ruta_entidades: str,
+    total_entidades: int,
+    usuarios_leidos: int,
+    usuarios_insertados: int,
+    comentarios_leidos: int,
+    comentarios_insertados: int,
+    estado: str,
+    mensaje: str,
+) -> str:
+    """
+    Reporte visual final Fase I.
+    """
+    conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - DESARROLLO"
+
+    if estado == "CORRECTO":
+        html = """
+        <div class='log-line success'>
+            ✅ Fase I ASTER completada correctamente.
+        </div>
+        """
+    else:
+        html = """
+        <div class='log-line error'>
+            ❌ Fase I ASTER finalizó con error.
+        </div>
+        """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Reporte final Fase I ASTER
+            </th>
+        </tr>
+    """
+
+    filas = [
+        ("Fecha proceso", fecha_yyyymmdd),
+        ("Conexión SQL Server", conexion_txt),
+        ("Base destino", ASTER_FASE_I_BASE),
+        ("Archivo entidades", ruta_entidades),
+        ("Entidades usadas en filtro", total_entidades),
+        ("Usuarios leídos MySQL", usuarios_leidos),
+        ("Usuarios insertados SQL Server", usuarios_insertados),
+        ("Comentarios leídos MySQL", comentarios_leidos),
+        ("Comentarios insertados SQL Server", comentarios_insertados),
+        ("Anti-duplicados comentarios", "id + data + usuario"),
+        ("Estado", estado),
+        ("Mensaje", mensaje),
+    ]
+
+    for etiqueta, valor in filas:
+        color = ""
+
+        if etiqueta == "Estado":
+            color = "color:#28a745;" if estado == "CORRECTO" else "color:#dc3545;"
+
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all; font-weight:bold; {color}'>
+                {escape(str(valor))}
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+@aster_bp.route("/accion/aster-fase-i-ejecutar", methods=["POST"])
+def accion_aster_fase_i_ejecutar():
+    """
+    Ejecuta Fase I completa:
+
+    1. DELETE FROM Aster_Api.dbo.usuarios
+    2. SELECT usuarios.crm
+    3. INSERT Aster_Api.dbo.usuarios
+    4. SELECT gestioncomercial.comentarios filtrado
+    5. Transformación fechaagenda
+    6. Validación anti-duplicados comentarios
+    7. INSERT Aster_Api.dbo.comentarios
+    """
+    conn_sql = None
+
+    try:
+        conexion = request.form.get("conexion", "local").strip().lower()
+        fecha_raw = request.form.get("fecha_proceso", "").strip()
+        confirmar_remoto = request.form.get("confirmar_remoto", "").strip().upper()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        if conexion == "remoto" and confirmar_remoto != "SI":
+            return """
+            <div class='log-line error'>
+                ❌ Ejecución remota bloqueada. REMOTO corresponde a producción.
+            </div>
+            """
+
+        fecha_yyyymmdd = _obtener_fecha_fase_i(fecha_raw)
+        entidades, ruta_entidades = _leer_entidades_fase_i(fecha_yyyymmdd)
+
+        df_usuarios = _leer_usuarios_mysql_fase_i()
+        df_comentarios = _leer_comentarios_mysql_fase_i(fecha_yyyymmdd, entidades)
+
+        columnas_clave_origen = ["id", "fecha", "fechainicio", "telefono"]
+
+        faltan_origen = [
+            columna
+            for columna in columnas_clave_origen
+            if columna not in df_comentarios.columns
+        ]
+
+        if faltan_origen:
+            return (
+                "<div class='log-line error'>❌ Fase I bloqueada. "
+                "Faltan columnas clave en origen MySQL comentarios: "
+                + escape(", ".join(faltan_origen))
+                + "</div>"
+            )
+
+        df_comentarios = _transformar_comentarios_fase_i(df_comentarios)
+
+        columnas_sql_usuarios = _obtener_columnas_sqlserver_fase_i(
+            conexion,
+            ASTER_FASE_I_TABLA_USUARIOS,
+        )
+        columnas_sql_comentarios = _obtener_columnas_sqlserver_fase_i(
+            conexion,
+            ASTER_FASE_I_TABLA_COMENTARIOS,
+        )
+
+        columnas_insert_usuarios = _preparar_columnas_insert_fase_i(
+            df_usuarios,
+            columnas_sql_usuarios,
+        )
+
+        columnas_insert_comentarios = _preparar_columnas_insert_fase_i(
+            df_comentarios,
+            columnas_sql_comentarios,
+        )
+
+        error_usuarios = _validar_columnas_minimas_fase_i(
+            columnas_insert_usuarios,
+            ["id", "usuario"],
+            "usuarios",
+        )
+
+        if error_usuarios:
+            return f"<div class='log-line error'>❌ {escape(error_usuarios)}</div>"
+
+        error_comentarios = _validar_columnas_minimas_fase_i(
+            columnas_insert_comentarios,
+            ["id", "data", "usuario", "entidad"],
+            "comentarios",
+        )
+
+        if error_comentarios:
+            return f"<div class='log-line error'>❌ {escape(error_comentarios)}</div>"
+
+        df_insert_usuarios = _construir_dataframe_insert_fase_i(
+            df_usuarios,
+            columnas_insert_usuarios,
+        )
+
+        df_insert_comentarios = _construir_dataframe_insert_fase_i(
+            df_comentarios,
+            columnas_insert_comentarios,
+        )
+
+        cadena = _obtener_cadena_sqlserver_aster(conexion)
+        conn_sql = pyodbc.connect(cadena, timeout=10)
+        conn_sql.timeout = 120
+
+        cursor = conn_sql.cursor()
+        cursor.execute(f"USE [{ASTER_FASE_I_BASE}]")
+
+        errores_clave = _validar_claves_comentarios_fase_i(df_insert_comentarios)
+
+        if errores_clave:
+            conn_sql.rollback()
+
+            _registrar_historial_carga_aster(
+                fecha_proceso=fecha_yyyymmdd,
+                archivo_excel=os.path.basename(ruta_entidades),
+                conexion=conexion,
+                total_general_aster=None,
+                filas_excel=len(df_comentarios),
+                registros_insertados=0,
+                estado="GESTIONES_CLAVE_INCOMPLETA",
+                mensaje="Fase I bloqueada por claves incompletas en comentarios.",
+                archivo_reporte_entidades=os.path.basename(ruta_entidades),
+                ruta_reporte_entidades=ruta_entidades,
+            )
+
+            return _generar_html_claves_invalidas_comentarios_fase_i(errores_clave)
+
+        total_duplicados, ejemplos_duplicados = _contar_duplicados_comentarios_fase_i(
+            cursor,
+            df_insert_comentarios,
+            fecha_yyyymmdd,
+        )
+
+        if total_duplicados > 0:
+            conn_sql.rollback()
+
+            _registrar_historial_carga_aster(
+                fecha_proceso=fecha_yyyymmdd,
+                archivo_excel=os.path.basename(ruta_entidades),
+                conexion=conexion,
+                total_general_aster=None,
+                filas_excel=len(df_comentarios),
+                registros_insertados=0,
+                estado="GESTIONES_DUPLICADO",
+                mensaje="Fase I bloqueada por duplicados en comentarios.",
+                archivo_reporte_entidades=os.path.basename(ruta_entidades),
+                ruta_reporte_entidades=ruta_entidades,
+            )
+
+            return _generar_html_duplicados_comentarios_fase_i(
+                total_duplicados,
+                ejemplos_duplicados,
+            )
+
+        cursor.execute(f"DELETE FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS)}")
+
+        usuarios_insertados = _insertar_dataframe_sql_fase_i(
+            cursor,
+            ASTER_FASE_I_TABLA_USUARIOS,
+            df_insert_usuarios,
+        )
+
+        comentarios_insertados = _insertar_dataframe_sql_fase_i(
+            cursor,
+            ASTER_FASE_I_TABLA_COMENTARIOS,
+            df_insert_comentarios,
+        )
+
+        conn_sql.commit()
+
+        _registrar_historial_carga_aster(
+            fecha_proceso=fecha_yyyymmdd,
+            archivo_excel=os.path.basename(ruta_entidades),
+            conexion=conexion,
+            total_general_aster=None,
+            filas_excel=len(df_comentarios),
+            registros_insertados=comentarios_insertados,
+            estado="GESTIONES_CORRECTO",
+            mensaje=(
+                "Fase I correcta. Usuarios recargados y comentarios insertados "
+                "sin duplicados."
+            ),
+            archivo_reporte_entidades=os.path.basename(ruta_entidades),
+            ruta_reporte_entidades=ruta_entidades,
+        )
+
+        return _generar_html_reporte_fase_i(
+            fecha_yyyymmdd=fecha_yyyymmdd,
+            conexion=conexion,
+            ruta_entidades=ruta_entidades,
+            total_entidades=len(entidades),
+            usuarios_leidos=len(df_usuarios),
+            usuarios_insertados=usuarios_insertados,
+            comentarios_leidos=len(df_comentarios),
+            comentarios_insertados=comentarios_insertados,
+            estado="CORRECTO",
+            mensaje="Usuarios recargados y comentarios insertados correctamente.",
+        )
+
+    except Exception as exc:
+        if conn_sql is not None:
+            conn_sql.rollback()
+
+        try:
+            fecha_yyyymmdd_error = _obtener_fecha_fase_i(
+                request.form.get("fecha_proceso", "").strip()
+            )
+        except Exception:
+            fecha_yyyymmdd_error = datetime.now().strftime("%Y%m%d")
+
+        try:
+            _registrar_historial_carga_aster(
+                fecha_proceso=fecha_yyyymmdd_error,
+                archivo_excel="",
+                conexion=request.form.get("conexion", "local").strip().lower(),
+                total_general_aster=None,
+                filas_excel=0,
+                registros_insertados=0,
+                estado="GESTIONES_ERROR",
+                mensaje=str(exc),
+                archivo_reporte_entidades="",
+                ruta_reporte_entidades="",
+            )
+        except Exception:
+            pass
+
+        return f"<div class='log-line error'>❌ Error ejecutando Fase I ASTER: {escape(str(exc))}</div>"
+
+    finally:
+        if conn_sql is not None:
+            conn_sql.close()
 
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])
