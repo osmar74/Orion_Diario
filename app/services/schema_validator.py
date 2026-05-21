@@ -101,6 +101,26 @@ def _normalizar_valor_para_longitud(valor: Any) -> str | None:
     return texto
 
 
+def _longitud_texto_segura(valor) -> int:
+    """
+    Calcula longitud segura para validación de columnas texto.
+
+    - None / NaN / NaT se consideran longitud 0.
+    - float, int, fechas u otros tipos se convierten a texto.
+    """
+    if valor is None:
+        return 0
+
+    try:
+        if pd.isna(valor):
+            return 0
+    except Exception:
+        pass
+
+    return len(str(valor))
+
+
+
 def validar_longitudes_dataframe(
     df: pd.DataFrame,
     columnas_texto: list[ColumnaTextoSQL],
@@ -120,7 +140,7 @@ def validar_longitudes_dataframe(
             continue
 
         serie_texto = df[col_sql.columna].map(_normalizar_valor_para_longitud)
-        longitudes = serie_texto.map(lambda valor: len(valor) if valor is not None else 0)
+        longitudes = serie_texto.map(_longitud_texto_segura)
 
         mask_excede = longitudes > col_sql.longitud_maxima
 
