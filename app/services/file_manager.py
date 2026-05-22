@@ -46,12 +46,38 @@ class FileManager:
                 os.makedirs(ruta_sub, exist_ok=True)
                 rutas_creadas[sub] = ruta_sub
 
+            rutas_no_creadas = []
+
+            for nombre, ruta in rutas_creadas.items():
+                if not os.path.isdir(ruta):
+                    rutas_no_creadas.append(f"{nombre}: {ruta}")
+
+            if rutas_no_creadas:
+                mensaje_error = (
+                    "Se intentó crear la estructura, pero estas rutas no existen físicamente: "
+                    + " | ".join(rutas_no_creadas)
+                )
+
+                if self.log_service:
+                    self.log_service.log(
+                        "2.1",
+                        "Crear estructura diaria",
+                        "error",
+                        mensaje_error,
+                    )
+
+                return {
+                    "success": False,
+                    "error": mensaje_error,
+                    "rutas": rutas_creadas,
+                }
+
             if self.log_service:
                 self.log_service.log(
                     "2.1",
                     "Crear estructura diaria",
                     "éxito",
-                    f"Estructura creada correctamente: {rutas_creadas}",
+                    f"Estructura creada y verificada correctamente: {rutas_creadas}",
                 )
 
             return {"success": True, "rutas": rutas_creadas}
@@ -298,13 +324,15 @@ class FileManager:
             )
 
         copiados = []
+        copiados_detalle = []
         errores = []
 
         destinos = {
             "Causales": os.path.join(carpeta_diaria, "Causales"),
             "Lotes": os.path.join(carpeta_diaria, "Lotes"),
-            "Discador": carpeta_diaria,
+            "Discador": os.path.join(carpeta_diaria, "Discador"),
         }
+
 
         for categoria in ["Causales", "Lotes", "Discador"]:
             if categoria not in rutas_red or categoria not in archivos_encontrados:
@@ -315,6 +343,8 @@ class FileManager:
             destino_dir = destinos[categoria]
             archivos = archivos_encontrados[categoria]
 
+            os.makedirs(destino_dir, exist_ok=True)
+
             if not archivos:
                 errores.append(f"No hay archivos que copiar en {categoria}.")
                 continue
@@ -322,9 +352,22 @@ class FileManager:
             for archivo in archivos:
                 origen = os.path.join(origen_dir, archivo)
                 destino = os.path.join(destino_dir, archivo)
+
+                if not os.path.isfile(origen):
+                    errores.append(f"No existe archivo origen en {categoria}: {origen}")
+                    continue
+
                 try:
                     shutil.copy2(origen, destino)
                     copiados.append(destino)
+                    copiados_detalle.append(
+                        {
+                            "categoria": categoria,
+                            "archivo": archivo,
+                            "origen": origen,
+                            "destino": destino,
+                        }
+                    )
                 except OSError as e:
                     errores.append(f"Error copiando {archivo}: {e}")
 
@@ -345,4 +388,9 @@ class FileManager:
                     f"Copiados: {len(copiados)}, Errores: {errores}",
                 )
 
-        return {"success": success, "copiados": copiados, "errores": errores}
+        return {
+            "success": success,
+            "copiados": copiados,
+            "copiados_detalle": copiados_detalle,
+            "errores": errores,
+        }

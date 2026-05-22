@@ -17,6 +17,69 @@ from app.controllers.helpers import obtener_log_service
 proc_bp = Blueprint("procesamiento", __name__)
 
 
+def _buscar_archivo_discador_procesamiento(carpeta_diaria: str) -> str | None:
+    """
+    Busca el archivo Discador para Fase F: Procesar Discador.
+
+    Prioridad:
+    1. data\\orion_YYYYMM_DD\\Discador
+    2. data\\orion_YYYYMM_DD
+
+    Acepta archivos Excel que contengan 'discador' en el nombre.
+    """
+    carpetas_busqueda = [
+        os.path.join(carpeta_diaria, "Discador"),
+        carpeta_diaria,
+    ]
+
+    candidatos = []
+
+    for carpeta in carpetas_busqueda:
+        if not os.path.isdir(carpeta):
+            continue
+
+        for archivo in os.listdir(carpeta):
+            nombre = archivo.lower()
+
+            if not nombre.endswith(".xlsx"):
+                continue
+
+            if "discador" not in nombre:
+                continue
+
+            ruta = os.path.join(carpeta, archivo)
+
+            prioridad = 0
+
+            if os.path.basename(carpeta).lower() == "discador":
+                prioridad += 10
+
+            if "consolidado" in nombre:
+                prioridad += 3
+
+            if "limpio" in nombre:
+                prioridad += 1
+
+            candidatos.append(
+                {
+                    "ruta": ruta,
+                    "prioridad": prioridad,
+                    "modificado": os.path.getmtime(ruta),
+                }
+            )
+
+    if not candidatos:
+        return None
+
+    candidatos.sort(
+        key=lambda item: (item["prioridad"], item["modificado"]),
+        reverse=True,
+    )
+
+    return candidatos[0]["ruta"]
+
+
+
 @proc_bp.route("/accion/procesar-discador")
 def accion_procesar_discador():
     fecha = request.args.get("fecha", "202605_12")
@@ -26,14 +89,18 @@ def accion_procesar_discador():
 
     disc = DiscadorProcessor(log_service=obtener_log_service())
     carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
-    archivos = [
-        f
-        for f in os.listdir(carpeta_diaria)
-        if f.lower().endswith(".xlsx") and "discador" in f.lower()
-    ]
-    if not archivos:
-        return "<div class='log-line error'>❌ No se encontró archivo Discador en la carpeta diaria.</div>"
-    ruta_disc = os.path.join(carpeta_diaria, archivos[0])
+    
+    ruta_disc = _buscar_archivo_discador_procesamiento(carpeta_diaria)
+
+    if not ruta_disc:
+        return """
+        <div class='log-line error'>
+            ❌ No se encontró archivo Discador.
+        </div>
+        <div class='log-line warning'>
+            Se buscó en la carpeta diaria y en la subcarpeta Discador.
+        </div>
+        """
 
     # Debug de valores únicos de Campaña
     debug_html = ""
@@ -57,6 +124,12 @@ def accion_procesar_discador():
             debug_html
             + "<div class='log-line success'>✅ Discador procesado correctamente.</div>"
         )
+        html += f"""
+                    <div class='log-line info'>
+                        📌 Discador usado:
+                        <code>{ruta_disc}</code>
+                    </div>
+                    """
         if "pasos_filtrado" in res:
             pasos = res["pasos_filtrado"]
             html += "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>📊 Proceso de filtrado:</p>"

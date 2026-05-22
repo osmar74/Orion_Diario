@@ -77,6 +77,16 @@ function getInputValue(id) {
     return "";
 }
 
+function normalizarFechaOrion(valor) {
+    const limpio = String(valor || "").replace(/[^0-9]/g, "");
+
+    if (limpio.length === 8) {
+        return `${limpio.slice(0, 6)}_${limpio.slice(6, 8)}`;
+    }
+
+    return String(valor || "").trim();
+}
+
 function fetchTexto(url, opciones = {}) {
     return fetch(url, opciones).then((res) => res.text());
 }
@@ -210,15 +220,20 @@ function ejecutarAccion(url, boton) {
         return;
     }
 
-    const fecha = getInputValue("fechaInput");
+    const fechaRaw = getInputValue("fechaInput");
+    const fecha = normalizarFechaOrion(fechaRaw);
 
     if (!fecha) {
         alert("No se encontró el campo de fecha.");
         return;
     }
 
+    setValue("fechaInput", fecha);
+
     const panelId = buscarPanelPorUrl(url);
-    const urlConFecha = `${url}?fecha=${encodeURIComponent(fecha)}`;
+    const separador = url.includes("?") ? "&" : "?";
+    const urlConFecha = `${url}${separador}fecha=${encodeURIComponent(fecha)}&_=${Date.now()}`;
+    console.log("ORION ejecutando acción:", urlConFecha);
 
     if (panelId) {
         insertarEnPanel(panelId, htmlLoading("Procesando..."), false);
@@ -232,7 +247,21 @@ function ejecutarAccion(url, boton) {
         icono.textContent = "";
     }
 
-    fetchTexto(urlConFecha)
+    fetch(urlConFecha, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return response.text();
+        })
         .then((html) => {
             const exito = esRespuestaExitosa(html);
 
@@ -276,6 +305,84 @@ function ejecutarAccion(url, boton) {
             }
         });
 }
+
+function copiarDistribucionSeleccionada(boton) {
+    const fechaRaw = getInputValue("fechaInput");
+    const fecha = normalizarFechaOrion(fechaRaw);
+
+    if (!fecha) {
+        alert("No se encontró el campo de fecha.");
+        return;
+    }
+
+    setValue("fechaInput", fecha);
+
+    const checks = Array.from(
+        document.querySelectorAll(".chk-distribucion-orion:checked")
+    );
+
+    if (!checks.length) {
+        alert("Seleccione al menos un archivo para copiar.");
+        return;
+    }
+
+    const seleccionados = checks.map((check) => ({
+        categoria: check.dataset.categoria,
+        archivo: check.dataset.archivo,
+    }));
+
+    const panelId = "panel-distribuir";
+
+    insertarEnPanel(
+        panelId,
+        htmlLoading("Copiando archivos seleccionados..."),
+        false
+    );
+
+    fetch(`/accion/distribuir-seleccionados?_=${Date.now()}`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+        body: JSON.stringify({
+            fecha,
+            seleccionados,
+        }),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return response.text();
+        })
+        .then((html) => {
+            const exito = esRespuestaExitosa(html);
+
+            insertarEnPanel(panelId, html, exito);
+
+            if (boton) {
+                boton.classList.remove("btn-procesando", "btn-error", "btn-ok");
+                boton.classList.add(exito ? "btn-ok" : "btn-error");
+            }
+        })
+        .catch((error) => {
+            insertarEnPanel(
+                panelId,
+                htmlError(`Error copiando archivos seleccionados: ${error}`),
+                false
+            );
+
+            if (boton) {
+                boton.classList.remove("btn-procesando", "btn-ok");
+                boton.classList.add("btn-error");
+            }
+        });
+}
+
 
 function actualizarEstadoDiscador() {
     const discData = getById("discador-data");
@@ -344,12 +451,15 @@ function subirOCR() {
         return;
     }
 
-    const fecha = getInputValue("fechaInput");
+    const fechaRaw = getInputValue("fechaInput");
+    const fecha = normalizarFechaOrion(fechaRaw);
 
     if (!fecha) {
         alert("No se encontró el campo de fecha.");
         return;
     }
+
+    setValue("fechaInput", fecha);
 
     const formData = new FormData();
     formData.append("fecha", fecha);
@@ -2375,6 +2485,7 @@ window.cerrarOtrosDetails = cerrarOtrosDetails;
 window.marcarPasoCompletado = marcarPasoCompletado;
 window.toggleSidebar = toggleSidebar;
 window.ejecutarAccion = ejecutarAccion;
+window.copiarDistribucionSeleccionada = copiarDistribucionSeleccionada;
 window.actualizarCuadre = actualizarCuadre;
 window.subirOCR = subirOCR;
 window.consolidarTotales = consolidarTotales;
@@ -2408,5 +2519,7 @@ window.consultarHistorialAster = consultarHistorialAster;
 window.probarConexionesFaseIAster = probarConexionesFaseIAster;
 window.prepararFaseIAster = prepararFaseIAster;
 window.ejecutarFaseIAster = ejecutarFaseIAster;
+
+
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
