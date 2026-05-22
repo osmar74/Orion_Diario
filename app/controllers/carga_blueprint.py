@@ -3,13 +3,14 @@ Blueprint para la Fase G: Carga de datos a SQL Server.
 """
 
 import os
-
+import re
 import pyodbc
 import pandas as pd
 import numpy as np
 from flask import Blueprint, request, session
 
 from typing import cast
+from datetime import datetime
 
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
 from app.controllers.helpers import (
@@ -355,6 +356,87 @@ def accion_verificar_carga():
     return html
 
 
+def _parsear_fecha_orion_segura(valor):
+    """
+    Convierte fechas ORION de forma segura para SQL Server.
+
+    Soporta:
+    - YYYY-MM-DD
+    - YYYY-MM-DD HH:MM:SS
+    - DD/MM/YYYY
+    - DD/MM/YYYY HH:MM:SS
+    - YYYY-DD-MM solo cuando el segundo valor es > 12
+
+    Devuelve datetime de Python o None.
+    """
+    if valor is None:
+        return None
+
+    try:
+        if pd.isna(valor):
+            return None
+    except Exception:
+        pass
+
+    texto = str(valor).strip()
+
+    if not texto or texto.lower() in {"nan", "nat", "none", "null"}:
+        return None
+
+    texto = texto.replace("T", " ")
+
+    # 1. Formato ISO correcto: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS
+    match_iso = re.match(
+        r"^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$",
+        texto,
+    )
+
+    if match_iso:
+        anio = int(match_iso.group(1))
+        segundo = int(match_iso.group(2))
+        tercero = int(match_iso.group(3))
+        hora = int(match_iso.group(4) or 0)
+        minuto = int(match_iso.group(5) or 0)
+        segundo_hora = int(match_iso.group(6) or 0)
+
+        # Caso normal: YYYY-MM-DD
+        if 1 <= segundo <= 12 and 1 <= tercero <= 31:
+            return datetime(anio, segundo, tercero, hora, minuto, segundo_hora)
+
+        # Caso detectado: YYYY-DD-MM
+        if segundo > 12 and 1 <= tercero <= 12:
+            return datetime(anio, tercero, segundo, hora, minuto, segundo_hora)
+
+    # 2. Formato latino: DD/MM/YYYY o DD-MM-YYYY
+    match_latam = re.match(
+        r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$",
+        texto,
+    )
+
+    if match_latam:
+        dia = int(match_latam.group(1))
+        mes = int(match_latam.group(2))
+        anio = int(match_latam.group(3))
+        hora = int(match_latam.group(4) or 0)
+        minuto = int(match_latam.group(5) or 0)
+        segundo_hora = int(match_latam.group(6) or 0)
+
+        return datetime(anio, mes, dia, hora, minuto, segundo_hora)
+
+    # 3. Fallback controlado
+    fecha = pd.to_datetime(texto, errors="coerce", dayfirst=False)
+
+    if pd.isna(fecha):
+        fecha = pd.to_datetime(texto, errors="coerce", dayfirst=True)
+
+    if pd.isna(fecha):
+        return None
+
+    return fecha.to_pydatetime()
+
+
+
+
 @carga_bp.route("/accion/insertar-datos", methods=["POST"])
 def accion_insertar_datos():
     """Realiza la inserción de los datos una vez verificada la compatibilidad de columnas."""
@@ -515,6 +597,9 @@ def accion_insertar_datos():
         # Esto evita errores SQL como:
         # String or binary data would be truncated
         columnas_texto_sql = obtener_columnas_texto_sql(conn, tabla_destino)
+        # if tipo == "discador" and "FechayHora" in df_insert.columns:
+        #     print("DEBUG FechayHora Discador:")
+        #     print(df_insert["FechayHora"].head(10).tolist())
         errores_longitud = validar_longitudes_dataframe(df_insert, columnas_texto_sql)
 
         if errores_longitud:
@@ -534,9 +619,7 @@ def accion_insertar_datos():
             elif tipo_srv in ("float", "real", "decimal", "numeric", "money"):
                 df_insert[col_srv] = pd.to_numeric(df_insert[col_srv], errors="coerce")
             elif tipo_srv in ("datetime", "datetime2", "smalldatetime", "date"):
-                df_insert[col_srv] = pd.to_datetime(
-                    df_insert[col_srv], errors="coerce", dayfirst=True
-                )
+                df_insert[col_srv] = df_insert[col_srv].map(_parsear_fecha_orion_segura)
             elif tipo_srv == "bit":
                 df_insert[col_srv] = (
                     df_insert[col_srv]
