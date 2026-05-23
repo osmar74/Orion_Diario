@@ -306,6 +306,55 @@ function ejecutarAccion(url, boton) {
         });
 }
 
+function generarGestionAsterFaseI(boton) {
+    const fecha = boton?.dataset?.fecha || "";
+    const conexion = boton?.dataset?.conexion || "local";
+    const resultado = document.getElementById("resultado-gestion-aster-fase-i");
+
+    if (!resultado) {
+        alert("No se encontró el panel de resultado Gestión ASTER.");
+        return;
+    }
+
+    if (!fecha) {
+        alert("No se encontró la fecha de proceso para Gestión ASTER.");
+        return;
+    }
+
+    resultado.innerHTML = htmlLoading("Generando Gestión ASTER...");
+
+    fetch(`/accion/aster-fase-i-generar-gestion?_=${Date.now()}`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+        body: JSON.stringify({
+            fecha_proceso: fecha,
+            conexion,
+        }),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return response.text();
+        })
+        .then((html) => {
+            resultado.innerHTML = html;
+        })
+        .catch((error) => {
+            resultado.innerHTML = htmlError(
+                `Error generando Gestión ASTER: ${error}`
+            );
+        });
+}
+
+
+
 function copiarDistribucionSeleccionada(boton) {
     const fechaRaw = getInputValue("fechaInput");
     const fecha = normalizarFechaOrion(fechaRaw);
@@ -2485,6 +2534,7 @@ window.cerrarOtrosDetails = cerrarOtrosDetails;
 window.marcarPasoCompletado = marcarPasoCompletado;
 window.toggleSidebar = toggleSidebar;
 window.ejecutarAccion = ejecutarAccion;
+window.generarGestionAsterFaseI = generarGestionAsterFaseI;
 window.copiarDistribucionSeleccionada = copiarDistribucionSeleccionada;
 window.actualizarCuadre = actualizarCuadre;
 window.subirOCR = subirOCR;
