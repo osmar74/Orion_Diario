@@ -175,51 +175,46 @@ def _claves_busqueda_fecha(fecha_yyyymmdd: str) -> list[str]:
 
 def _archivo_aster_corresponde_fecha(nombre_archivo: str, fecha_yyyymmdd: str) -> bool:
     """
-    Determina si un archivo .xlsx pertenece a la fecha ASTER.
+    Valida que el archivo corresponda exactamente a la fecha del proceso.
 
-    Se exige:
-    - extensión .xlsx
-    - nombre que empiece con After
-    - que contenga alguna clave de fecha relevante
+    Ejemplo:
+    fecha_yyyymmdd = 20260521
+    válido = After20260521.xlsx
+    inválido = After20240521.xlsx
     """
-    nombre_lower = nombre_archivo.lower()
+    nombre_esperado = f"After{fecha_yyyymmdd}.xlsx"
 
-    if not nombre_lower.endswith(".xlsx"):
-        return False
-
-    if not nombre_lower.startswith("after"):
-        return False
-
-    solo_digitos = re.sub(r"[^0-9]", "", nombre_archivo)
-    claves = _claves_busqueda_fecha(fecha_yyyymmdd)
-
-    return any(clave in solo_digitos for clave in claves)
+    return os.path.basename(nombre_archivo).lower() == nombre_esperado.lower()
 
 
 def _buscar_archivo_aster_en_ruta(ruta_base: str, fecha_yyyymmdd: str) -> str | None:
     """
-    Busca el primer archivo ASTER de la fecha indicada dentro de una ruta.
+    Busca estrictamente el archivo AfterYYYYMMDD.xlsx correspondiente
+    a la fecha_proceso.
+
+    Ejemplo:
+    fecha_yyyymmdd = 20260521
+    archivo válido = After20260521.xlsx
+
+    No debe aceptar:
+    - After20240521.xlsx
+    - AfterYYYYMMDD de otro año
+    - archivos que solo coincidan por día y mes
     """
     if not ruta_base or not os.path.isdir(ruta_base):
         return None
 
-    candidatos: list[str] = []
+    nombre_esperado = f"After{fecha_yyyymmdd}.xlsx"
+    nombre_esperado_lower = nombre_esperado.lower()
 
-    for nombre in os.listdir(ruta_base):
-        ruta_archivo = os.path.join(ruta_base, nombre)
-
-        if not os.path.isfile(ruta_archivo):
-            continue
-
-        if _archivo_aster_corresponde_fecha(nombre, fecha_yyyymmdd):
-            candidatos.append(ruta_archivo)
-
-    candidatos.sort()
-
-    if candidatos:
-        return candidatos[0]
+    for carpeta_actual, _, archivos in os.walk(ruta_base):
+        for archivo in archivos:
+            if archivo.lower() == nombre_esperado_lower:
+                return os.path.join(carpeta_actual, archivo)
 
     return None
+
+
 
 
 def _generar_html_archivo_aster(
