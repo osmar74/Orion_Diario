@@ -13,7 +13,7 @@ import re
 import shutil
 import sqlite3
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from html import escape
 from typing import Any
@@ -4666,6 +4666,7 @@ def _leer_comentarios_mysql_fase_i(
         FROM comentarios
         WHERE DATE(`fecha`) = %s
           AND `entidad` IN ({placeholders})
+          AND COALESCE(TRIM(usuario), '') <> 'SystemUser'
     """
 
     _validar_sql_mysql_solo_select(sql)
@@ -5173,6 +5174,106 @@ def _generar_html_duplicados_comentarios_fase_i(
     return html
 
 
+def _agregar_paso_pipeline_fase_i(
+    pipeline: list[dict[str, Any]],
+    paso: int,
+    proceso: str,
+    origen: str,
+    destino: str,
+    accion: str,
+    cantidad: int | str,
+    estado: str = "OK",
+) -> None:
+    """
+    Agrega un paso al pipeline visual de Fase I ASTER.
+    """
+    pipeline.append(
+        {
+            "paso": paso,
+            "proceso": proceso,
+            "origen": origen,
+            "destino": destino,
+            "accion": accion,
+            "cantidad": cantidad,
+            "estado": estado,
+        }
+    )
+
+
+def _generar_html_pipeline_fase_i(pipeline: list[dict[str, Any]]) -> str:
+    """
+    Genera tabla visual del pipeline Fase I ASTER.
+    """
+    if not pipeline:
+        return ""
+
+    html = """
+    <table class='dataframe' style='width:100%; margin-top:12px;'>
+        <tr>
+            <th colspan='7' style='background:#1e3a5f; color:#fff;'>
+                Pipeline de ejecución Fase I ASTER
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>Paso</th>
+            <th>Proceso</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Acción</th>
+            <th>Cantidad</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for item in pipeline:
+        estado = str(item.get("estado", ""))
+        color = "#28a745" if estado.upper() == "OK" else "#dc3545"
+
+        html += f"""
+        <tr>
+            <td>{escape(str(item.get("paso", "")))}</td>
+            <td><b>{escape(str(item.get("proceso", "")))}</b></td>
+            <td style='font-size:0.75rem; word-break:break-all;'>{escape(str(item.get("origen", "")))}</td>
+            <td style='font-size:0.75rem; word-break:break-all;'>{escape(str(item.get("destino", "")))}</td>
+            <td>{escape(str(item.get("accion", "")))}</td>
+            <td><b>{escape(str(item.get("cantidad", "")))}</b></td>
+            <td style='font-weight:bold; color:{color};'>{escape(estado)}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+def _boton_generar_gestion_aster_fase_i(
+    fecha_yyyymmdd: str,
+    conexion: str,
+) -> str:
+    """
+    Botón visual para generar el Excel de Gestión ASTER después de Fase I.
+    """
+    return f"""
+    <div class='log-line info' style='margin-top:12px;'>
+        📌 Fase I terminada. Puede generar el archivo de Gestión ASTER.
+    </div>
+
+    <button
+        type='button'
+        onclick='generarGestionAsterFaseI(this)'
+        data-fecha='{escape(str(fecha_yyyymmdd))}'
+        data-conexion='{escape(str(conexion))}'
+        style='margin-top:8px;'
+    >
+        Generar Gestión ASTER Excel
+    </button>
+
+    <div id='resultado-gestion-aster-fase-i' style='margin-top:10px;'></div>
+    """
+    
+
+
+
 def _generar_html_reporte_fase_i(
     fecha_yyyymmdd: str,
     conexion: str,
@@ -5184,6 +5285,8 @@ def _generar_html_reporte_fase_i(
     comentarios_insertados: int,
     estado: str,
     mensaje: str,
+    pipeline: list[dict[str, Any]] | None = None,
+    mostrar_boton_gestion: bool = False,
 ) -> str:
     """
     Reporte visual final Fase I.
@@ -5244,6 +5347,15 @@ def _generar_html_reporte_fase_i(
 
     html += "</table>"
 
+    if pipeline:
+        html += _generar_html_pipeline_fase_i(pipeline)
+
+    if mostrar_boton_gestion and estado == "CORRECTO":
+        html += _boton_generar_gestion_aster_fase_i(
+            fecha_yyyymmdd=fecha_yyyymmdd,
+            conexion=conexion,
+        )
+
     return html
 
 @aster_bp.route("/accion/aster-fase-i-ejecutar", methods=["POST"])
@@ -5262,6 +5374,8 @@ def accion_aster_fase_i_ejecutar():
     conn_sql = None
 
     try:
+        pipeline_fase_i: list[dict[str, Any]] = []
+
         conexion = request.form.get("conexion", "local").strip().lower()
         fecha_raw = request.form.get("fecha_proceso", "").strip()
         confirmar_remoto = request.form.get("confirmar_remoto", "").strip().upper()
@@ -5278,6 +5392,40 @@ def accion_aster_fase_i_ejecutar():
 
         fecha_yyyymmdd = _obtener_fecha_fase_i(fecha_raw)
         entidades, ruta_entidades = _leer_entidades_fase_i(fecha_yyyymmdd)
+
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            1,
+            "Leer entidades filtro",
+            ruta_entidades,
+            "Filtro entidad IN (...)",
+            "Traídos",
+            len(entidades),
+        )
+
+        df_usuarios = _leer_usuarios_mysql_fase_i()
+
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            2,
+            "Traer usuarios",
+            "MySQL usuarios.crm",
+            "Python DataFrame usuarios",
+            "Traídos",
+            len(df_usuarios),
+        )
+
+        df_comentarios = _leer_comentarios_mysql_fase_i(fecha_yyyymmdd, entidades)
+
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            3,
+            "Traer comentarios",
+            "MySQL gestioncomercial.comentarios excluyendo SystemUser",
+            "Python DataFrame comentarios",
+            "Traídos",
+            len(df_comentarios),
+        )
 
         df_usuarios = _leer_usuarios_mysql_fase_i()
         df_comentarios = _leer_comentarios_mysql_fase_i(fecha_yyyymmdd, entidades)
@@ -5380,6 +5528,18 @@ def accion_aster_fase_i_ejecutar():
             fecha_yyyymmdd,
         )
 
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            4,
+            "Validar duplicados comentarios",
+            "Clave id + data + usuario",
+            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_COMENTARIOS),
+            "Duplicados detectados",
+            total_duplicados,
+            "OK" if total_duplicados == 0 else "ERROR",
+        )
+        
+        
         if total_duplicados > 0:
             conn_sql.rollback()
 
@@ -5401,7 +5561,23 @@ def accion_aster_fase_i_ejecutar():
                 ejemplos_duplicados,
             )
 
+        cursor.execute(
+            f"SELECT COUNT(*) FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS)}"
+        )
+        row_usuarios_antes = cursor.fetchone()
+        usuarios_borrados = int(row_usuarios_antes[0] or 0) if row_usuarios_antes else 0
+
         cursor.execute(f"DELETE FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS)}")
+
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            5,
+            "Borrar usuarios destino",
+            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS),
+            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS),
+            "Borrados",
+            usuarios_borrados,
+        )
 
         usuarios_insertados = _insertar_dataframe_sql_fase_i(
             cursor,
@@ -5409,10 +5585,30 @@ def accion_aster_fase_i_ejecutar():
             df_insert_usuarios,
         )
 
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            6,
+            "Insertar usuarios",
+            "Python DataFrame usuarios",
+            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS),
+            "Insertados",
+            usuarios_insertados,
+        )
+
         comentarios_insertados = _insertar_dataframe_sql_fase_i(
             cursor,
             ASTER_FASE_I_TABLA_COMENTARIOS,
             df_insert_comentarios,
+        )
+
+        _agregar_paso_pipeline_fase_i(
+            pipeline_fase_i,
+            7,
+            "Insertar comentarios",
+            "Python DataFrame comentarios",
+            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_COMENTARIOS),
+            "Insertados",
+            comentarios_insertados,
         )
 
         conn_sql.commit()
@@ -5444,6 +5640,8 @@ def accion_aster_fase_i_ejecutar():
             comentarios_insertados=comentarios_insertados,
             estado="CORRECTO",
             mensaje="Usuarios recargados y comentarios insertados correctamente.",
+            pipeline=pipeline_fase_i,
+            mostrar_boton_gestion=True,
         )
 
     except Exception as exc:
@@ -5478,6 +5676,432 @@ def accion_aster_fase_i_ejecutar():
     finally:
         if conn_sql is not None:
             conn_sql.close()
+
+
+def _ejecutar_consulta_gestion_aster_fase_i(
+    cursor: Any,
+    fecha_yyyymmdd: str,
+) -> pd.DataFrame:
+    """
+    Ejecuta la consulta final de Gestión ASTER para la fecha del proceso.
+    """
+    fecha_inicio = datetime.strptime(fecha_yyyymmdd, "%Y%m%d")
+    fecha_fin = fecha_inicio + timedelta(days=1)
+
+    sql = """
+    WITH
+    CTE_Aster_Base AS (
+        SELECT
+            Codigo,
+            Fecha_Hora,
+            Duracion,
+            Estado,
+            Atendio,
+            Numero,
+            Cartera,
+            CASE
+                WHEN Estado = 'ATENDIDO'
+                 AND Atendio IN ('HUMANO', 'DESCONOCIDO')
+                THEN 1 ELSE 0
+            END AS EsHumano
+        FROM [dbo].[aster_dia_nc]
+        WHERE Fecha_Hora >= ? AND Fecha_Hora < ?
+    ),
+
+    CTE_Comentarios_Base AS (
+        SELECT
+            [data],
+            resultado1,
+            resultado2,
+            datapers,
+            usuario,
+            comentario
+        FROM [dbo].[comentarios]
+        WHERE fecha >= ? AND fecha < ?
+    ),
+
+    CTE_Maquinas AS (
+        SELECT DISTINCT
+            Codigo AS Cliente_Nro,
+            Fecha_Hora,
+            Duracion,
+            CASE
+                WHEN Estado = 'OCUPADO' AND Atendio = 'NULL' THEN 'Telefono Ocupado'
+                WHEN Estado = 'ATENDIDO' AND Atendio = 'CONTESTADOR' THEN 'Buzon de voz'
+                WHEN Estado = 'NO ATENDIDO' AND Atendio = 'NULL' THEN 'No contestan'
+                WHEN Estado = 'ATENDIDO' AND Atendio = 'CORTO' THEN 'No contestan'
+                WHEN Estado = 'CONGESTION' AND Atendio = 'NULL' THEN 'Telefono Fuera de Servicio'
+                WHEN Estado = 'SIN CANALES' AND Atendio = 'NULL' THEN 'Telefono Fuera de Servicio'
+                ELSE 'Usuario pide volver a llamar'
+            END AS [Descripcion Codigo De Gestion],
+            '' AS Fecha_Compromiso,
+            '' AS Grabador,
+            Numero AS Telefonos,
+            CASE
+                WHEN Codigo IS NULL OR LTRIM(RTRIM(Codigo)) = '' THEN NULL
+                WHEN Codigo LIKE 'M%' THEN 'Mobile'
+                ELSE 'Home'
+            END AS [Tipo Cartera],
+            '' AS Asesor,
+            Cartera AS [Antiguedad De La Cartera],
+            '' AS [Nota de la Gestion],
+            'codmaquina' AS [Clase de Gestion],
+            '' AS [Causal de Mora/Respuesta]
+        FROM CTE_Aster_Base
+        WHERE EsHumano = 0
+    ),
+
+    CTE_Humanos_Processed AS (
+        SELECT
+            _dia.Codigo AS Cliente_Nro,
+            _dia.Fecha_Hora,
+            _dia.Duracion,
+            _dia.Numero AS Telefonos,
+            _dia.Cartera AS [Antiguedad De La Cartera],
+            CASE
+                WHEN _contactada.resultado1 IS NULL
+                  OR LTRIM(RTRIM(_contactada.resultado1)) = ''
+                THEN 'codmaquina'
+                ELSE 'TEL'
+            END AS [Clase de Gestion],
+
+            LTRIM(RTRIM(CASE
+                WHEN _contactada.resultado1 IS NULL
+                  OR LTRIM(RTRIM(_contactada.resultado1)) = ''
+                THEN
+                    CASE
+                        WHEN _dia.Estado = 'OCUPADO' AND _dia.Atendio = 'NULL' THEN 'Telefono Ocupado'
+                        WHEN _dia.Estado = 'ATENDIDO' AND _dia.Atendio = 'CONTESTADOR' THEN 'Buzon de voz'
+                        WHEN _dia.Estado = 'NO ATENDIDO' AND _dia.Atendio = 'NULL' THEN 'No contestan'
+                        WHEN _dia.Estado = 'ATENDIDO' AND _dia.Atendio = 'CORTO' THEN 'No contestan'
+                        WHEN _dia.Estado = 'CONGESTION' AND _dia.Atendio = 'NULL' THEN 'Telefono Fuera de Servicio'
+                        WHEN _dia.Estado = 'SIN CANALES' AND _dia.Atendio = 'NULL' THEN 'Telefono Fuera de Servicio'
+                        ELSE 'Usuario pide volver a llamar'
+                    END
+                ELSE [dbo].[Obtener_Estado](_contactada.resultado1, _contactada.resultado2)
+            END)) AS [Desc_Raw],
+
+            CASE
+                WHEN CHARINDEX('compromisos<=>', _contactada.datapers) > 0 THEN
+                    REPLACE(
+                        SUBSTRING(
+                            _contactada.datapers,
+                            CHARINDEX('compromisos<=>', _contactada.datapers) + 14,
+                            CASE
+                                WHEN CHARINDEX('###', _contactada.datapers, CHARINDEX('compromisos<=>', _contactada.datapers)) > 0
+                                THEN CHARINDEX('###', _contactada.datapers, CHARINDEX('compromisos<=>', _contactada.datapers))
+                                   - (CHARINDEX('compromisos<=>', _contactada.datapers) + 14)
+                                ELSE 10
+                            END
+                        ),
+                        '-',
+                        '/'
+                    )
+                ELSE ''
+            END AS Fecha_Compromiso,
+
+            [dbo].[Obtener_Usuario](_contactada.usuario) AS Grabador,
+
+            CASE
+                WHEN _dia.Codigo IS NULL OR LTRIM(RTRIM(_dia.Codigo)) = '' THEN NULL
+                WHEN _dia.Codigo LIKE 'M%' THEN 'Mobile'
+                ELSE 'Home'
+            END AS [Tipo Cartera],
+
+            _contactada.usuario AS Asesor,
+
+            LTRIM(RTRIM(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(_contactada.comentario, CHAR(9), ''),
+                            CHAR(10),
+                            ''
+                        ),
+                        CHAR(13),
+                        ''
+                    ),
+                    CHAR(160),
+                    ' '
+                )
+            )) AS [Nota_Clean],
+
+            LTRIM(RTRIM([dbo].[Obtener_Causal_Mora](_contactada.resultado2)))
+                AS [Causal de Mora/Respuesta]
+        FROM CTE_Aster_Base _dia
+        LEFT JOIN CTE_Comentarios_Base _contactada
+            ON _dia.Codigo = _contactada.[data]
+        WHERE _dia.EsHumano = 1
+    ),
+
+    CTE_Humanos_Final AS (
+        SELECT DISTINCT
+            Cliente_Nro,
+            Fecha_Hora,
+            Duracion,
+            CASE
+                WHEN [Desc_Raw] = 'Usuario pide volver a llamar'
+                 AND [Clase de Gestion] = 'codmaquina'
+                THEN 'No contestan'
+                ELSE [Desc_Raw]
+            END AS [Descripcion Codigo De Gestion],
+            Fecha_Compromiso,
+            Grabador,
+            Telefonos,
+            [Tipo Cartera],
+            Asesor,
+            [Antiguedad De La Cartera],
+            CASE
+                WHEN [Desc_Raw] = 'Usuario pide volver a llamar'
+                 AND [Clase de Gestion] = 'codmaquina'
+                THEN ''
+                ELSE [Nota_Clean]
+            END AS [Nota de la Gestion],
+            [Clase de Gestion],
+            [Causal de Mora/Respuesta]
+        FROM CTE_Humanos_Processed
+    ),
+
+    CTE_Universo AS (
+        SELECT * FROM CTE_Maquinas
+        UNION ALL
+        SELECT * FROM CTE_Humanos_Final
+    )
+
+    SELECT
+        Cliente_Nro AS [Cliente Nro.],
+        FORMAT(Fecha_Hora, 'dd/MM/yyyy') AS [Fecha De Gestion],
+        ISNULL(CONVERT(VARCHAR(8), Fecha_Hora, 108), '00:00:00') AS [Hora De Gestion],
+        FORMAT(DATEADD(SECOND, COALESCE(TRY_CAST(Duracion AS INT), 0), 0), 'HH:mm:ss') AS [Duracion llamada],
+        [Descripcion Codigo De Gestion],
+        Fecha_Compromiso,
+        Grabador,
+        'Vencorp' AS [Responsable De Cobro],
+        Telefonos,
+        [Tipo Cartera],
+        Asesor,
+        [Antiguedad De La Cartera],
+        [Nota de la Gestion],
+        [Clase de Gestion],
+        [Causal de Mora/Respuesta]
+    FROM CTE_Universo
+    ORDER BY [Clase de Gestion], [Hora De Gestion]
+    """
+
+    cursor.execute(sql, fecha_inicio, fecha_fin, fecha_inicio, fecha_fin)
+
+    columnas = [columna[0] for columna in cursor.description]
+    filas = cursor.fetchall()
+
+    return pd.DataFrame.from_records(filas, columns=columnas)
+
+
+def _tratar_gestion_aster_antes_excel(
+    df_gestion: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """
+    Tratamiento final antes de exportar Gestión ASTER a Excel.
+
+    Reglas:
+    1. Eliminar valores NULL / None / NaN / NaT / 'NULL' / 'nan' reemplazándolos por vacío.
+    2. Si 'Descripcion Codigo De Gestion' inicia con 'Acuerdo',
+       debe conservar Fecha_Compromiso.
+    3. Si NO inicia con 'Acuerdo',
+       Fecha_Compromiso debe quedar vacío.
+    """
+    df_tratado = df_gestion.copy()
+
+    total_filas = len(df_tratado)
+
+    # 1. Reemplazar nulos reales por vacío.
+    df_tratado = df_tratado.replace(
+        {
+            None: "",
+            pd.NA: "",
+            pd.NaT: "",
+        }
+    )
+
+    df_tratado = df_tratado.fillna("")
+
+    # 2. Reemplazar textos que representan nulos por vacío.
+    valores_null_texto = {
+        "NULL",
+        "null",
+        "None",
+        "none",
+        "NaN",
+        "nan",
+        "NaT",
+        "nat",
+    }
+
+    celdas_null_texto = 0
+
+    for columna in df_tratado.columns:
+        serie_texto = df_tratado[columna].astype(str).str.strip()
+        mascara_null_texto = serie_texto.isin(valores_null_texto)
+        celdas_null_texto += int(mascara_null_texto.sum())
+        df_tratado.loc[mascara_null_texto, columna] = ""
+
+    col_descripcion = "Descripcion Codigo De Gestion"
+    col_fecha_compromiso = "Fecha_Compromiso"
+
+    fechas_compromiso_limpiadas = 0
+    acuerdos_sin_fecha_compromiso = 0
+    acuerdos_con_fecha_compromiso = 0
+
+    if col_descripcion in df_tratado.columns and col_fecha_compromiso in df_tratado.columns:
+        descripcion = df_tratado[col_descripcion].astype(str).str.strip()
+        fecha_compromiso = df_tratado[col_fecha_compromiso].astype(str).str.strip()
+
+        mascara_acuerdo = descripcion.str.startswith("Acuerdo", na=False)
+        mascara_no_acuerdo = ~mascara_acuerdo
+
+        fechas_compromiso_limpiadas = int(
+            (mascara_no_acuerdo & (fecha_compromiso != "")).sum()
+        )
+
+        # 3. Si NO inicia con Acuerdo, Fecha_Compromiso queda vacío.
+        df_tratado.loc[mascara_no_acuerdo, col_fecha_compromiso] = ""
+
+        # 4. Diagnóstico de acuerdos.
+        fecha_compromiso_post = df_tratado[col_fecha_compromiso].astype(str).str.strip()
+
+        acuerdos_con_fecha_compromiso = int(
+            (mascara_acuerdo & (fecha_compromiso_post != "")).sum()
+        )
+
+        acuerdos_sin_fecha_compromiso = int(
+            (mascara_acuerdo & (fecha_compromiso_post == "")).sum()
+        )
+
+    resumen = {
+        "total_filas": total_filas,
+        "celdas_null_texto_limpiadas": celdas_null_texto,
+        "fechas_compromiso_limpiadas_no_acuerdo": fechas_compromiso_limpiadas,
+        "acuerdos_con_fecha_compromiso": acuerdos_con_fecha_compromiso,
+        "acuerdos_sin_fecha_compromiso": acuerdos_sin_fecha_compromiso,
+    }
+
+    return df_tratado, resumen
+
+
+
+
+def _ruta_gestion_aster_fase_i(fecha_yyyymmdd: str) -> tuple[str, str]:
+    """
+    Devuelve nombre y ruta del Excel Gestión ASTER.
+
+    Carpeta esperada:
+    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD
+
+    Archivo:
+    YYYYMMDD_Gestion_aster.xlsx
+    """
+    carpeta_aster = os.path.join(
+        DATA_DIR,
+        fecha_yyyymmdd,
+        "Aster",
+        f"aster_{fecha_yyyymmdd}",
+    )
+
+    os.makedirs(carpeta_aster, exist_ok=True)
+
+    nombre_archivo = f"{fecha_yyyymmdd}_Gestion_aster.xlsx"
+    ruta_archivo = os.path.join(carpeta_aster, nombre_archivo)
+
+    return nombre_archivo, ruta_archivo
+
+
+@aster_bp.route("/accion/aster-fase-i-generar-gestion", methods=["POST"])
+def accion_aster_fase_i_generar_gestion():
+    """
+    Genera Excel de Gestión ASTER después de ejecutar correctamente Fase I.
+    """
+    conn_sql = None
+
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        fecha_yyyymmdd = _obtener_fecha_fase_i(
+            str(payload.get("fecha_proceso", "")).strip()
+        )
+
+        conexion = str(payload.get("conexion", "local")).strip().lower()
+
+        if conexion not in {"local", "remoto"}:
+            conexion = "local"
+
+        cadena = _obtener_cadena_sqlserver_aster(conexion)
+
+        conn_sql = pyodbc.connect(cadena, timeout=10)
+        conn_sql.timeout = 120
+
+        cursor = conn_sql.cursor()
+        cursor.execute(f"USE [{ASTER_FASE_I_BASE}]")
+
+        df_gestion = _ejecutar_consulta_gestion_aster_fase_i(
+            cursor,
+            fecha_yyyymmdd,
+        )
+
+        df_gestion, resumen_tratamiento = _tratar_gestion_aster_antes_excel(
+            df_gestion
+        )
+
+        nombre_archivo, ruta_archivo = _ruta_gestion_aster_fase_i(fecha_yyyymmdd)
+
+        df_gestion.to_excel(ruta_archivo, index=False)
+
+        return f"""
+        <div class='log-line success'>
+            ✅ Gestión ASTER generada correctamente.
+        </div>
+
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr>
+                <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                    Archivo Gestión ASTER
+                </th>
+            </tr>
+            <tr><td><b>Fecha proceso</b></td><td>{escape(fecha_yyyymmdd)}</td></tr>
+            <tr><td><b>Conexión</b></td><td>{escape(conexion)}</td></tr>
+            <tr><td><b>Registros generados</b></td><td>{len(df_gestion)}</td></tr>
+            <tr>
+                <td><b>NULL / NaN limpiados</b></td>
+                <td>{resumen_tratamiento.get("celdas_null_texto_limpiadas", 0)}</td>
+            </tr>
+            <tr>
+                <td><b>Fecha_Compromiso limpiada en no Acuerdo</b></td>
+                <td>{resumen_tratamiento.get("fechas_compromiso_limpiadas_no_acuerdo", 0)}</td>
+            </tr>
+            <tr>
+                <td><b>Acuerdos con Fecha_Compromiso</b></td>
+                <td>{resumen_tratamiento.get("acuerdos_con_fecha_compromiso", 0)}</td>
+            </tr>
+            <tr>
+                <td><b>Acuerdos sin Fecha_Compromiso</b></td>
+                <td>{resumen_tratamiento.get("acuerdos_sin_fecha_compromiso", 0)}</td>
+            </tr>
+            <tr><td><b>Archivo</b></td><td>{escape(nombre_archivo)}</td></tr>
+            <tr>
+                <td><b>Ruta completa</b></td>
+                <td style='font-size:0.75rem; word-break:break-all;'>
+                    {escape(ruta_archivo)}
+                </td>
+            </tr>
+        </table>
+        """
+
+    except Exception as exc:
+        return f"<div class='log-line error'>❌ Error generando Gestión ASTER: {escape(str(exc))}</div>"
+
+    finally:
+        if conn_sql is not None:
+            conn_sql.close()
+            
+
 
 
 @aster_bp.route("/accion/aster-total-actual", methods=["GET"])
