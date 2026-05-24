@@ -1,0 +1,1 @@
+IF OBJECT_ID('tempdb..{tabla}') IS NOT NULL DROP TABLE {tabla}

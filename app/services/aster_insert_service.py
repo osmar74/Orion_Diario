@@ -32,6 +32,7 @@ from app.services.aster_insert_prepare_service import (
     validar_dataframe_insert_aster,
 )
 
+from app.services.sql_loader import cargar_sql
 
 def sql_identificador_aster(nombre: str) -> str:
     """
@@ -50,6 +51,61 @@ def nombre_tabla_sql_aster(schema: str, tabla: str) -> str:
     )
 
 
+def validar_nombre_temporal_aster(nombre_temp: str) -> str:
+    """
+    Valida nombres de tablas temporales permitidos para ASTER.
+    """
+    nombre = str(nombre_temp or "").strip()
+
+    permitidas = {
+        "#aster_claves",
+        "#aster_insert_debug",
+    }
+
+    if nombre not in permitidas:
+        raise ValueError(f"Tabla temporal ASTER no permitida: {nombre}")
+
+    return nombre
+
+
+def sql_use_database_aster(base: str) -> str:
+    """
+    SQL para seleccionar base ASTER.
+    """
+    return cargar_sql("aster/use_database.sql").format(
+        base=sql_identificador_aster(base)
+    )
+
+
+def sql_drop_temp_if_exists_aster(nombre_temp: str) -> str:
+    """
+    SQL para eliminar tabla temporal si existe.
+    """
+    tabla_temp = validar_nombre_temporal_aster(nombre_temp)
+
+    return cargar_sql("aster/drop_temp_table_if_exists.sql").format(
+        tabla=tabla_temp
+    )
+
+
+def sql_drop_table_aster(nombre_temp: str) -> str:
+    """
+    SQL para eliminar tabla temporal.
+    """
+    tabla_temp = validar_nombre_temporal_aster(nombre_temp)
+
+    return cargar_sql("aster/drop_table.sql").format(
+        tabla=tabla_temp
+    )
+
+
+
+
+
+
+
+
+
 def limpiar_parametro_sql_aster(valor: Any) -> Any:
     """
     Limpia valores antes de enviarlos a SQL Server.
@@ -63,6 +119,18 @@ def limpiar_parametro_sql_aster(valor: Any) -> Any:
         return None
 
     return valor
+
+def numero_fila_excel_aster(indice: Any) -> int:
+    """
+    Convierte índice de DataFrame a número de fila Excel aproximado.
+
+    La fila 1 corresponde al encabezado, por eso se suma 2.
+    Si el índice no es numérico, devuelve 0.
+    """
+    try:
+        return int(indice) + 2
+    except Exception:
+        return 0
 
 
 def resolver_columna_sql_aster(
@@ -127,6 +195,10 @@ def seleccionar_columnas_clave_duplicados_aster(
             "Faltan columnas clave en la comparación Excel vs SQL: "
             + ", ".join(columnas_faltantes)
         )
+
+    assert columna_fecha is not None
+    assert columna_atendido_por is not None
+    assert columna_codigo is not None
 
     return [
         columna_fecha,
@@ -282,9 +354,7 @@ def contar_duplicados_sql_aster(
 
         return int(duplicados_excel.sum()), ejemplos
 
-    cursor.execute(
-        "IF OBJECT_ID('tempdb..#aster_claves') IS NOT NULL DROP TABLE #aster_claves"
-    )
+    cursor.execute(sql_drop_temp_if_exists_aster("#aster_claves"))
 
     columnas_temp = []
 
@@ -292,11 +362,11 @@ def contar_duplicados_sql_aster(
         tipo_temp = tipo_sql_temporal_aster(columna, columnas_insert)
         columnas_temp.append(f"{sql_identificador_aster(columna)} {tipo_temp} NULL")
 
-    cursor.execute(
-        "CREATE TABLE #aster_claves ("
-        + ", ".join(columnas_temp)
-        + ")"
+    sql_create_temp = cargar_sql("aster/create_temp_table.sql").format(
+        tabla="#aster_claves",
+        columnas=", ".join(columnas_temp),
     )
+    cursor.execute(sql_create_temp)
 
     df_claves = df_insert[columnas_clave].drop_duplicates().copy()
     df_claves = df_claves.where(pd.notna(df_claves), None)
@@ -307,10 +377,11 @@ def contar_duplicados_sql_aster(
     )
     placeholders = ", ".join("?" for _ in columnas_clave)
 
-    sql_insert_temp = f"""
-        INSERT INTO #aster_claves ({columnas_sql})
-        VALUES ({placeholders})
-    """
+    sql_insert_temp = cargar_sql("aster/insert_table.sql").format(
+        tabla="#aster_claves",
+        columnas=columnas_sql,
+        placeholders=placeholders,
+    )
 
     valores_temp = [
         tuple(
@@ -351,13 +422,13 @@ def contar_duplicados_sql_aster(
         for columna in columnas_clave
     )
 
-    sql_ejemplos = f"""
-        SELECT TOP ({limite_ejemplos})
-            {columnas_select}
-        FROM {tabla_sql} t
-        INNER JOIN #aster_claves k
-            ON {join_sql}
-    """
+    sql_ejemplos = cargar_sql("aster/select_duplicados_temp.sql").format(
+        limite=limite_ejemplos,
+        columnas_select=columnas_select,
+        tabla_origen=tabla_sql,
+        tabla_temp="#aster_claves",
+        join_sql=join_sql,
+    )
 
     cursor.execute(sql_ejemplos)
     rows = cursor.fetchall()
@@ -395,17 +466,16 @@ def crear_tabla_temporal_debug_aster(
         for columna in columnas
     )
 
-    cursor.execute(
-        f"IF OBJECT_ID('tempdb..{nombre_temp}') IS NOT NULL DROP TABLE {nombre_temp}"
-    )
+    nombre_temp = validar_nombre_temporal_aster(nombre_temp)
 
-    cursor.execute(
-        f"""
-        SELECT TOP 0 {columnas_select}
-        INTO {nombre_temp}
-        FROM {tabla_sql}
-        """
+    cursor.execute(sql_drop_temp_if_exists_aster(nombre_temp))
+
+    sql_select_top = cargar_sql("aster/select_top_0_into_temp.sql").format(
+        columnas=columnas_select,
+        tabla_temp=nombre_temp,
+        tabla_origen=tabla_sql,
     )
+    cursor.execute(sql_select_top)
 
 
 def probar_insert_temporal_aster(
@@ -424,10 +494,13 @@ def probar_insert_temporal_aster(
     )
     placeholders = ", ".join("?" for _ in columnas)
 
-    sql_insert = f"""
-        INSERT INTO {nombre_temp} ({columnas_sql})
-        VALUES ({placeholders})
-    """
+    nombre_temp = validar_nombre_temporal_aster(nombre_temp)
+
+    sql_insert = cargar_sql("aster/insert_table.sql").format(
+        tabla=nombre_temp,
+        columnas=columnas_sql,
+        placeholders=placeholders,
+    )
 
     valores = [
         tuple(
@@ -471,7 +544,7 @@ def diagnosticar_insert_sql_aster(
                 tabla=tabla,
             )
             probar_insert_temporal_aster(cursor, bloque)
-            cursor.execute("DROP TABLE #aster_insert_debug")
+            cursor.execute(sql_drop_table_aster("#aster_insert_debug"))
             continue
 
         except Exception:
@@ -488,7 +561,7 @@ def diagnosticar_insert_sql_aster(
                         tabla=tabla,
                     )
                     probar_insert_temporal_aster(cursor, fila_df)
-                    cursor.execute("DROP TABLE #aster_insert_debug")
+                    cursor.execute(sql_drop_table_aster("#aster_insert_debug"))
                     continue
 
                 except Exception as exc_fila:
@@ -508,14 +581,14 @@ def diagnosticar_insert_sql_aster(
                                 tabla=tabla,
                             )
                             probar_insert_temporal_aster(cursor, columna_df)
-                            cursor.execute("DROP TABLE #aster_insert_debug")
+                            cursor.execute(sql_drop_table_aster("#aster_insert_debug"))
 
                         except Exception as exc_columna:
                             conn.rollback()
 
                             errores_columna.append(
                                 {
-                                    "fila": int(idx) + 2,
+                                    "fila": numero_fila_excel_aster(idx),
                                     "columna": columna,
                                     "tipo_sql": tipo_sql_columna_insert_aster(
                                         columna,
@@ -533,7 +606,7 @@ def diagnosticar_insert_sql_aster(
 
                     return [
                         {
-                            "fila": int(idx) + 2,
+                            "fila": numero_fila_excel_aster(idx),
                             "columna": "No identificada",
                             "tipo_sql": "",
                             "valor": "",
@@ -566,10 +639,11 @@ def insertar_dataframe_sql_aster(
     )
     placeholders = ", ".join("?" for _ in columnas)
 
-    sql_insert = f"""
-        INSERT INTO {tabla_sql} ({columnas_sql})
-        VALUES ({placeholders})
-    """
+    sql_insert = cargar_sql("aster/insert_table.sql").format(
+        tabla=tabla_sql,
+        columnas=columnas_sql,
+        placeholders=placeholders,
+    )
 
     total_insertados = 0
     cursor = conn.cursor()
@@ -713,7 +787,7 @@ def insertar_datos_aster(
         conn.timeout = 120
 
         cursor = conn.cursor()
-        cursor.execute(f"USE {sql_identificador_aster(base)}")
+        cursor.execute(sql_use_database_aster(base))
 
         errores_sql_reales = diagnosticar_insert_sql_aster(
             conn=conn,
