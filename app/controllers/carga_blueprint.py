@@ -39,11 +39,14 @@ from app.services.orion_load_renderer import (
     render_gestion_orion_exportada,
     render_log_error,
     render_tabla_estadisticas_consolidado,
+    render_verificacion_carga_orion,
 )
 
 from app.services.orion_gestion_export_service import (
     exportar_gestion_orion_desde_temporal,
 )
+
+from app.services.orion_load_verification_service import verificar_carga_orion
 
 
 
@@ -189,129 +192,18 @@ def accion_verificar_carga():
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
 
     fecha = session.get("ultima_fecha", "202605_12")
-    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
 
-    # --- Rutas y tabla destino ---
-    # --- Rutas y tabla destino ---
-    tabla_por_tipo = {
-        "causales": "Causales",
-        "lote": "Lote",
-        "discador": "Discador",
-    }
-
-    tabla_destino = tabla_por_tipo.get(tipo)
-
-    if not tabla_destino:
-        return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
-
-    ruta_archivo, nombre_archivo = buscar_archivo_consolidado_orion(
-        carpeta_diaria,
-        tipo,
+    resultado = verificar_carga_orion(
+        data_dir=DATA_DIR,
+        fecha=fecha,
+        tipo=tipo,
+        conexion=conexion,
+        cfg_sql=cfg,
     )
 
-    if not ruta_archivo or not os.path.isfile(ruta_archivo):
-        return f"<div class='log-line error'>❌ No se encontró el archivo consolidado de {tipo}.</div>"
+    return render_verificacion_carga_orion(resultado)
 
-    # Leer archivo
-    try:
-        df_archivo_str = pd.read_excel(ruta_archivo, dtype=str)
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error al leer el archivo: {e}"
 
-    columnas_archivo_originales = df_archivo_str.columns.tolist()
-    columnas_archivo_para_match = mapear_columnas_archivo(
-        columnas_archivo_originales, tipo
-    )
-    columnas_archivo_norm = [
-        normalizar_texto(col) for col in columnas_archivo_para_match
-    ]
-
-    # Conexión y metadatos de la tabla
-    try:
-        conn_str = construir_cadena_conexion(cfg)
-        conn = pyodbc.connect(conn_str, timeout=5)
-        cursor = conn.cursor()
-        cursor.execute(
-            f"""
-            SELECT COLUMN_NAME, DATA_TYPE 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_NAME = ? 
-            ORDER BY ORDINAL_POSITION
-        """,
-            tabla_destino,
-        )
-        info_columnas = cursor.fetchall()
-        if not info_columnas:
-            conn.close()
-            return f"<div class='log-line error'>❌ No se encontró la tabla {tabla_destino} en la base de datos.</div>"
-
-        columnas_servidor = [row.COLUMN_NAME for row in info_columnas]
-        tipos_servidor = {row.COLUMN_NAME: row.DATA_TYPE for row in info_columnas}
-        columnas_servidor_norm = [normalizar_texto(col) for col in columnas_servidor]
-
-        # Último ID
-        ultimo_id = None
-        try:
-            primera_col = columnas_servidor[0]
-            cursor.execute(
-                f"SELECT MAX(CAST({primera_col} AS BIGINT)) FROM [{tabla_destino}]"
-            )
-            row = cursor.fetchone()
-            val = row[0] if row else None
-
-            if val is not None:
-                ultimo_id = val
-        except Exception:
-            pass
-
-        # Conteo de registros en la tabla
-        cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
-        row = cursor.fetchone()
-        total_tabla = row[0] if row else 0
-        conn.close()
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error de conexión: {e}"
-
-    # Construir HTML
-    html = f"<div class='log-line success'>✅ Verificación de {tipo.capitalize()} (conexión {conexion})</div>"
-    html += f"<p style='font-size:0.75rem;'><b>Archivo:</b> {nombre_archivo}<br><b>Ruta:</b> {ruta_archivo}</p>"
-    html += f"<p style='font-size:0.75rem;'><b>Tabla destino:</b> {tabla_destino} ({len(columnas_servidor)} columnas)</p>"
-
-    # Tabla de columnas del servidor con coincidencias (solo columnas del servidor)
-    html += "<table class='dataframe' style='width:100%;'>"
-    html += "<tr><th>Columna SQL Server</th><th>Columna en Archivo</th><th>Coincide</th><th>Tipo SQL</th></tr>"
-    for i, col_srv in enumerate(columnas_servidor):
-        norm_srv = columnas_servidor_norm[i]
-        match_col = None
-        for j, norm_arch in enumerate(columnas_archivo_norm):
-            if norm_arch == norm_srv:
-                match_col = columnas_archivo_originales[j]
-                break
-        coincide = "✅" if match_col else "❌"
-        tipo_srv = tipos_servidor.get(col_srv, "?")
-        html += f"<tr><td>{col_srv}</td><td>{match_col or '—'}</td><td>{coincide}</td><td>{tipo_srv}</td></tr>"
-    html += "</table>"
-
-    # Estadísticas
-    html += "<div style='display:flex; gap:20px; margin-top:10px; font-size:0.75rem;'>"
-    html += f"<div><b>Registros en archivo:</b> {len(df_archivo_str)}</div>"
-    if ultimo_id is not None:
-        html += f"<div><b>Último ID en tabla:</b> {ultimo_id}</div>"
-    html += f"<div><b>Registros en tabla:</b> {total_tabla}</div>"
-    html += "</div>"
-
-    # Botón para insertar datos
-    html += f"""
-    <div style='margin-top:12px;'>
-        <button onclick="insertarDatos('{tipo}', '{conexion}')" 
-                style="background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;">
-            📤 Insertar datos en {tabla_destino}
-        </button>
-    </div>
-    <div id="resultado-insercion-{tipo}" style="margin-top:10px;"></div>
-    """
-
-    return html
 
 
 def _parsear_fecha_orion_segura(valor):
