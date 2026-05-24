@@ -64,6 +64,14 @@ from app.services.aster_history_service import (
     registrar_historial_carga_aster,
 )
 
+from app.services.aster_sqlserver_service import (
+    construir_cadena_pyodbc_aster as construir_cadena_pyodbc_aster_service,
+    obtener_cadena_sqlserver_aster as obtener_cadena_sqlserver_aster_service,
+    obtener_columnas_sqlserver_tabla,
+    probar_conexion_tabla_sqlserver_aster,
+    valor_config_sql as valor_config_sql_service,
+)
+
 
 aster_bp = Blueprint("aster", __name__)
 
@@ -1005,162 +1013,53 @@ def _generar_html_conciliacion_aster(
     return html
 
 
-
 def _valor_config_sql(config: Any, *nombres: str) -> str:
     """
-    Lee un valor desde una configuración tipo dict de forma flexible.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sqlserver_service.
     """
-    if not isinstance(config, dict):
-        return ""
-
-    claves = {str(k).lower(): v for k, v in config.items()}
-
-    for nombre in nombres:
-        valor = claves.get(nombre.lower())
-
-        if valor is not None:
-            return str(valor).strip()
-
-    return ""
+    return valor_config_sql_service(config, *nombres)
 
 
 def _construir_cadena_pyodbc_aster(config: Any) -> str:
     """
-    Convierte SQL_LOCAL / SQL_REMOTO a cadena pyodbc.
-
-    Soporta:
-    - string directo
-    - diccionario con server/database/user/password/driver
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sqlserver_service.
     """
-    if isinstance(config, str):
-        cadena = config.strip()
-
-        if not cadena:
-            raise ValueError("La cadena de conexión SQL Server está vacía.")
-
-        return cadena
-
-    if not isinstance(config, dict):
-        raise TypeError(
-            "La configuración SQL Server debe ser string o dict. "
-            f"Tipo recibido: {type(config).__name__}"
-        )
-
-    driver = _valor_config_sql(config, "driver", "DRIVER") or "ODBC Driver 17 for SQL Server"
-    server = _valor_config_sql(config, "server", "SERVER", "host", "HOST")
-    database = (
-        _valor_config_sql(config, "database", "DATABASE", "db", "DB")
-        or ASTER_BASE_INSERCION
-    )
-    user = _valor_config_sql(config, "user", "USER", "uid", "UID", "username")
-    password = _valor_config_sql(config, "password", "PASSWORD", "pwd", "PWD")
-    trusted = _valor_config_sql(
+    return construir_cadena_pyodbc_aster_service(
         config,
-        "trusted_connection",
-        "Trusted_Connection",
-        "trusted",
+        database_default=ASTER_BASE_INSERCION,
     )
 
-    if not server:
-        raise ValueError("Falta SERVER en la configuración SQL Server.")
-
-    partes = [
-        f"DRIVER={{{driver}}}",
-        f"SERVER={server}",
-        f"DATABASE={database}",
-        "TrustServerCertificate=yes",
-    ]
-
-    if trusted.lower() in {"yes", "true", "1", "si", "sí"}:
-        partes.append("Trusted_Connection=yes")
-    else:
-        if not user:
-            raise ValueError("Falta USER/UID en la configuración SQL Server.")
-        partes.append(f"UID={user}")
-        partes.append(f"PWD={password}")
-
-    return ";".join(partes)
 
 
 def _obtener_columnas_sqlserver_aster(conexion: str) -> list[dict[str, Any]]:
     """
-    Obtiene columnas de la tabla destino ASTER desde SQL Server.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sqlserver_service.
     """
-    cadena = _obtener_cadena_sqlserver_aster(conexion)
+    return obtener_columnas_sqlserver_tabla(
+        conexion=conexion,
+        sql_local=SQL_LOCAL,
+        sql_remoto=SQL_REMOTO,
+        base=ASTER_BASE_INSERCION,
+        schema=ASTER_SCHEMA_INSERCION,
+        tabla=ASTER_TABLA_INSERCION,
+    )
 
-    sql = """
-            SELECT
-                COLUMN_NAME,
-                DATA_TYPE,
-                IS_NULLABLE,
-                CHARACTER_MAXIMUM_LENGTH,
-                NUMERIC_PRECISION,
-                NUMERIC_SCALE,
-                ORDINAL_POSITION,
-                COLUMNPROPERTY(
-                    OBJECT_ID(TABLE_SCHEMA + '.' + TABLE_NAME),
-                    COLUMN_NAME,
-                    'IsIdentity'
-                ) AS IS_IDENTITY
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = ?
-            AND TABLE_NAME = ?
-            ORDER BY ORDINAL_POSITION
-        """
-
-    conn = pyodbc.connect(cadena,timeout=10)
-    conn.timeout=120
-
-    try:
-        cursor = conn.cursor()
-
-        cursor.execute(f"USE [{ASTER_BASE_INSERCION}]")
-
-        cursor.execute(
-            sql,
-            ASTER_SCHEMA_INSERCION,
-            ASTER_TABLA_INSERCION,
-        )
-
-        columnas: list[dict[str, Any]] = []
-
-        for row in cursor.fetchall():
-            columnas.append(
-                {
-                    "columna": str(row.COLUMN_NAME),
-                    "tipo_sql": str(row.DATA_TYPE),
-                    "nullable": str(row.IS_NULLABLE),
-                    "longitud": row.CHARACTER_MAXIMUM_LENGTH,
-                    "precision": row.NUMERIC_PRECISION,
-                    "escala": row.NUMERIC_SCALE,
-                    "orden": int(row.ORDINAL_POSITION),
-                    "is_identity": int(row.IS_IDENTITY or 0),
-                }
-            )
-
-        if not columnas:
-            raise ValueError(
-                "No se encontraron columnas para la tabla "
-                f"{ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}."
-            )
-
-        return columnas
-
-    finally:
-        conn.close()
 
 def _obtener_cadena_sqlserver_aster(conexion: str) -> str:
     """
-    Devuelve cadena pyodbc según conexión solicitada.
-
-    local  = pruebas
-    remoto = producción
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sqlserver_service.
     """
-    conexion_normalizada = (conexion or "local").strip().lower()
-
-    config = SQL_REMOTO if conexion_normalizada == "remoto" else SQL_LOCAL
-
-    return _construir_cadena_pyodbc_aster(config)
+    return obtener_cadena_sqlserver_aster_service(
+        conexion=conexion,
+        sql_local=SQL_LOCAL,
+        sql_remoto=SQL_REMOTO,
+        database_default=ASTER_BASE_INSERCION,
+    )
+    
 
 
 def _tipo_excel_aster(serie: pd.Series) -> str:
@@ -3357,13 +3256,14 @@ def accion_aster_ajustar_conciliacion():
         return f"<div class='log-line error'>❌ Error ajustando conciliación ASTER: {escape(str(exc))}</div>"
 
 
-
-
 @aster_bp.route("/accion/aster-probar-conexion-insercion", methods=["POST"])
 def accion_aster_probar_conexion_insercion():
     """
     Prueba conexión SQL Server ASTER para inserción.
     No inserta datos.
+
+    La lógica de conexión vive en:
+    app.services.aster_sqlserver_service
     """
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
@@ -3371,39 +3271,19 @@ def accion_aster_probar_conexion_insercion():
         if conexion not in {"local", "remoto"}:
             conexion = "local"
 
-        cadena = _obtener_cadena_sqlserver_aster(conexion)
+        resultado = probar_conexion_tabla_sqlserver_aster(
+            conexion=conexion,
+            sql_local=SQL_LOCAL,
+            sql_remoto=SQL_REMOTO,
+            base=ASTER_BASE_INSERCION,
+            schema=ASTER_SCHEMA_INSERCION,
+            tabla=ASTER_TABLA_INSERCION,
+        )
 
-        conn = pyodbc.connect(cadena, timeout=10)
-        conn.timeout = 120
-
-        try:
-            cursor = conn.cursor()
-            cursor.execute(f"USE [{ASTER_BASE_INSERCION}]")
-            cursor.execute("SELECT DB_NAME() AS base_actual")
-            row = cursor.fetchone()
-            base_actual = str(row.base_actual)
-
-            cursor.execute(
-                """
-                SELECT COUNT(*) AS total_columnas
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = ?
-                  AND TABLE_NAME = ?
-                """,
-                ASTER_SCHEMA_INSERCION,
-                ASTER_TABLA_INSERCION,
-            )
-            row_cols = cursor.fetchone()
-            total_columnas = int(row_cols.total_columnas or 0)
-
-        finally:
-            conn.close()
-
-        if total_columnas <= 0:
+        if not resultado.get("success"):
             return f"""
             <div class='log-line error'>
-                ❌ Conexión ASTER correcta, pero no se encontró la tabla
-                {ASTER_BASE_INSERCION}.{ASTER_SCHEMA_INSERCION}.{ASTER_TABLA_INSERCION}.
+                ❌ {escape(str(resultado.get("error", "Error verificando conexión ASTER.")))}
             </div>
             """
 
@@ -3435,7 +3315,7 @@ def accion_aster_probar_conexion_insercion():
             </tr>
             <tr>
                 <td><b>Base actual</b></td>
-                <td>{escape(base_actual)}</td>
+                <td>{escape(str(resultado.get("base_actual", "")))}</td>
             </tr>
             <tr>
                 <td><b>Tabla destino</b></td>
@@ -3443,7 +3323,7 @@ def accion_aster_probar_conexion_insercion():
             </tr>
             <tr>
                 <td><b>Columnas detectadas</b></td>
-                <td>{total_columnas}</td>
+                <td>{escape(str(resultado.get("total_columnas", 0)))}</td>
             </tr>
         </table>
         """
@@ -3454,6 +3334,7 @@ def accion_aster_probar_conexion_insercion():
             ❌ Error verificando conexión ASTER: {escape(str(exc))}
         </div>
         """
+
 
 @aster_bp.route("/accion/aster-preparar-insercion", methods=["POST"])
 def accion_aster_preparar_insercion():
@@ -3948,61 +3829,17 @@ def _obtener_columnas_sqlserver_fase_i(
     tabla: str,
 ) -> list[dict[str, Any]]:
     """
-    Obtiene columnas de Aster_Api.dbo.usuarios o Aster_Api.dbo.comentarios.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sqlserver_service.
     """
-    cadena = _obtener_cadena_sqlserver_aster(conexion)
-
-    sql = """
-        SELECT
-            COLUMN_NAME,
-            DATA_TYPE,
-            IS_NULLABLE,
-            CHARACTER_MAXIMUM_LENGTH,
-            NUMERIC_PRECISION,
-            NUMERIC_SCALE,
-            ORDINAL_POSITION,
-            COLUMNPROPERTY(
-                OBJECT_ID(TABLE_SCHEMA + '.' + TABLE_NAME),
-                COLUMN_NAME,
-                'IsIdentity'
-            ) AS IS_IDENTITY
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = ?
-          AND TABLE_NAME = ?
-        ORDER BY ORDINAL_POSITION
-    """
-
-    conn = pyodbc.connect(cadena, timeout=10)
-    conn.timeout = 120
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute(f"USE [{ASTER_FASE_I_BASE}]")
-        cursor.execute(sql, ASTER_FASE_I_SCHEMA, tabla)
-
-        columnas: list[dict[str, Any]] = []
-
-        for row in cursor.fetchall():
-            columnas.append(
-                {
-                    "columna": str(row.COLUMN_NAME),
-                    "tipo_sql": str(row.DATA_TYPE),
-                    "nullable": str(row.IS_NULLABLE),
-                    "longitud": row.CHARACTER_MAXIMUM_LENGTH,
-                    "precision": row.NUMERIC_PRECISION,
-                    "escala": row.NUMERIC_SCALE,
-                    "orden": int(row.ORDINAL_POSITION),
-                    "is_identity": int(row.IS_IDENTITY or 0),
-                }
-            )
-
-        if not columnas:
-            raise ValueError(f"No se encontraron columnas para {ASTER_FASE_I_BASE}.dbo.{tabla}")
-
-        return columnas
-
-    finally:
-        conn.close()
+    return obtener_columnas_sqlserver_tabla(
+        conexion=conexion,
+        sql_local=SQL_LOCAL,
+        sql_remoto=SQL_REMOTO,
+        base=ASTER_FASE_I_BASE,
+        schema=ASTER_FASE_I_SCHEMA,
+        tabla=tabla,
+    )
 
 
 def _comparar_columnas_fase_i(
