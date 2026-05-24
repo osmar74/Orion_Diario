@@ -26,21 +26,16 @@ from app.services.ocr_processor import OCRProcessor
 from app.services.aster_file_service import (
     buscar_archivo_normalizado_aster_en_disco,
     copiar_archivo_aster,
-    obtener_carpeta_proceso_aster,
 )
 
 from app.services.aster_normalization_service import normalizar_archivo_aster
 from app.services.aster_entity_service import analizar_entidades_excel_aster
-from app.services.aster_sql_entity_service import (
-    consultar_entidades_sql_aster,
-    normalizar_fecha_sql_aster,
-)
+from app.services.aster_sql_entity_service import consultar_entidades_sql_aster
 
 from app.services.aster_classification_service import (
     aplicar_exclusiones_aster,
     guardar_clasificacion_aster,
     preparar_depuracion_aster,
-    normalizar_resultados_sql_aster,
 )
 
 from app.services.aster_reconciliation_service import (
@@ -50,17 +45,14 @@ from app.services.aster_reconciliation_service import (
 )
 
 from app.services.aster_history_service import (
-    inicializar_historial_aster,
     obtener_historial_cargas_aster,
     registrar_historial_carga_aster,
 )
 
 from app.services.aster_sqlserver_service import (
-    construir_cadena_pyodbc_aster as construir_cadena_pyodbc_aster_service,
     obtener_cadena_sqlserver_aster as obtener_cadena_sqlserver_aster_service,
     obtener_columnas_sqlserver_tabla,
     probar_conexion_tabla_sqlserver_aster,
-    valor_config_sql as valor_config_sql_service,
 )
 
 from app.services.aster_entities_export_service import (
@@ -359,14 +351,6 @@ def _generar_html_entidades_excel_aster(
     return html
 
 
-def _normalizar_fecha_sql_aster(fecha_raw: str) -> str:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_sql_entity_service.
-    """
-    return normalizar_fecha_sql_aster(fecha_raw)
-
-
 
 def _generar_html_consulta_sql_aster(
     fecha_sql: str,
@@ -443,16 +427,6 @@ def _generar_html_consulta_sql_aster(
     )
 
     return html
-
-
-def _obtener_resultados_sql_aster_desde_sesion() -> list[dict[str, Any]]:
-    """
-    Compatibilidad temporal.
-    La normalización real vive en app.services.aster_classification_service.
-    """
-    resultados = session.get("aster_resultados_sql") or []
-
-    return normalizar_resultados_sql_aster(resultados)
 
 
 
@@ -1219,13 +1193,6 @@ def _obtener_fecha_proceso_aster() -> str:
     return datetime.now().strftime("%Y%m%d")
 
 
-def _obtener_carpeta_proceso_aster(fecha_yyyymmdd: str) -> str:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_file_service.
-    """
-    return obtener_carpeta_proceso_aster(DATA_DIR, fecha_yyyymmdd)
-
 def _buscar_archivo_normalizado_aster_en_disco(fecha_yyyymmdd: str) -> str:
     """
     Compatibilidad temporal.
@@ -1306,14 +1273,6 @@ def _generar_excel_entidades_aster(
         str(resultado["nombre_archivo"]),
         int(resultado["total_entidades"]),
     )
-
-
-def _inicializar_historial_aster() -> None:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_history_service.
-    """
-    inicializar_historial_aster(ASTER_HISTORIAL_DB)
 
 
 def _registrar_historial_carga_aster(
@@ -2368,25 +2327,6 @@ def _obtener_fecha_fase_i(fecha_raw: str = "") -> str:
     )
 
 
-
-def _obtener_columnas_sqlserver_fase_i(
-    conexion: str,
-    tabla: str,
-) -> list[dict[str, Any]]:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_sqlserver_service.
-    """
-    return obtener_columnas_sqlserver_tabla(
-        conexion=conexion,
-        sql_local=SQL_LOCAL,
-        sql_remoto=SQL_REMOTO,
-        base=ASTER_FASE_I_BASE,
-        schema=ASTER_FASE_I_SCHEMA,
-        tabla=tabla,
-    )
-
-
 def _generar_tabla_comparacion_fase_i(
     titulo: str,
     comparacion: list[dict[str, Any]],
@@ -2764,32 +2704,6 @@ def _generar_html_duplicados_comentarios_fase_i(
         html += "</table>"
 
     return html
-
-
-def _agregar_paso_pipeline_fase_i(
-    pipeline: list[dict[str, Any]],
-    paso: int,
-    proceso: str,
-    origen: str,
-    destino: str,
-    accion: str,
-    cantidad: int | str,
-    estado: str = "OK",
-) -> None:
-    """
-    Agrega un paso al pipeline visual de Fase I ASTER.
-    """
-    pipeline.append(
-        {
-            "paso": paso,
-            "proceso": proceso,
-            "origen": origen,
-            "destino": destino,
-            "accion": accion,
-            "cantidad": cantidad,
-            "estado": estado,
-        }
-    )
 
 
 def _generar_html_pipeline_fase_i(pipeline: list[dict[str, Any]]) -> str:
