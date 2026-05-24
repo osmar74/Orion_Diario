@@ -5,6 +5,12 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from app.services.log_service import LogService
+from app.services.orion_excel_utils import (
+    escribir_excel,
+    generar_preview_html,
+    leer_excel_texto,
+    listar_archivos_por_extension,
+)
 
 
 class CausalesProcessor:
@@ -94,7 +100,7 @@ class CausalesProcessor:
             resultado['mensajes'].append('La carpeta Causales no existe.')
             return resultado
 
-        archivos = [f for f in os.listdir(ruta_carpeta) if f.lower().endswith('.xlsx')]
+        archivos = listar_archivos_por_extension(ruta_carpeta, ".xlsx")
         if not archivos:
             resultado['mensajes'].append('No hay archivos .xlsx en Causales.')
             return resultado
@@ -105,7 +111,7 @@ class CausalesProcessor:
         for archivo in archivos:
             ruta_archivo = os.path.join(ruta_carpeta, archivo)
             try:
-                df = pd.read_excel(ruta_archivo, skiprows=2, dtype=str)
+                df = leer_excel_texto(ruta_archivo, skiprows=2)
             except Exception as e:
                 resultado['mensajes'].append(f"Error al leer {archivo}: {e}")
                 continue
@@ -160,9 +166,9 @@ class CausalesProcessor:
         df_consolidado = pd.concat(dataframes, ignore_index=True)
         nombre_consolidado = "Causales_Consolidado.xlsx"
         ruta_consolidado = os.path.join(carpeta_salida, nombre_consolidado)
-        df_consolidado.to_excel(ruta_consolidado, index=False)
+        escribir_excel(df_consolidado, ruta_consolidado)
 
-        preview_html = df_consolidado.head(10).to_html(index=False, classes='dataframe')
+        preview_html = generar_preview_html(df_consolidado, filas=10)
 
         resultado.update({
             'success': True,

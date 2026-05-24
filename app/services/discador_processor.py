@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from app.services.log_service import LogService
+from app.services.orion_excel_utils import escribir_excel, leer_excel_texto
 
 
 class DiscadorProcessor:
@@ -90,7 +91,7 @@ class DiscadorProcessor:
             )
 
         try:
-            df = pd.read_excel(ruta_archivo, dtype=str)
+            df = leer_excel_texto(ruta_archivo)
             self.validar_encabezados(df)
 
             # Total original
@@ -132,9 +133,8 @@ class DiscadorProcessor:
             ruta_limpio = os.path.join(carpeta_salida, f"{base}_Consolidado.xlsx")
             ruta_no_validos = os.path.join(carpeta_salida, f"{base}_no_validos.xlsx")
 
-            os.makedirs(carpeta_salida, exist_ok=True)
-            df_validos.to_excel(ruta_limpio, index=False)
-            df_no_validos.to_excel(ruta_no_validos, index=False)
+            escribir_excel(df_validos, ruta_limpio)
+            escribir_excel(df_no_validos, ruta_no_validos)
 
             if self.log_service:
                 if cuadre:

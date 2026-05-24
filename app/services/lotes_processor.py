@@ -2,17 +2,18 @@ import os
 import re
 import unicodedata
 from difflib import SequenceMatcher
+from typing import Dict, List, Optional
 
 import pandas as pd
 
-
-import re
-from typing import Dict, List, Optional
-
-
-
 from app.services.log_service import LogService
-
+from app.services.orion_excel_utils import (
+    escribir_excel,
+    generar_preview_html,
+    leer_csv_texto_latin1,
+    leer_excel_texto,
+    listar_archivos_por_extension,
+)
 
 class LotesProcessor:
     """
@@ -114,7 +115,7 @@ class LotesProcessor:
         if not ruta_discador_limpio or not os.path.isfile(ruta_discador_limpio):
             return []
 
-        df_discador = pd.read_excel(ruta_discador_limpio, dtype=str)
+        df_discador = leer_excel_texto(ruta_discador_limpio)
 
         columnas = {
             str(col).strip().lower(): str(col)
@@ -207,7 +208,7 @@ class LotesProcessor:
     ) -> Dict:
         """Comprueba que los lotes existan en el Discador limpio."""
         try:
-            df_disc = pd.read_excel(ruta_discador)
+            df_disc = leer_excel_texto(ruta_discador)
             lotes_discador = set(df_disc['Lote'].dropna().unique())
             lotes_consolidado = set(df_consolidado['Nombre_Lote'].dropna().unique())
 
@@ -252,9 +253,7 @@ class LotesProcessor:
                                  f'Iniciando procesamiento de carpeta: {carpeta_lotes}')
 
         try:
-            archivos_csv = [
-                f for f in os.listdir(carpeta_lotes) if f.lower().endswith('.csv')
-            ]
+            archivos_csv = listar_archivos_por_extension(carpeta_lotes, ".csv")
             if not archivos_csv:
                 msg = "No se encontraron archivos CSV en la carpeta."
                 resultado['mensajes'].append(msg)
@@ -280,7 +279,7 @@ class LotesProcessor:
                 reporte_lotes.append(coincidencia_lote)
 
                 try:
-                    df = pd.read_csv(ruta_completa, sep=';', dtype=str, encoding='latin-1')
+                    df = leer_csv_texto_latin1(ruta_completa, sep=";")
                 except Exception as e:
                     mensajes.append(f"Error al leer {archivo}: {e}")
                     continue
@@ -349,10 +348,8 @@ class LotesProcessor:
             nombre_consolidado = f"Lote_Consolidado_{fecha_archivo}.xlsx"
 
             carpeta_salida = carpeta_salida or carpeta_lotes
-            os.makedirs(carpeta_salida, exist_ok=True)
-
             ruta_consolidado = os.path.join(carpeta_salida, nombre_consolidado)
-            df_consolidado.to_excel(ruta_consolidado, index=False)
+            escribir_excel(df_consolidado, ruta_consolidado)
 
             # Validación cruzada opcional
             validacion = None
@@ -362,9 +359,7 @@ class LotesProcessor:
                     mensajes.extend(validacion['mensajes'])
 
             # Vista previa (primeras 10 filas)
-            preview_html = df_consolidado.head(10).to_html(
-                index=False, classes='dataframe'
-            )
+            preview_html = generar_preview_html(df_consolidado, filas=10)
 
             if self.log_service:
                 if validacion and not validacion['ok']:
