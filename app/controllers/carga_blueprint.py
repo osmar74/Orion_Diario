@@ -34,41 +34,14 @@ from app.services.schema_validator import (
     validar_longitudes_dataframe,
 )
 
+from app.services.orion_load_renderer import (
+    render_gestion_orion_exportada,
+    render_log_error,
+    render_tabla_estadisticas_consolidado,
+)
+
+
 carga_bp = Blueprint("carga", __name__)
-def generar_tabla_estadisticas_consolidado(titulo, filas):
-    """
-    Genera una tabla HTML simple para mostrar estadísticas del consolidado.
-
-    filas debe ser una lista de tuplas:
-    [
-        ("Descripción", valor),
-        ...
-    ]
-    """
-    html = f"""
-    <div style='margin-top:10px; margin-bottom:10px;'>
-        <table class='dataframe' style='width:100%; margin-top:10px;'>
-            <tr>
-                <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                    {titulo}
-                </th>
-            </tr>
-    """
-
-    for descripcion, valor in filas:
-        html += f"""
-            <tr>
-                <td><b>{descripcion}</b></td>
-                <td style='font-size:1rem; font-weight:bold;'>{valor}</td>
-            </tr>
-        """
-
-    html += """
-        </table>
-    </div>
-    """
-
-    return html
 
 def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
     """
@@ -818,11 +791,13 @@ def accion_consolidar_aplicar():
     temp_id = request.form.get("temp_id")
 
     if not temp_id:
-        return "<div class='log-line error'>❌ Falta identificador de consulta previa.</div>"
+        return render_log_error("Falta identificador de consulta previa.")
 
     temp_path = os.path.join(DATA_DIR, f"temp_consolidado_{temp_id}.pkl")
     if not os.path.isfile(temp_path):
-        return "<div class='log-line error'>❌ Los datos de consulta previa han expirado. Ejecute la consulta nuevamente.</div>"
+        return render_log_error(
+            "Los datos de consulta previa han expirado. Ejecute la consulta nuevamente."
+        )
 
     try:
         with open(temp_path, "rb") as f:
@@ -830,7 +805,7 @@ def accion_consolidar_aplicar():
         # Borrar el archivo temporal después de cargarlo
         os.remove(temp_path)
     except Exception as e:
-        return f"<div class='log-line error'>❌ Error al cargar datos: {e}</div>"
+        return render_log_error(f"Error al cargar datos: {e}")
 
     # Aplicar limpieza: para las filas con fecha de compromiso y cuyo Descripción esté en seleccionados,
     # reemplazar la fecha por vacío
@@ -866,7 +841,7 @@ def accion_consolidar_aplicar():
     registros_sin_fecha_despues = int(total_inicial - registros_con_fecha_despues)
     registros_exportados = len(df)
 
-    html_estadisticas = generar_tabla_estadisticas_consolidado(
+    html_estadisticas = render_tabla_estadisticas_consolidado(
         "Estadísticas después de aplicar filtro y exportar",
         [
             ("Registros cargados desde consulta temporal", total_inicial),
@@ -905,11 +880,9 @@ def accion_consolidar_aplicar():
     
     df.to_excel(ruta_salida, index=False)
 
-    html = html_estadisticas
-    # Generar enlace de descarga
-    html = "<div class='log-line success'>✅ Excel generado correctamente.</div>"
-    html += f"<p><a href='/descargar/{ruta_relativa_descarga}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
-    html += f"<p><a href='/descargar/{nombre_archivo}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
-    html += f"<p style='font-size:0.7rem; color:#888;'>Ruta: {ruta_salida}</p>"
-    html = html_estadisticas + html
-    return html
+    return render_gestion_orion_exportada(
+        html_estadisticas=html_estadisticas,
+        nombre_archivo=nombre_archivo,
+        ruta_salida=ruta_salida,
+        ruta_relativa_descarga=ruta_relativa_descarga,
+    )
