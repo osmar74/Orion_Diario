@@ -52,6 +52,13 @@ from app.services.aster_classification_service import (
     normalizar_resultados_sql_aster,
 )
 
+from app.services.aster_reconciliation_service import (
+    conciliar_entidades_aster,
+    normalizar_entidades_excel_aster,
+    obtener_entidades_sql_validables_aster as obtener_entidades_sql_validables_aster_service,
+)
+
+
 aster_bp = Blueprint("aster", __name__)
 
 RUTAS_ASTER_DEFAULT = [
@@ -770,73 +777,33 @@ def _generar_html_clasificacion_final_aster(
 
 def _obtener_entidades_excel_aster_desde_sesion() -> list[str]:
     """
-    Obtiene entidades únicas del Excel ASTER desde sesión.
+    Compatibilidad temporal.
+    La normalización real vive en app.services.aster_reconciliation_service.
     """
-    entidades = session.get("aster_entidades_excel") or []
-
-    return sorted(
-        {
-            str(entidad).strip()
-            for entidad in entidades
-            if str(entidad).strip()
-        }
+    return normalizar_entidades_excel_aster(
+        session.get("aster_entidades_excel") or []
     )
 
 
 def _obtener_entidades_sql_validables_aster() -> list[dict[str, Any]]:
     """
-    Obtiene entidades SQL disponibles para conciliación.
-
-    Se toman:
-    - Bases Cobranza %
-    - Bases Integral
-    - No seleccionadas
-
-    No se toman las removidas.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_reconciliation_service.
     """
-    cobranza = session.get("aster_bases_cobranza") or []
-    integral = session.get("aster_bases_integral") or []
-    no_seleccionadas = session.get("aster_bases_no_seleccionadas") or []
-
-    combinadas = cobranza + integral + no_seleccionadas
-
-    entidades: dict[str, dict[str, Any]] = {}
-
-    for fila in combinadas:
-        entidad = str(fila.get("entidad") or "").strip()
-
-        if not entidad:
-            continue
-
-        entidades[entidad] = {
-            "entidad": entidad,
-            "numero": int(fila.get("numero") or 0),
-            "SSS": str(fila.get("SSS") or f"'{entidad}'"),
-        }
-
-    return [
-        entidades[entidad]
-        for entidad in sorted(entidades.keys())
-    ]
+    return obtener_entidades_sql_validables_aster_service(
+        cobranza=session.get("aster_bases_cobranza") or [],
+        integral=session.get("aster_bases_integral") or [],
+        no_seleccionadas=session.get("aster_bases_no_seleccionadas") or [],
+    )
 
 
 def _generar_html_tabla_comparativa_aster(
-    entidades_excel: list[str],
-    entidades_sql: list[dict[str, Any]],
+    comparacion: list[dict[str, Any]],
     titulo: str = "Comparación Excel vs SQL ASTER",
 ) -> str:
     """
-    Genera tabla comparativa Excel vs SQL.
+    Genera tabla comparativa Excel vs SQL desde resultado estructurado.
     """
-    set_excel = set(entidades_excel)
-    set_sql = {
-        str(fila.get("entidad") or "").strip()
-        for fila in entidades_sql
-        if str(fila.get("entidad") or "").strip()
-    }
-
-    todas = sorted(set_excel | set_sql)
-
     html = f"""
     <table class='dataframe' style='width:100%; margin-top:10px;'>
         <tr>
@@ -853,7 +820,7 @@ def _generar_html_tabla_comparativa_aster(
         </tr>
     """
 
-    if not todas:
+    if not comparacion:
         html += """
         <tr>
             <td colspan='5' style='text-align:center; color:#888;'>
@@ -862,14 +829,16 @@ def _generar_html_tabla_comparativa_aster(
         </tr>
         """
 
-    for idx, entidad in enumerate(todas, start=1):
-        en_excel = entidad in set_excel
-        en_sql = entidad in set_sql
+    for idx, fila in enumerate(comparacion, start=1):
+        entidad = str(fila.get("entidad") or "")
+        en_excel = bool(fila.get("en_excel"))
+        en_sql = bool(fila.get("en_sql"))
+        estado_raw = str(fila.get("estado") or "")
 
-        if en_excel and en_sql:
+        if estado_raw == "MATCH":
             estado = "✅ Match"
             color = "#28a745"
-        elif en_excel and not en_sql:
+        elif estado_raw == "FALTA_EN_SQL":
             estado = "⚠️ Está en Excel, falta en SQL"
             color = "#ffc107"
         else:
@@ -892,31 +861,16 @@ def _generar_html_tabla_comparativa_aster(
 
 
 def _generar_html_conciliacion_aster(
-    entidades_excel: list[str],
-    entidades_sql: list[dict[str, Any]],
-    entidades_no_tomar: set[str] | None = None,
+    resultado: dict[str, Any],
 ) -> str:
     """
-    Genera HTML de conciliación ASTER.
+    Genera HTML de conciliación ASTER desde resultado estructurado.
     """
-    entidades_no_tomar = entidades_no_tomar or set()
-
-    entidades_sql_ajustadas = [
-        fila
-        for fila in entidades_sql
-        if str(fila.get("entidad") or "").strip() not in entidades_no_tomar
-    ]
-
-    set_excel = set(entidades_excel)
-    set_sql = {
-        str(fila.get("entidad") or "").strip()
-        for fila in entidades_sql_ajustadas
-        if str(fila.get("entidad") or "").strip()
-    }
-
-    faltan_en_sql = sorted(set_excel - set_sql)
-    sobran_en_sql = sorted(set_sql - set_excel)
-    match_ok = not faltan_en_sql and not sobran_en_sql and len(set_excel) == len(set_sql)
+    faltan_en_sql = resultado.get("faltan_en_sql", [])
+    sobran_en_sql = resultado.get("sobran_en_sql", [])
+    entidades_no_tomar = set(resultado.get("entidades_no_tomar", []))
+    comparacion = resultado.get("comparacion", [])
+    match_ok = bool(resultado.get("match_ok"))
 
     html = """
     <table class='dataframe' style='width:100%; margin-top:10px;'>
@@ -928,9 +882,9 @@ def _generar_html_conciliacion_aster(
     """
 
     resumen = [
-        ("Entidades únicas en Excel", len(set_excel)),
-        ("Entidades SQL consideradas", len(set_sql)),
-        ("Entidades no tomadas en cuenta", len(entidades_no_tomar)),
+        ("Entidades únicas en Excel", resultado.get("total_excel", 0)),
+        ("Entidades SQL consideradas", resultado.get("total_sql", 0)),
+        ("Entidades no tomadas en cuenta", resultado.get("total_no_tomar", 0)),
         ("Entidades en Excel que faltan en SQL", len(faltan_en_sql)),
         ("Entidades en SQL que faltan en Excel", len(sobran_en_sql)),
     ]
@@ -946,15 +900,11 @@ def _generar_html_conciliacion_aster(
     html += "</table>"
 
     html += _generar_html_tabla_comparativa_aster(
-        entidades_excel=entidades_excel,
-        entidades_sql=entidades_sql_ajustadas,
+        comparacion=comparacion,
+        titulo="Comparación Excel vs SQL ASTER",
     )
 
     if match_ok:
-        session["aster_informacion_verificada"] = True
-        session["aster_entidades_sql_validadas"] = entidades_sql_ajustadas
-        session["aster_entidades_no_tomar"] = sorted(entidades_no_tomar)
-
         html = "<div class='log-line success'>✅ Información Verificada.</div>" + html
 
         html += """
@@ -962,8 +912,6 @@ def _generar_html_conciliacion_aster(
         """
 
         return html
-
-    session["aster_informacion_verificada"] = False
 
     html = """
     <div class='log-line warning'>
@@ -1013,7 +961,9 @@ def _generar_html_conciliacion_aster(
             </tr>
         """
 
-        for idx, entidad in enumerate(sobran_en_sql, start=1):
+        for idx, fila in enumerate(resultado.get("sobrantes_detalle", []), start=1):
+            entidad = str(fila.get("entidad") or "")
+            sss = str(fila.get("SSS") or f"'{entidad}'")
             checked = "checked" if entidad in entidades_no_tomar else ""
 
             html += f"""
@@ -1028,7 +978,7 @@ def _generar_html_conciliacion_aster(
                 </td>
                 <td>{idx}</td>
                 <td><b>{escape(entidad)}</b></td>
-                <td><code>{escape("'" + entidad + "'")}</code></td>
+                <td><code>{escape(sss)}</code></td>
             </tr>
             """
 
@@ -1047,6 +997,7 @@ def _generar_html_conciliacion_aster(
     """
 
     return html
+
 
 
 def _valor_config_sql(config: Any, *nombres: str) -> str:
@@ -3395,11 +3346,13 @@ def accion_aster_consulta_sql():
         return f"<div class='log-line error'>❌ Error ejecutando consulta SQL ASTER: {escape(str(exc))}</div>"
     
  
-
 @aster_bp.route("/accion/aster-conciliar-entidades", methods=["POST"])
 def accion_aster_conciliar_entidades():
     """
     Compara entidades del Excel ASTER contra entidades SQL depuradas.
+
+    La lógica de conciliación vive en:
+    app.services.aster_reconciliation_service
     """
     try:
         entidades_excel = _obtener_entidades_excel_aster_desde_sesion()
@@ -3419,12 +3372,25 @@ def accion_aster_conciliar_entidades():
             </div>
             """
 
-        session["aster_entidades_no_tomar"] = []
-
-        return _generar_html_conciliacion_aster(
+        resultado = conciliar_entidades_aster(
             entidades_excel=entidades_excel,
             entidades_sql=entidades_sql,
+            entidades_no_tomar=set(),
         )
+
+        session["aster_entidades_no_tomar"] = []
+
+        if resultado.get("match_ok"):
+            session["aster_informacion_verificada"] = True
+            session["aster_entidades_sql_validadas"] = resultado.get(
+                "entidades_sql_ajustadas",
+                [],
+            )
+        else:
+            session["aster_informacion_verificada"] = False
+            session["aster_entidades_sql_validadas"] = []
+
+        return _generar_html_conciliacion_aster(resultado)
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error conciliando entidades ASTER: {escape(str(exc))}</div>"
@@ -3434,6 +3400,9 @@ def accion_aster_conciliar_entidades():
 def accion_aster_ajustar_conciliacion():
     """
     Aplica entidades SQL que no se tomarán en cuenta y vuelve a validar.
+
+    La lógica de conciliación vive en:
+    app.services.aster_reconciliation_service
     """
     try:
         entidades_excel = _obtener_entidades_excel_aster_desde_sesion()
@@ -3445,16 +3414,30 @@ def accion_aster_ajustar_conciliacion():
             if str(entidad).strip()
         }
 
-        session["aster_entidades_no_tomar"] = sorted(entidades_no_tomar)
-
-        return _generar_html_conciliacion_aster(
+        resultado = conciliar_entidades_aster(
             entidades_excel=entidades_excel,
             entidades_sql=entidades_sql,
             entidades_no_tomar=entidades_no_tomar,
         )
 
+        session["aster_entidades_no_tomar"] = sorted(entidades_no_tomar)
+
+        if resultado.get("match_ok"):
+            session["aster_informacion_verificada"] = True
+            session["aster_entidades_sql_validadas"] = resultado.get(
+                "entidades_sql_ajustadas",
+                [],
+            )
+        else:
+            session["aster_informacion_verificada"] = False
+            session["aster_entidades_sql_validadas"] = []
+
+        return _generar_html_conciliacion_aster(resultado)
+
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error ajustando conciliación ASTER: {escape(str(exc))}</div>"
+
+
 
 
 @aster_bp.route("/accion/aster-probar-conexion-insercion", methods=["POST"])
