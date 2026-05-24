@@ -12,7 +12,6 @@ import os
 import re
 
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
 from html import escape
 from typing import Any
 
@@ -22,11 +21,6 @@ from flask import Blueprint, request, session
 from werkzeug.utils import secure_filename
 
 from app.config import DATA_DIR, TESSERACT_PATH
-from app.services.daily_paths import (
-    crear_estructura_aster,
-    ruta_aster_base,
-    ruta_aster_subcarpeta,
-)
 from app.controllers.helpers import obtener_log_service
 from app.services.ocr_processor import OCRProcessor
 from app.services.aster_file_service import (
@@ -188,58 +182,7 @@ def _extraer_total_aster_desde_texto(ocr: OCRProcessor, texto: str) -> int | Non
 
     return None
 
-def _normalizar_fecha_aster(fecha_raw: str) -> str:
-    """
-    Convierte una fecha recibida en distintos formatos a YYYYMMDD.
 
-    Acepta ejemplos:
-    - 20260429
-    - 2026-04-29
-    - 202604_29
-    """
-    fecha_limpia = re.sub(r"[^0-9]", "", fecha_raw or "")
-
-    if len(fecha_limpia) < 8:
-        raise ValueError(
-            "La fecha del proceso debe tener al menos 8 dígitos. Ejemplo: 20260429."
-        )
-
-    return fecha_limpia[:8]
-
-
-def _claves_busqueda_fecha(fecha_yyyymmdd: str) -> list[str]:
-    """
-    Genera claves de búsqueda para tolerar variaciones de nombre.
-
-    Para 20260429:
-    - 20260429
-    - 260429
-    - 0429
-    """
-    yyyy = fecha_yyyymmdd[0:4]
-    yy = fecha_yyyymmdd[2:4]
-    mm = fecha_yyyymmdd[4:6]
-    dd = fecha_yyyymmdd[6:8]
-
-    return [
-        f"{yyyy}{mm}{dd}",
-        f"{yy}{mm}{dd}",
-        f"{mm}{dd}",
-    ]
-
-
-def _archivo_aster_corresponde_fecha(nombre_archivo: str, fecha_yyyymmdd: str) -> bool:
-    """
-    Valida que el archivo corresponda exactamente a la fecha del proceso.
-
-    Ejemplo:
-    fecha_yyyymmdd = 20260521
-    válido = After20260521.xlsx
-    inválido = After20240521.xlsx
-    """
-    nombre_esperado = f"After{fecha_yyyymmdd}.xlsx"
-
-    return os.path.basename(nombre_archivo).lower() == nombre_esperado.lower()
 
 def _generar_html_archivo_aster(
     fecha_yyyymmdd: str,
@@ -422,21 +365,6 @@ def _normalizar_fecha_sql_aster(fecha_raw: str) -> str:
     La lógica real vive en app.services.aster_sql_entity_service.
     """
     return normalizar_fecha_sql_aster(fecha_raw)
-
-
-def _consultar_entidades_sql_aster(fecha_sql: str) -> list[dict[str, Any]]:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_sql_entity_service.
-
-    Recibe fecha en YYYY-MM-DD desde llamadas existentes.
-    """
-    resultado = consultar_entidades_sql_aster(fecha_sql)
-
-    if not resultado.get("success"):
-        raise RuntimeError(str(resultado.get("error", "Error consultando entidades ASTER.")))
-
-    return resultado.get("resultados", [])
 
 
 
@@ -1025,24 +953,6 @@ def _generar_html_conciliacion_aster(
 
     return html
 
-
-def _valor_config_sql(config: Any, *nombres: str) -> str:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_sqlserver_service.
-    """
-    return valor_config_sql_service(config, *nombres)
-
-
-def _construir_cadena_pyodbc_aster(config: Any) -> str:
-    """
-    Compatibilidad temporal.
-    La lógica real vive en app.services.aster_sqlserver_service.
-    """
-    return construir_cadena_pyodbc_aster_service(
-        config,
-        database_default=ASTER_BASE_INSERCION,
-    )
 
 
 
