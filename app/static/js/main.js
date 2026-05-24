@@ -939,96 +939,6 @@ const MODULOS_UI = {
         tituloMonitor: "Monitor de ejecución de Gestión Diaria ASTER",
         descripcion:
             "Módulo para gestionar el proceso diario ASTER: captura del total, búsqueda del archivo After, normalización, conciliación de entidades e inserción final.",
-        fases: [
-            {
-                letra: "A",
-                titulo: "Captura del total diario",
-                icono: "📱",
-                pasos: [
-                    "Verificar en WhatsApp cuántos se hicieron",
-                    "Reconocimiento OCR",
-                    "Ingreso manual del total general",
-                ],
-            },
-            {
-                letra: "B",
-                titulo: "Ubicación y copia del archivo",
-                icono: "📁",
-                pasos: [
-                    "Ubicar ruta local o de red",
-                    "Buscar archivo Excel del día",
-                    "Validar formato AfterYYYYMMDD.xlsx",
-                    "Copiar a data\\YYYYMMDD\\Aster\\aster_YYYYMMDD",
-                    "Crear carpeta si no existe",
-                ],
-            },
-            {
-                letra: "C",
-                titulo: "Normalización del Excel",
-                icono: "⚙️",
-                pasos: [
-                    "Cambiar encabezados",
-                    "Quitar acentos",
-                    "Reemplazar espacios, /, *, - por _",
-                ],
-            },
-            {
-                letra: "D",
-                titulo: "Validación de entidades del Excel",
-                icono: "🧾",
-                pasos: [
-                    "Obtener valores únicos de la columna Entidad",
-                    "Contar cuántas entidades únicas existen",
-                ],
-            },
-            {
-                letra: "E",
-                titulo: "Conexión y consulta ASTER",
-                icono: "🗄️",
-                pasos: [
-                    "Conectar a 10.24.90.101",
-                    "Usuario root",
-                    "Base gestioncomercial",
-                    "Ejecutar consulta SQL por fecha",
-                    "Agregar columna SSS",
-                ],
-            },
-            {
-                letra: "F",
-                titulo: "Depuración y clasificación",
-                icono: "🔎",
-                pasos: [
-                    "Seleccionar registros que no son de cobranzas %",
-                    "Generar tabla filtrada",
-                    "Seleccionar bases de cobranza % e integral",
-                    "Mostrar tablas removidas, seleccionadas y no seleccionadas",
-                ],
-            },
-            {
-                letra: "G",
-                titulo: "Conciliación y validación",
-                icono: "⚖️",
-                pasos: [
-                    "Comparar entidades Excel vs SQL",
-                    "Validar cantidad y match",
-                    "Detectar faltantes o sobrantes",
-                    "Mostrar advertencias",
-                    "Confirmar Información Verificada",
-                ],
-            },
-            {
-                letra: "H",
-                titulo: "Inserción de datos",
-                icono: "⬆️",
-                pasos: [
-                    "Comparar encabezados Excel vs tabla aster_dia_nc",
-                    "Comparar tipos de datos",
-                    "Convertir columnas",
-                    "Validar duplicados",
-                    "Insertar en Aster_Apo.aster_dia_nc",
-                ],
-            },
-        ],
     },
     consolidar: {
         botonId: "btnModuloConsolidar",
@@ -1142,65 +1052,65 @@ function activarBotonModulo(moduloActivo) {
 }
 
 function construirSidebarAster(config) {
-    const fasesHtml = config.fases
-        .map((fase) => {
-            const pasosHtml = fase.pasos
-                .map((paso) => `<li>${paso}</li>`)
-                .join("");
-
-            return `
-                <details class="aster-fase-card" open>
-                    <summary>
-                        <span style="font-weight:700; color:#1e90ff;">
-                            ${fase.letra}
-                        </span>
-                        ${fase.icono} FASE ${fase.letra}. ${fase.titulo}
-                    </summary>
-                    <div class="fase-actions">
-                        <ul style="margin-left:16px; line-height:1.7; color:#ccc;">
-                            ${pasosHtml}
-                        </ul>
-                    </div>
-                </details>
-            `;
-        })
-        .join("");
-
     return `
         <div class="sidebar-columns modulo-placeholder-sidebar">
             <div class="sidebar-fases-col" style="width:100%; padding-left:0;">
                 <div class="log-line info" style="margin-bottom:10px;">
                     🧩 ${config.tituloSidebar}
                 </div>
-                ${fasesHtml}
+
+                <details open>
+                    <summary>📅 Fecha proceso ASTER</summary>
+                    <div class="fase-actions">
+                        <label style="font-size:0.65rem; color:#888; margin:0;">
+                            Fecha proceso:
+                        </label>
+                        <input
+                            type="text"
+                            id="fechaInput"
+                            placeholder="Ejemplo: 202605_21 o 20260521"
+                            value=""
+                            style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;"
+                        >
+                        <div class="log-line warning" style="margin-top:8px;">
+                            Use esta fecha para búsqueda de archivo, consulta SQL, conciliación y Fase I.
+                        </div>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>📱 Fase A-C: Total, archivo y normalización</summary>
+                    <div class="fase-actions">
+                        <button type="button" onclick="document.getElementById('aster-total-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Total diario</button>
+                        <button type="button" onclick="document.getElementById('aster-archivo-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Archivo ASTER</button>
+                        <button type="button" onclick="document.getElementById('aster-normalizacion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Normalización</button>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>🧾 Fase D-G: Entidades y conciliación</summary>
+                    <div class="fase-actions">
+                        <button type="button" onclick="document.getElementById('aster-entidades-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Entidades Excel</button>
+                        <button type="button" onclick="document.getElementById('aster-sql-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Consulta SQL</button>
+                        <button type="button" onclick="document.getElementById('aster-depuracion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Depuración</button>
+                        <button type="button" onclick="document.getElementById('aster-conciliacion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Conciliación</button>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>⬆️ Fase H-I: Inserción y gestiones</summary>
+                    <div class="fase-actions">
+                        <button type="button" onclick="document.getElementById('aster-insercion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Inserción ASTER</button>
+                        <button type="button" onclick="document.getElementById('aster-historial-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Historial</button>
+                        <button type="button" onclick="document.getElementById('aster-fase-i-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Fase I</button>
+                    </div>
+                </details>
             </div>
         </div>
     `;
 }
 
 function construirMonitorAster(config) {
-    const tarjetasFases = config.fases
-        .map((fase) => {
-            const pasosHtml = fase.pasos
-                .map((paso) => `<li>${paso}</li>`)
-                .join("");
-
-            return `
-                <details class="panel-monitor" open>
-                    <summary>
-                        <span class="panel-icon">${fase.icono}</span>
-                        FASE ${fase.letra}. ${fase.titulo}
-                    </summary>
-                    <div class="panel-body">
-                        <ul style="margin-left:18px; line-height:1.8;">
-                            ${pasosHtml}
-                        </ul>
-                    </div>
-                </details>
-            `;
-        })
-        .join("");
-
     return `
         <div class="log-line info" style="margin-bottom:12px;">
             ${config.descripcion}
@@ -1442,7 +1352,7 @@ function construirMonitorAster(config) {
             </summary>
             <div class="panel-body">
                 <div class="log-line info">
-                    Prepare la inserción comparando el archivo Excel ASTER contra la tabla SQL Server Aster_Apo.dbo.aster_dia_nc.
+                    Prepare la inserción comparando el archivo Excel ASTER contra la tabla SQL Server Aster_Api.dbo.aster_dia_nc.
                 </div>
 
                 <div class="log-line warning" style="margin-top:8px;">
@@ -1579,22 +1489,6 @@ function construirMonitorAster(config) {
                 </div>
             </div>
         </details>
-        <table class="dataframe" style="width:100%; margin-top:10px; margin-bottom:15px;">
-            <tr style="background:#1e3a5f; color:#fff;">
-                <th>Estado del módulo</th>
-                <th>Descripción</th>
-            </tr>
-            <tr>
-                <td><b>En construcción</b></td>
-                <td>La estructura visual ASTER ya está separada del flujo Orion.</td>
-            </tr>
-            <tr>
-                <td><b>Siguiente implementación</b></td>
-                <td>Captura del total diario por OCR o ingreso manual.</td>
-            </tr>
-        </table>
-
-        ${tarjetasFases}
     `;
 }
 
