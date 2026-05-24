@@ -69,7 +69,13 @@ from app.services.aster_phase_i_prepare_service import (
 )
 from app.services.aster_phase_i_execution_service import ejecutar_fase_i_aster
 from app.services.aster_gestion_export_service import generar_gestion_aster_fase_i
-
+from app.services.aster_renderer_service import (
+    render_archivo_aster,
+    render_consulta_sql_aster,
+    render_entidades_excel_aster,
+    render_normalizacion_aster,
+    render_total_aster,
+)
 
 
 aster_bp = Blueprint("aster", __name__)
@@ -95,66 +101,6 @@ ASTER_MYSQL_DB_USUARIOS = os.getenv("ASTER_MYSQL_DB_USUARIOS", "usuarios")
 ASTER_MYSQL_DB_GESTION = os.getenv("ASTER_MYSQL_DB_GESTION", "gestioncomercial")
 
 
-def _crear_html_total_aster(total: int | None, origen: str, previews: list[tuple[str, str]]) -> str:
-    """
-    Genera respuesta HTML para mostrar el total ASTER detectado o ingresado.
-    """
-    html = "<div class='ocr-result-container'>"
-
-    html += "<div class='ocr-images'>"
-
-    if previews:
-        for nombre, img_b64 in previews:
-            html += (
-                "<div class='ocr-thumb'>"
-                f"<img src='data:image/png;base64,{img_b64}' alt='{nombre}'/>"
-                f"<small>{nombre}</small>"
-                "</div>"
-            )
-    else:
-        html += "<p style='color:#888;'>Sin vista previa de imagen.</p>"
-
-    html += "</div>"
-
-    html += "<div class='ocr-results'>"
-
-    if total is not None:
-        html += "<div class='log-line success'>✅ Total ASTER capturado correctamente.</div>"
-        html += "<div class='totales-grid' style='margin-top:10px;'>"
-        html += (
-            "<div class='total-card'>"
-            "<span class='label'>🔹 Total ASTER</span>"
-            f"<span class='value'>{total}</span>"
-            "</div>"
-        )
-        html += "</div>"
-        html += (
-            "<table class='dataframe' style='width:100%; margin-top:10px;'>"
-            "<tr><th colspan='2' style='background:#1e3a5f; color:#fff;'>Detalle de captura</th></tr>"
-            f"<tr><td><b>Origen</b></td><td>{origen}</td></tr>"
-            f"<tr><td><b>Total general</b></td><td>{total}</td></tr>"
-            "</table>"
-        )
-    else:
-        html += (
-            "<div class='log-line warning'>"
-            "⚠️ No se pudo detectar automáticamente el total ASTER. "
-            "Ingrese el total manualmente."
-            "</div>"
-        )
-
-    html += "</div>"
-    html += "</div>"
-
-    html += (
-        "<div id='aster-total-data' style='display:none;' "
-        f"data-total='{total if total is not None else ''}'>"
-        "</div>"
-    )
-
-    return html
-
-
 def _extraer_total_aster_desde_texto(ocr: OCRProcessor, texto: str) -> int | None:
     """
     Intenta obtener un total ASTER desde texto OCR usando métodos reutilizables.
@@ -173,261 +119,6 @@ def _extraer_total_aster_desde_texto(ocr: OCRProcessor, texto: str) -> int | Non
             return int(numero)
 
     return None
-
-
-
-def _generar_html_archivo_aster(
-    fecha_yyyymmdd: str,
-    ruta_origen: str,
-    ruta_destino: str,
-    nombre_archivo: str,
-) -> str:
-    """
-    Genera HTML de resultado para la copia del archivo ASTER.
-    """
-    html = "<div class='log-line success'>✅ Archivo ASTER localizado y copiado correctamente.</div>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                Información del archivo ASTER
-            </th>
-        </tr>
-    """
-
-    filas = [
-        ("Fecha proceso", fecha_yyyymmdd),
-        ("Archivo encontrado", nombre_archivo),
-        ("Ruta origen", ruta_origen),
-        ("Ruta destino", ruta_destino),
-    ]
-
-    for etiqueta, valor in filas:
-        html += f"""
-        <tr>
-            <td><b>{etiqueta}</b></td>
-            <td style='font-size:0.75rem; word-break:break-all;'>{valor}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += (
-        "<div id='aster-archivo-data' style='display:none;' "
-        f"data-fecha='{fecha_yyyymmdd}' "
-        f"data-ruta='{ruta_destino}' "
-        f"data-archivo='{nombre_archivo}'>"
-        "</div>"
-    )
-
-    return html
-
-
-
-
-def _generar_html_normalizacion_aster(
-    ruta_archivo: str,
-    columnas_originales: list[Any],
-    columnas_normalizadas: list[str],
-) -> str:
-    """
-    Genera HTML con tabla comparativa de encabezados originales y normalizados.
-    """
-    html = "<div class='log-line success'>✅ Encabezados ASTER normalizados correctamente.</div>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='3' style='background:#1e3a5f; color:#fff;'>
-                Comparación de encabezados ASTER
-            </th>
-        </tr>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Encabezado original</th>
-            <th>Encabezado normalizado</th>
-        </tr>
-    """
-
-    for idx, (original, normalizado) in enumerate(
-        zip(columnas_originales, columnas_normalizadas),
-        start=1,
-    ):
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td>{original}</td>
-            <td><b>{normalizado}</b></td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += f"""
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                Archivo actualizado
-            </th>
-        </tr>
-        <tr>
-            <td><b>Ruta</b></td>
-            <td style='font-size:0.75rem; word-break:break-all;'>{ruta_archivo}</td>
-        </tr>
-    </table>
-    """
-
-    return html
-
-def _generar_html_entidades_excel_aster(
-    ruta_archivo: str,
-    total_registros: int,
-    conteo_entidades: list[tuple[str, int]],
-) -> str:
-    """
-    Genera HTML con entidades únicas del Excel ASTER.
-    """
-    total_entidades = len(conteo_entidades)
-    total_registros_con_entidad = sum(cantidad for _, cantidad in conteo_entidades)
-    total_registros_sin_entidad = total_registros - total_registros_con_entidad
-
-    html = "<div class='log-line success'>✅ Entidades ASTER analizadas correctamente.</div>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                Resumen de entidades del Excel ASTER
-            </th>
-        </tr>
-    """
-
-    filas_resumen = [
-        ("Archivo analizado", ruta_archivo),
-        ("Registros totales del Excel", total_registros),
-        ("Registros con Entidad", total_registros_con_entidad),
-        ("Registros sin Entidad", total_registros_sin_entidad),
-        ("Entidades únicas encontradas", total_entidades),
-    ]
-
-    for etiqueta, valor in filas_resumen:
-        html += f"""
-        <tr>
-            <td><b>{escape(str(etiqueta))}</b></td>
-            <td style='font-size:0.85rem; word-break:break-all;'>{escape(str(valor))}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Entidad</th>
-            <th>Cantidad de registros</th>
-        </tr>
-    """
-
-    for idx, (entidad, cantidad) in enumerate(conteo_entidades, start=1):
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td><b>{escape(str(entidad))}</b></td>
-            <td style='font-weight:bold;'>{cantidad}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += (
-        "<div id='aster-entidades-excel-data' style='display:none;' "
-        f"data-total-entidades='{total_entidades}' "
-        f"data-total-registros='{total_registros}'>"
-        "</div>"
-    )
-
-    return html
-
-
-
-def _generar_html_consulta_sql_aster(
-    fecha_sql: str,
-    resultados: list[dict[str, Any]],
-) -> str:
-    """
-    Genera HTML de la consulta SQL ASTER.
-    """
-    total_entidades = len(resultados)
-    total_registros = sum(int(fila["numero"]) for fila in resultados)
-
-    if not resultados:
-        return f"""
-        <div class='log-line warning'>
-            ⚠️ La consulta ASTER no devolvió resultados para la fecha {escape(fecha_sql)}.
-        </div>
-        """
-
-    html = "<div class='log-line success'>✅ Consulta SQL ASTER ejecutada correctamente.</div>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                Resumen consulta SQL ASTER
-            </th>
-        </tr>
-    """
-
-    filas_resumen = [
-        ("Fecha consultada", fecha_sql),
-        ("Entidades devueltas por SQL", total_entidades),
-        ("Total registros SQL", total_registros),
-    ]
-
-    for etiqueta, valor in filas_resumen:
-        html += f"""
-        <tr>
-            <td><b>{escape(str(etiqueta))}</b></td>
-            <td style='font-size:0.9rem; font-weight:bold;'>{escape(str(valor))}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Entidad</th>
-            <th>Número</th>
-            <th>SSS</th>
-        </tr>
-    """
-
-    for idx, fila in enumerate(resultados, start=1):
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td><b>{escape(str(fila["entidad"]))}</b></td>
-            <td style='font-weight:bold;'>{escape(str(fila["numero"]))}</td>
-            <td><code>{escape(str(fila["SSS"]))}</code></td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += (
-        "<div id='aster-sql-data' style='display:none;' "
-        f"data-fecha='{escape(fecha_sql)}' "
-        f"data-total-entidades='{total_entidades}' "
-        f"data-total-registros='{total_registros}'>"
-        "</div>"
-    )
-
-    return html
-
 
 
 def _generar_tabla_entidades_aster(
@@ -1594,7 +1285,7 @@ def accion_aster_ocr_subir():
     session["total_aster"] = total_detectado
     session["ultima_fecha_aster"] = fecha
 
-    html = _crear_html_total_aster(
+    html = render_total_aster(
         total=total_detectado,
         origen="OCR WhatsApp ASTER",
         previews=previews,
@@ -1633,7 +1324,7 @@ def accion_aster_consolidar_total():
 
         session["total_aster"] = total
 
-        return _crear_html_total_aster(
+        return render_total_aster(
             total=total,
             origen="Ingreso manual",
             previews=[],
@@ -1695,7 +1386,7 @@ def accion_aster_buscar_archivo():
         session["aster_archivo_origen"] = ruta_origen
         session["aster_archivo_copiado"] = ruta_destino
 
-        return _generar_html_archivo_aster(
+        return render_archivo_aster(
             fecha_yyyymmdd=fecha_yyyymmdd,
             ruta_origen=ruta_origen,
             ruta_destino=ruta_destino,
@@ -1755,7 +1446,7 @@ def accion_aster_normalizar_encabezados():
         session["aster_columnas_originales"] = columnas_originales
         session["aster_columnas_normalizadas"] = columnas_normalizadas
 
-        return _generar_html_normalizacion_aster(
+        return render_normalizacion_aster(
             ruta_archivo=ruta_normalizado,
             columnas_originales=columnas_originales,
             columnas_normalizadas=columnas_normalizadas,
@@ -1827,7 +1518,7 @@ def accion_aster_entidades_excel():
         session["aster_total_entidades_excel"] = resultado["total_entidades"]
         session["aster_total_registros_excel"] = resultado["total_registros"]
 
-        return _generar_html_entidades_excel_aster(
+        return render_entidades_excel_aster(
             ruta_archivo=str(resultado["ruta_archivo"]),
             total_registros=int(resultado["total_registros"]),
             conteo_entidades=conteo_entidades,
@@ -1879,7 +1570,7 @@ def accion_aster_consulta_sql():
         session["aster_total_entidades_sql"] = resultado["total_entidades"]
         session["aster_total_registros_sql"] = resultado["total_registros"]
 
-        return _generar_html_consulta_sql_aster(
+        return render_consulta_sql_aster(
             fecha_sql=fecha_sql,
             resultados=resultados,
         )
@@ -3129,7 +2820,7 @@ def accion_aster_total_actual():
     if total is None:
         return "<div class='log-line warning'>⚠️ Todavía no hay total ASTER registrado.</div>"
 
-    return _crear_html_total_aster(
+    return render_total_aster(
         total=int(total),
         origen="Sesión actual",
         previews=[],
