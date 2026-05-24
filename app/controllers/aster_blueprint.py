@@ -79,6 +79,22 @@ from app.services.aster_entities_export_service import (
 
 from app.services.aster_insert_prepare_service import preparar_insercion_aster
 from app.services.aster_insert_service import insertar_datos_aster
+from app.services.aster_phase_i_prepare_service import (
+    columnas_mysql_comentarios_fase_i as columnas_mysql_comentarios_fase_i_service,
+    columnas_mysql_usuarios_fase_i as columnas_mysql_usuarios_fase_i_service,
+    comparar_columnas_fase_i as comparar_columnas_fase_i_service,
+    conectar_mysql_fase_i as conectar_mysql_fase_i_service,
+    contar_comentarios_mysql_fase_i as contar_comentarios_mysql_fase_i_service,
+    contar_usuarios_mysql_fase_i as contar_usuarios_mysql_fase_i_service,
+    leer_entidades_fase_i as leer_entidades_fase_i_service,
+    obtener_config_mysql_fase_i as obtener_config_mysql_fase_i_service,
+    obtener_fecha_fase_i as obtener_fecha_fase_i_service,
+    preparar_fase_i_aster,
+    probar_conexiones_fase_i_aster,
+    ruta_entidades_fase_i as ruta_entidades_fase_i_service,
+    validar_sql_mysql_solo_select as validar_sql_mysql_solo_select_service,
+)
+
 
 
 
@@ -2564,179 +2580,69 @@ def accion_aster_historial_cargas():
 
 def _columnas_mysql_usuarios_fase_i() -> list[str]:
     """
-    Columnas explícitas para traer usuarios desde MySQL usuarios.crm.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    return [
-        "id",
-        "usuario",
-        "pass",
-        "perfil",
-        "nombre",
-        "owned_by",
-        "type",
-        "web",
-        "created_at",
-        "updated_at",
-    ]
-
+    return columnas_mysql_usuarios_fase_i_service()
 
 def _columnas_mysql_comentarios_fase_i() -> list[str]:
     """
-    Columnas explícitas para traer comentarios desde MySQL gestioncomercial.comentarios.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    return [
-        "id",
-        "data",
-        "fecha",
-        "comentario",
-        "resultado1",
-        "resultado2",
-        "entidad",
-        "usuario",
-        "fechaagenda",
-        "unico",
-        "fechainicio",
-        "telefono",
-        "uniqueid",
-        "linkedid",
-        "datafijos",
-        "datapers",
-    ]
-
+    return columnas_mysql_comentarios_fase_i_service()
 
 def _obtener_config_mysql_fase_i(database: str) -> dict[str, Any]:
     """
-    Obtiene conexión MySQL desde .env.
-
-    Usa las variables ya definidas:
-    ASTER_DB_HOST
-    ASTER_DB_USER
-    ASTER_DB_PASSWORD
-
-    Y permite separar bases:
-    ASTER_MYSQL_DB_USUARIOS=usuarios
-    ASTER_MYSQL_DB_GESTION=gestioncomercial
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    host = os.getenv("ASTER_DB_HOST", "").strip()
-    user = os.getenv("ASTER_DB_USER", "").strip()
-    password = os.getenv("ASTER_DB_PASSWORD", "").strip()
-    port_raw = os.getenv("ASTER_DB_PORT", "3306").strip()
-
-    if not host or not user:
-        raise ValueError("Faltan variables MySQL ASTER en .env: ASTER_DB_HOST / ASTER_DB_USER")
-
-    try:
-        port = int(port_raw)
-    except Exception:
-        port = 3306
-
-    return {
-        "host": host,
-        "user": user,
-        "password": password,
-        "database": database,
-        "port": port,
-        "charset": "utf8mb4",
-    }
-
+    return obtener_config_mysql_fase_i_service(database)
 
 def _conectar_mysql_fase_i(database: str):
     """
-    Conecta a MySQL para lectura.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    try:
-        import pymysql
-    except ImportError as exc:
-        raise RuntimeError("No está instalado PyMySQL. Ejecute: pip install PyMySQL") from exc
-
-    config = _obtener_config_mysql_fase_i(database)
-
-    return pymysql.connect(
-        host=config["host"],
-        user=config["user"],
-        password=config["password"],
-        database=config["database"],
-        port=config["port"],
-        charset=config["charset"],
-        cursorclass=pymysql.cursors.DictCursor,
-    )
-
+    return conectar_mysql_fase_i_service(database)
 
 def _validar_sql_mysql_solo_select(sql: str) -> None:
     """
-    Bloquea cualquier operación que no sea SELECT en MySQL.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    sql_limpio = re.sub(r"\s+", " ", sql or "").strip().lower()
-
-    if not sql_limpio.startswith("select "):
-        raise ValueError("MySQL solo permite SELECT en Fase I.")
-
-    prohibidas = [
-        "delete ",
-        "insert ",
-        "update ",
-        "drop ",
-        "alter ",
-        "truncate ",
-        "create ",
-        "replace ",
-    ]
-
-    for palabra in prohibidas:
-        if palabra in sql_limpio:
-            raise ValueError(f"Operación MySQL prohibida detectada: {palabra.strip().upper()}")
-
+    validar_sql_mysql_solo_select_service(sql)
 
 def _obtener_fecha_fase_i(fecha_raw: str = "") -> str:
     """
-    Obtiene fecha de proceso para Fase I en YYYYMMDD.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    if fecha_raw:
-        return _normalizar_fecha_aster(fecha_raw)
-
-    return _obtener_fecha_proceso_aster()
+    return obtener_fecha_fase_i_service(
+        fecha_raw=fecha_raw,
+        fecha_default=_obtener_fecha_proceso_aster(),
+    )
 
 
 def _ruta_entidades_fase_i(fecha_yyyymmdd: str) -> str:
     """
-    Ruta esperada del archivo entidades_aster_YYYYMMDD.xlsx.
-
-    Nueva ubicación:
-    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD\\Entidades
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    return os.path.join(
-        ruta_aster_subcarpeta(DATA_DIR, fecha_yyyymmdd, "Entidades"),
-        f"entidades_aster_{fecha_yyyymmdd}.xlsx",
+    return ruta_entidades_fase_i_service(
+        data_dir=DATA_DIR,
+        fecha_yyyymmdd=fecha_yyyymmdd,
     )
 
 def _leer_entidades_fase_i(fecha_yyyymmdd: str) -> tuple[list[str], str]:
     """
-    Lee entidades filtradas finales desde entidades_aster_YYYYMMDD.xlsx.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    ruta = _ruta_entidades_fase_i(fecha_yyyymmdd)
-
-    if not os.path.isfile(ruta):
-        raise FileNotFoundError(
-            f"No existe el archivo de entidades ASTER: {ruta}"
-        )
-
-    df = pd.read_excel(ruta, dtype=str)
-
-    if "Entidad" not in df.columns:
-        raise ValueError("El archivo de entidades no tiene columna Entidad.")
-
-    entidades = sorted(
-        {
-            str(valor).strip()
-            for valor in df["Entidad"].dropna().tolist()
-            if str(valor).strip()
-        }
+    return leer_entidades_fase_i_service(
+        data_dir=DATA_DIR,
+        fecha_yyyymmdd=fecha_yyyymmdd,
     )
-
-    if not entidades:
-        raise ValueError("El archivo de entidades no contiene entidades válidas.")
-
-    return entidades, ruta
 
 
 def _obtener_columnas_sqlserver_fase_i(
@@ -2762,88 +2668,36 @@ def _comparar_columnas_fase_i(
     columnas_destino: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """
-    Compara columnas origen contra destino SQL Server.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    destino_lower = {
-        str(col["columna"]).lower(): col
-        for col in columnas_destino
-    }
-
-    comparacion: list[dict[str, Any]] = []
-
-    for col_origen in columnas_origen:
-        col_sql = destino_lower.get(col_origen.lower())
-
-        comparacion.append(
-            {
-                "columna_origen": col_origen,
-                "columna_destino": str(col_sql["columna"]) if col_sql else "",
-                "tipo_sql": str(col_sql["tipo_sql"]) if col_sql else "",
-                "longitud": col_sql.get("longitud") if col_sql else "",
-                "nullable": str(col_sql["nullable"]) if col_sql else "",
-                "estado": "OK" if col_sql else "NO_EXISTE_EN_DESTINO",
-            }
-        )
-
-    return comparacion
-
+    return comparar_columnas_fase_i_service(
+        columnas_origen=columnas_origen,
+        columnas_destino=columnas_destino,
+    )
 
 def _contar_usuarios_mysql_fase_i() -> int:
     """
-    Cuenta usuarios desde MySQL usuarios.crm.
-    Solo SELECT.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    sql = "SELECT COUNT(*) AS total FROM crm"
-    _validar_sql_mysql_solo_select(sql)
-
-    conn = _conectar_mysql_fase_i(ASTER_MYSQL_DB_USUARIOS)
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(sql)
-            row = cursor.fetchone()
-
-            return int(row.get("total") or 0)
-
-    finally:
-        conn.close()
-
+    return contar_usuarios_mysql_fase_i_service(
+        db_usuarios=ASTER_MYSQL_DB_USUARIOS,
+    )
 
 def _contar_comentarios_mysql_fase_i(
     fecha_yyyymmdd: str,
     entidades: list[str],
 ) -> int:
     """
-    Cuenta comentarios MySQL filtrados por fecha y entidades.
-    Solo SELECT.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_phase_i_prepare_service.
     """
-    if not entidades:
-        return 0
-
-    fecha_sql = datetime.strptime(fecha_yyyymmdd, "%Y%m%d").strftime("%Y-%m-%d")
-    placeholders = ", ".join(["%s"] * len(entidades))
-
-    sql = f"""
-        SELECT COUNT(*) AS total
-        FROM comentarios
-        WHERE DATE(fecha) = %s
-          AND entidad IN ({placeholders})
-          AND COALESCE(TRIM(usuario), '') <> 'SystemUser'
-    """
-
-    _validar_sql_mysql_solo_select(sql)
-
-    conn = _conectar_mysql_fase_i(ASTER_MYSQL_DB_GESTION)
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(sql, [fecha_sql, *entidades])
-            row = cursor.fetchone()
-
-            return int(row.get("total") or 0)
-
-    finally:
-        conn.close()
+    return contar_comentarios_mysql_fase_i_service(
+        db_gestion=ASTER_MYSQL_DB_GESTION,
+        fecha_yyyymmdd=fecha_yyyymmdd,
+        entidades=entidades,
+    )
 
 
 def _generar_tabla_comparacion_fase_i(
@@ -2973,7 +2827,6 @@ def _generar_html_preparacion_fase_i(
 
     return html
 
-
 @aster_bp.route("/accion/aster-fase-i-probar-conexiones", methods=["POST"])
 def accion_aster_fase_i_probar_conexiones():
     """
@@ -2981,41 +2834,26 @@ def accion_aster_fase_i_probar_conexiones():
     - MySQL usuarios
     - MySQL gestioncomercial
     - SQL Server Aster_Api
+
+    La lógica vive en:
+    app.services.aster_phase_i_prepare_service
     """
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
 
-        if conexion not in {"local", "remoto"}:
-            conexion = "local"
-
-        # MySQL usuarios
-        conn_usuarios = _conectar_mysql_fase_i(ASTER_MYSQL_DB_USUARIOS)
-        try:
-            with conn_usuarios.cursor() as cursor:
-                cursor.execute("SELECT 1 AS ok")
-                cursor.fetchone()
-        finally:
-            conn_usuarios.close()
-
-        # MySQL gestioncomercial
-        conn_gestion = _conectar_mysql_fase_i(ASTER_MYSQL_DB_GESTION)
-        try:
-            with conn_gestion.cursor() as cursor:
-                cursor.execute("SELECT 1 AS ok")
-                cursor.fetchone()
-        finally:
-            conn_gestion.close()
-
-        # SQL Server
-        columnas_usuarios = _obtener_columnas_sqlserver_fase_i(
-            conexion,
-            ASTER_FASE_I_TABLA_USUARIOS,
-        )
-        columnas_comentarios = _obtener_columnas_sqlserver_fase_i(
-            conexion,
-            ASTER_FASE_I_TABLA_COMENTARIOS,
+        resultado = probar_conexiones_fase_i_aster(
+            conexion=conexion,
+            sql_local=SQL_LOCAL,
+            sql_remoto=SQL_REMOTO,
+            base=ASTER_FASE_I_BASE,
+            schema=ASTER_FASE_I_SCHEMA,
+            tabla_usuarios=ASTER_FASE_I_TABLA_USUARIOS,
+            tabla_comentarios=ASTER_FASE_I_TABLA_COMENTARIOS,
+            db_usuarios=ASTER_MYSQL_DB_USUARIOS,
+            db_gestion=ASTER_MYSQL_DB_GESTION,
         )
 
+        conexion = str(resultado.get("conexion", "local"))
         tipo = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - DESARROLLO"
 
         html = """
@@ -3052,11 +2890,11 @@ def accion_aster_fase_i_probar_conexiones():
             </tr>
             <tr>
                 <td><b>Columnas usuarios</b></td>
-                <td>{len(columnas_usuarios)}</td>
+                <td>{escape(str(resultado.get("total_columnas_usuarios", 0)))}</td>
             </tr>
             <tr>
                 <td><b>Columnas comentarios</b></td>
-                <td>{len(columnas_comentarios)}</td>
+                <td>{escape(str(resultado.get("total_columnas_comentarios", 0)))}</td>
             </tr>
         </table>
         """
@@ -3065,48 +2903,41 @@ def accion_aster_fase_i_probar_conexiones():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error probando conexiones Fase I ASTER: {escape(str(exc))}</div>"
-
+    
 
 @aster_bp.route("/accion/aster-fase-i-preparar", methods=["POST"])
 def accion_aster_fase_i_preparar():
     """
     Prepara Fase I sin ejecutar DELETE ni INSERT.
+
+    La lógica vive en:
+    app.services.aster_phase_i_prepare_service
     """
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
         fecha_raw = request.form.get("fecha_proceso", "").strip()
 
-        if conexion not in {"local", "remoto"}:
-            conexion = "local"
-
-        fecha_yyyymmdd = _obtener_fecha_fase_i(fecha_raw)
-
-        entidades, ruta_entidades = _leer_entidades_fase_i(fecha_yyyymmdd)
-
-        total_usuarios = _contar_usuarios_mysql_fase_i()
-        total_comentarios = _contar_comentarios_mysql_fase_i(
-            fecha_yyyymmdd,
-            entidades,
+        resultado = preparar_fase_i_aster(
+            data_dir=DATA_DIR,
+            fecha_raw=fecha_raw,
+            fecha_default=_obtener_fecha_proceso_aster(),
+            conexion=conexion,
+            sql_local=SQL_LOCAL,
+            sql_remoto=SQL_REMOTO,
+            base=ASTER_FASE_I_BASE,
+            schema=ASTER_FASE_I_SCHEMA,
+            tabla_usuarios=ASTER_FASE_I_TABLA_USUARIOS,
+            tabla_comentarios=ASTER_FASE_I_TABLA_COMENTARIOS,
+            db_usuarios=ASTER_MYSQL_DB_USUARIOS,
+            db_gestion=ASTER_MYSQL_DB_GESTION,
         )
 
-        columnas_sql_usuarios = _obtener_columnas_sqlserver_fase_i(
-            conexion,
-            ASTER_FASE_I_TABLA_USUARIOS,
-        )
-        columnas_sql_comentarios = _obtener_columnas_sqlserver_fase_i(
-            conexion,
-            ASTER_FASE_I_TABLA_COMENTARIOS,
-        )
-
-        comparacion_usuarios = _comparar_columnas_fase_i(
-            _columnas_mysql_usuarios_fase_i(),
-            columnas_sql_usuarios,
-        )
-
-        comparacion_comentarios = _comparar_columnas_fase_i(
-            _columnas_mysql_comentarios_fase_i(),
-            columnas_sql_comentarios,
-        )
+        fecha_yyyymmdd = str(resultado["fecha_yyyymmdd"])
+        conexion = str(resultado["conexion"])
+        entidades = resultado["entidades"]
+        ruta_entidades = str(resultado["ruta_entidades"])
+        total_usuarios = int(resultado["total_usuarios"])
+        total_comentarios = int(resultado["total_comentarios"])
 
         session["aster_fase_i_fecha"] = fecha_yyyymmdd
         session["aster_fase_i_conexion"] = conexion
@@ -3123,13 +2954,14 @@ def accion_aster_fase_i_preparar():
             total_entidades=len(entidades),
             total_usuarios=total_usuarios,
             total_comentarios=total_comentarios,
-            comparacion_usuarios=comparacion_usuarios,
-            comparacion_comentarios=comparacion_comentarios,
+            comparacion_usuarios=resultado["comparacion_usuarios"],
+            comparacion_comentarios=resultado["comparacion_comentarios"],
         )
 
     except Exception as exc:
         session["aster_fase_i_preparado"] = False
         return f"<div class='log-line error'>❌ Error preparando Fase I ASTER: {escape(str(exc))}</div>"
+
 
 
 def _nombre_tabla_sql_fase_i(tabla: str) -> str:
