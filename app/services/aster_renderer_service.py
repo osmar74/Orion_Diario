@@ -1230,3 +1230,452 @@ def render_insert_ok_aster(
 
     return html
 
+def render_tabla_comparacion_fase_i(
+    titulo: str,
+    comparacion: list[dict[str, Any]],
+) -> str:
+    """
+    HTML de comparación de columnas Fase I.
+    """
+    html = f"""
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='7' style='background:#1e3a5f; color:#fff;'>
+                {escape(str(titulo))}
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Columna origen</th>
+            <th>Columna destino</th>
+            <th>Tipo SQL</th>
+            <th>Longitud</th>
+            <th>Nullable</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(comparacion, start=1):
+        estado = str(fila.get("estado") or "")
+
+        if estado == "OK":
+            color = "#28a745"
+            texto_estado = "✅ OK"
+        else:
+            color = "#dc3545"
+            texto_estado = "❌ No existe en destino"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(str(fila.get("columna_origen") or ""))}</b></td>
+            <td><b>{escape(str(fila.get("columna_destino") or ""))}</b></td>
+            <td>{escape(str(fila.get("tipo_sql") or ""))}</td>
+            <td>{escape(str(fila.get("longitud") or ""))}</td>
+            <td>{escape(str(fila.get("nullable") or ""))}</td>
+            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+def render_preparacion_fase_i(
+    fecha_yyyymmdd: str,
+    conexion: str,
+    base_destino: str,
+    ruta_entidades: str,
+    total_entidades: int,
+    total_usuarios: int,
+    total_comentarios: int,
+    comparacion_usuarios: list[dict[str, Any]],
+    comparacion_comentarios: list[dict[str, Any]],
+) -> str:
+    """
+    Reporte visual de preparación Fase I.
+    """
+    conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - DESARROLLO"
+
+    html = """
+    <div class='log-line success'>
+        ✅ Preparación Fase I ASTER completada correctamente. No se ejecutó DELETE ni INSERT.
+    </div>
+    """
+
+    if conexion == "remoto":
+        html += """
+        <div class='log-line warning'>
+            ⚠️ Conexión REMOTA seleccionada. Está habilitada, pero corresponde a producción.
+        </div>
+        """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen preparación Fase I ASTER
+            </th>
+        </tr>
+    """
+
+    filas = [
+        ("Fecha proceso", fecha_yyyymmdd),
+        ("Conexión SQL Server", conexion_txt),
+        ("Base destino", base_destino),
+        ("Archivo entidades", ruta_entidades),
+        ("Entidades usadas en filtro", total_entidades),
+        ("Usuarios origen MySQL", total_usuarios),
+        ("Comentarios origen MySQL filtrados", total_comentarios),
+        ("Tarea SQL pendiente", f"DELETE FROM {base_destino}.dbo.usuarios"),
+        ("Anti-duplicados comentarios", "id + data + usuario"),
+    ]
+
+    for etiqueta, valor in filas:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += render_tabla_comparacion_fase_i(
+        f"Comparación usuarios.crm → {base_destino}.dbo.usuarios",
+        comparacion_usuarios,
+    )
+
+    html += render_tabla_comparacion_fase_i(
+        f"Comparación gestioncomercial.comentarios → {base_destino}.dbo.comentarios",
+        comparacion_comentarios,
+    )
+
+    html += """
+    <div id='aster-fase-i-data' style='display:none;' data-preparado='1'></div>
+    """
+
+    return html
+
+
+def render_claves_invalidas_comentarios_fase_i(
+    errores: list[dict[str, Any]],
+) -> str:
+    """
+    Muestra errores de claves incompletas antes de validar duplicados.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Fase I bloqueada. Se detectaron {len(errores)} registros con clave anti-duplicados incompleta.
+    </div>
+    <div class='log-line warning'>
+        No se ejecutó DELETE ni INSERT. Revise los datos origen de MySQL o la conversión antes de continuar.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Clave anti-duplicados requerida
+            </th>
+        </tr>
+        <tr>
+            <td><b>Columnas</b></td>
+            <td>id + data + usuario</td>
+        </tr>
+    </table>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Fila</th>
+            <th>id</th>
+            <th>data</th>
+            <th>usuario</th>
+            <th>Problema</th>
+        </tr>
+    """
+
+    for idx, error in enumerate(errores, start=1):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(error.get("fila", "")))}</td>
+            <td>{escape(str(error.get("id", "")))}</td>
+            <td>{escape(str(error.get("data", "")))}</td>
+            <td>{escape(str(error.get("usuario", "")))}</td>
+            <td style='color:#dc3545; font-weight:bold;'>
+                {escape(str(error.get("problema", "")))}
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div class='log-line warning' style='margin-top:10px;'>
+        Diagnóstico: id, data y usuario son obligatorios para validar duplicados en comentarios.
+    </div>
+    """
+
+    return html
+
+
+def render_duplicados_comentarios_fase_i(
+    total_duplicados: int,
+    ejemplos: list[dict[str, Any]],
+) -> str:
+    """
+    HTML de bloqueo por duplicados en comentarios Fase I.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Fase I bloqueada. Se detectaron {total_duplicados} duplicados en comentarios.
+    </div>
+    <div class='log-line warning'>
+        No se ejecutó COMMIT. Se aplicó ROLLBACK de la transacción.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Clave anti-duplicados comentarios
+            </th>
+        </tr>
+        <tr>
+            <td><b>Columnas</b></td>
+            <td>id + data + usuario</td>
+        </tr>
+    </table>
+    """
+
+    if ejemplos:
+        html += """
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr style='background:#1e3a5f; color:#fff;'>
+                <th>#</th>
+                <th>id</th>
+                <th>data</th>
+                <th>usuario</th>
+            </tr>
+        """
+
+        for idx, ejemplo in enumerate(ejemplos, start=1):
+            html += f"""
+            <tr>
+                <td>{idx}</td>
+                <td>{escape(str(ejemplo.get("id", "")))}</td>
+                <td>{escape(str(ejemplo.get("data", "")))}</td>
+                <td>{escape(str(ejemplo.get("usuario", "")))}</td>
+            </tr>
+            """
+
+        html += "</table>"
+
+    return html
+
+
+def render_pipeline_fase_i(pipeline: list[dict[str, Any]]) -> str:
+    """
+    Genera tabla visual del pipeline Fase I ASTER.
+    """
+    if not pipeline:
+        return ""
+
+    html = """
+    <table class='dataframe' style='width:100%; margin-top:12px;'>
+        <tr>
+            <th colspan='7' style='background:#1e3a5f; color:#fff;'>
+                Pipeline de ejecución Fase I ASTER
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>Paso</th>
+            <th>Proceso</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Acción</th>
+            <th>Cantidad</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for item in pipeline:
+        estado = str(item.get("estado", ""))
+        color = "#28a745" if estado.upper() == "OK" else "#dc3545"
+
+        html += f"""
+        <tr>
+            <td>{escape(str(item.get("paso", "")))}</td>
+            <td><b>{escape(str(item.get("proceso", "")))}</b></td>
+            <td style='font-size:0.75rem; word-break:break-all;'>{escape(str(item.get("origen", "")))}</td>
+            <td style='font-size:0.75rem; word-break:break-all;'>{escape(str(item.get("destino", "")))}</td>
+            <td>{escape(str(item.get("accion", "")))}</td>
+            <td><b>{escape(str(item.get("cantidad", "")))}</b></td>
+            <td style='font-weight:bold; color:{color};'>{escape(estado)}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+def render_boton_generar_gestion_aster_fase_i(
+    fecha_yyyymmdd: str,
+    conexion: str,
+) -> str:
+    """
+    Botón visual para generar el Excel de Gestión ASTER después de Fase I.
+    """
+    return f"""
+    <div class='log-line info' style='margin-top:12px;'>
+        📌 Fase I terminada. Puede generar el archivo de Gestión ASTER.
+    </div>
+
+    <button
+        type='button'
+        onclick='generarGestionAsterFaseI(this)'
+        data-fecha='{escape(str(fecha_yyyymmdd))}'
+        data-conexion='{escape(str(conexion))}'
+        style='margin-top:8px;'
+    >
+        Generar Gestión ASTER Excel
+    </button>
+
+    <div id='resultado-gestion-aster-fase-i' style='margin-top:10px;'></div>
+    """
+
+
+def render_reporte_fase_i(
+    fecha_yyyymmdd: str,
+    conexion: str,
+    base_destino: str,
+    ruta_entidades: str,
+    total_entidades: int,
+    usuarios_leidos: int,
+    usuarios_insertados: int,
+    comentarios_leidos: int,
+    comentarios_insertados: int,
+    estado: str,
+    mensaje: str,
+    pipeline: list[dict[str, Any]] | None = None,
+    mostrar_boton_gestion: bool = False,
+) -> str:
+    """
+    Reporte visual final Fase I.
+    """
+    conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - DESARROLLO"
+
+    if estado == "CORRECTO":
+        html = """
+        <div class='log-line success'>
+            ✅ Fase I ASTER completada correctamente.
+        </div>
+        """
+    else:
+        html = """
+        <div class='log-line error'>
+            ❌ Fase I ASTER finalizó con error.
+        </div>
+        """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Reporte final Fase I ASTER
+            </th>
+        </tr>
+    """
+
+    filas = [
+        ("Fecha proceso", fecha_yyyymmdd),
+        ("Conexión SQL Server", conexion_txt),
+        ("Base destino", base_destino),
+        ("Archivo entidades", ruta_entidades),
+        ("Entidades usadas en filtro", total_entidades),
+        ("Usuarios leídos MySQL", usuarios_leidos),
+        ("Usuarios insertados SQL Server", usuarios_insertados),
+        ("Comentarios leídos MySQL", comentarios_leidos),
+        ("Comentarios insertados SQL Server", comentarios_insertados),
+        ("Anti-duplicados comentarios", "id + data + usuario"),
+        ("Estado", estado),
+        ("Mensaje", mensaje),
+    ]
+
+    for etiqueta, valor in filas:
+        color = ""
+
+        if etiqueta == "Estado":
+            color = "color:#28a745;" if estado == "CORRECTO" else "color:#dc3545;"
+
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all; font-weight:bold; {color}'>
+                {escape(str(valor))}
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    if pipeline:
+        html += render_pipeline_fase_i(pipeline)
+
+    if mostrar_boton_gestion and estado == "CORRECTO":
+        html += render_boton_generar_gestion_aster_fase_i(
+            fecha_yyyymmdd=fecha_yyyymmdd,
+            conexion=conexion,
+        )
+
+    return html
+
+
+def render_gestion_aster_excel(resultado: dict[str, Any]) -> str:
+    """
+    Renderiza resultado de generación del Excel Gestión ASTER.
+    """
+    resumen_tratamiento = resultado.get("resumen_tratamiento", {})
+
+    return f"""
+    <div class='log-line success'>
+        ✅ Gestión ASTER generada correctamente.
+    </div>
+
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Archivo Gestión ASTER
+            </th>
+        </tr>
+        <tr><td><b>Fecha proceso</b></td><td>{escape(str(resultado.get("fecha_yyyymmdd", "")))}</td></tr>
+        <tr><td><b>Conexión</b></td><td>{escape(str(resultado.get("conexion", "")))}</td></tr>
+        <tr><td><b>Registros generados</b></td><td>{escape(str(resultado.get("registros_generados", 0)))}</td></tr>
+        <tr>
+            <td><b>NULL / NaN limpiados</b></td>
+            <td>{escape(str(resumen_tratamiento.get("celdas_null_texto_limpiadas", 0)))}</td>
+        </tr>
+        <tr>
+            <td><b>Fecha_Compromiso limpiada en no Acuerdo</b></td>
+            <td>{escape(str(resumen_tratamiento.get("fechas_compromiso_limpiadas_no_acuerdo", 0)))}</td>
+        </tr>
+        <tr>
+            <td><b>Acuerdos con Fecha_Compromiso</b></td>
+            <td>{escape(str(resumen_tratamiento.get("acuerdos_con_fecha_compromiso", 0)))}</td>
+        </tr>
+        <tr>
+            <td><b>Acuerdos sin Fecha_Compromiso</b></td>
+            <td>{escape(str(resumen_tratamiento.get("acuerdos_sin_fecha_compromiso", 0)))}</td>
+        </tr>
+        <tr><td><b>Archivo</b></td><td>{escape(str(resultado.get("nombre_archivo", "")))}</td></tr>
+        <tr>
+            <td><b>Ruta completa</b></td>
+            <td style='font-size:0.75rem; word-break:break-all;'>
+                {escape(str(resultado.get("ruta_archivo", "")))}
+            </td>
+        </tr>
+    </table>
+    """
+
