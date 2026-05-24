@@ -2,6 +2,7 @@
 Blueprint para la Fase G: Carga de datos a SQL Server.
 """
 
+import json
 import os
 import re
 import pyodbc
@@ -39,6 +40,11 @@ from app.services.orion_load_renderer import (
     render_log_error,
     render_tabla_estadisticas_consolidado,
 )
+
+from app.services.orion_gestion_export_service import (
+    exportar_gestion_orion_desde_temporal,
+)
+
 
 
 carga_bp = Blueprint("carga", __name__)
@@ -780,109 +786,42 @@ def _obtener_carpeta_diaria_orion_desde_fecha(fecha: str) -> str:
 
 @carga_bp.route("/accion/consolidar-aplicar", methods=["POST"])
 def accion_consolidar_aplicar():
-    """Aplica los filtros seleccionados y exporta el Excel final."""
-    import json
-    import pickle
-    import os
-    import pandas as pd
+    """
+    Aplica filtros seleccionados y exporta el Excel final de Gestión ORION.
 
+    La lógica de negocio está en:
+    app.services.orion_gestion_export_service
+    """
     fecha = request.form.get("fecha", "2026-05-05")
-    seleccionados = json.loads(request.form.get("seleccionados", "[]"))
     temp_id = request.form.get("temp_id")
 
-    if not temp_id:
-        return render_log_error("Falta identificador de consulta previa.")
-
-    temp_path = os.path.join(DATA_DIR, f"temp_consolidado_{temp_id}.pkl")
-    if not os.path.isfile(temp_path):
-        return render_log_error(
-            "Los datos de consulta previa han expirado. Ejecute la consulta nuevamente."
-        )
-
     try:
-        with open(temp_path, "rb") as f:
-            df = pickle.load(f)
-        # Borrar el archivo temporal después de cargarlo
-        os.remove(temp_path)
-    except Exception as e:
-        return render_log_error(f"Error al cargar datos: {e}")
+        seleccionados = json.loads(request.form.get("seleccionados", "[]"))
+    except Exception:
+        seleccionados = []
 
-    # Aplicar limpieza: para las filas con fecha de compromiso y cuyo Descripción esté en seleccionados,
-    # reemplazar la fecha por vacío
+    if not isinstance(seleccionados, list):
+        seleccionados = []
 
-    # Estadísticas antes de aplicar limpieza
-    total_inicial = len(df)
-
-    mask_fecha_antes = (
-        df["Fecha_Compromiso"].notna()
-        & (df["Fecha_Compromiso"].astype(str).str.strip() != "")
+    resultado = exportar_gestion_orion_desde_temporal(
+        data_dir=DATA_DIR,
+        fecha=fecha,
+        seleccionados=seleccionados,
+        temp_id=temp_id,
     )
 
-    registros_con_fecha_antes = int(mask_fecha_antes.sum())
-    registros_sin_fecha_antes = int(total_inicial - registros_con_fecha_antes)
-
-    # Aplicar limpieza: para las filas con fecha de compromiso y cuyo Descripción esté en seleccionados,
-    # reemplazar la fecha por vacío
-    mask_seleccionados = df["Descripcion Codigo De Gestion"].isin(seleccionados)
-    mask_limpiar = mask_fecha_antes & mask_seleccionados
-
-    registros_seleccionados_por_filtro = int(mask_seleccionados.sum())
-    registros_limpiados = int(mask_limpiar.sum())
-
-    df.loc[mask_limpiar, "Fecha_Compromiso"] = None
-
-    # Estadísticas después de aplicar limpieza
-    mask_fecha_despues = (
-        df["Fecha_Compromiso"].notna()
-        & (df["Fecha_Compromiso"].astype(str).str.strip() != "")
-    )
-
-    registros_con_fecha_despues = int(mask_fecha_despues.sum())
-    registros_sin_fecha_despues = int(total_inicial - registros_con_fecha_despues)
-    registros_exportados = len(df)
+    if not resultado.get("success"):
+        return render_log_error(resultado.get("error", "Error desconocido."))
 
     html_estadisticas = render_tabla_estadisticas_consolidado(
         "Estadísticas después de aplicar filtro y exportar",
-        [
-            ("Registros cargados desde consulta temporal", total_inicial),
-            ("Descripciones seleccionadas", len(seleccionados)),
-            ("Registros con Fecha_Compromiso antes", registros_con_fecha_antes),
-            ("Registros sin Fecha_Compromiso antes", registros_sin_fecha_antes),
-            ("Registros que coinciden con las descripciones seleccionadas", registros_seleccionados_por_filtro),
-            ("Registros limpiados", registros_limpiados),
-            ("Registros con Fecha_Compromiso después", registros_con_fecha_despues),
-            ("Registros sin Fecha_Compromiso después", registros_sin_fecha_despues),
-            ("Registros exportados", registros_exportados),
-        ],
+        resultado["estadisticas"],
     )
-
-    # Exportar a Excel
-    fecha_limpia = "".join(ch for ch in str(fecha or "") if ch.isdigit())
-
-    carpeta_diaria_orion = _obtener_carpeta_diaria_orion_desde_fecha(fecha_limpia)
-
-    nombre_archivo = f"{fecha_limpia}_Gestion_orion.xlsx"
-
-    carpeta_salidas = os.path.join(carpeta_diaria_orion, "Salidas")
-    os.makedirs(carpeta_salidas, exist_ok=True)
-
-    ruta_salida = os.path.join(
-        carpeta_salidas,
-        nombre_archivo,
-    )
-
-    ruta_relativa_descarga = os.path.join(
-        fecha_limpia,
-        "Orion",
-        "Salidas",
-        nombre_archivo,
-    ).replace("\\", "/")
-    
-    df.to_excel(ruta_salida, index=False)
 
     return render_gestion_orion_exportada(
         html_estadisticas=html_estadisticas,
-        nombre_archivo=nombre_archivo,
-        ruta_salida=ruta_salida,
-        ruta_relativa_descarga=ruta_relativa_descarga,
+        nombre_archivo=resultado["nombre_archivo"],
+        ruta_salida=resultado["ruta_salida"],
+        ruta_relativa_descarga=resultado["ruta_relativa_descarga"],
     )
+    
