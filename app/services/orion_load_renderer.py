@@ -284,3 +284,55 @@ def render_insercion_orion_resultado(res: dict[str, Any]) -> str:
 
     return render_log_error(res.get("error", "Error desconocido en inserción ORION."))
 
+
+def render_consolidado_consulta_orion(res: dict[str, Any]) -> str:
+    """
+    Genera HTML para resultado de consulta consolidada ORION.
+    """
+    if not res.get("success"):
+        if res.get("status") == "sin_resultados":
+            return (
+                "<div class='log-line warning'>"
+                f"⚠️ {escape(str(res.get('warning', 'La consulta no devolvió resultados.')))}"
+                "</div>"
+            )
+
+        return render_log_error(res.get("error", "Error desconocido."))
+
+    valores_unicos = res.get("valores_unicos", [])
+    temp_id = str(res.get("temp_id", ""))
+
+    html = f"""
+    <p style='font-size:0.75rem; color:#ccc;'>
+        Valores únicos en 'Descripción Codigo de Gestion' con fecha de compromiso
+        ({escape(str(len(valores_unicos)))})
+    </p>
+    """
+
+    html += "<div style='max-height:200px; overflow-y:auto; margin-bottom:10px;'>"
+    html += "<table class='dataframe' style='width:100%;'>"
+    html += "<tr><th>Seleccionar</th><th>Descripción</th></tr>"
+
+    for valor in valores_unicos:
+        valor_esc = escape(str(valor), quote=True)
+        html += (
+            "<tr>"
+            f"<td><input type='checkbox' name='descripcion' value='{valor_esc}'></td>"
+            f"<td>{escape(str(valor))}</td>"
+            "</tr>"
+        )
+
+    html += "</table>"
+    html += "</div>"
+
+    html += f"<input type='hidden' id='cons-temp-id' value='{escape(temp_id, quote=True)}'>"
+
+    html += """
+    <button onclick='aplicarFiltroYExportar()'
+            style='background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;'>
+        Aplicar Filtro y Exportar a Excel
+    </button>
+    """
+
+    return html
+

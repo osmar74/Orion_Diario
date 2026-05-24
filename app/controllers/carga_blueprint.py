@@ -7,10 +7,8 @@ import json
 # import re
 import pyodbc
 import pandas as pd
-import numpy as np
+
 from flask import Blueprint, request, session
-from app.services.daily_paths import ruta_orion, normalizar_fecha_yyyymmdd
-from app.services.orion_file_lookup_service import buscar_archivo_consolidado_orion
 
 # from typing import cast
 # from datetime import datetime
@@ -19,12 +17,11 @@ from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
 from app.controllers.helpers import (
     construir_cadena_conexion,
     construir_sqlalchemy_engine,
-    normalizar_texto,
-    mapear_columnas_archivo,
 )
 
 
 from app.services.orion_load_renderer import (
+    render_consolidado_consulta_orion,
     render_gestion_orion_exportada,
     render_insercion_orion_resultado,
     render_log_error,
@@ -38,7 +35,9 @@ from app.services.orion_gestion_export_service import (
 
 from app.services.orion_load_verification_service import verificar_carga_orion
 from app.services.orion_load_insert_service import insertar_datos_orion
-
+from app.services.orion_consolidado_query_service import (
+    ejecutar_consulta_consolidado_orion,
+)
 
 
 carga_bp = Blueprint("carga", __name__)
@@ -241,95 +240,29 @@ def accion_probar_conexion_consolidado():
 
 @carga_bp.route("/accion/consolidar-consulta", methods=["POST"])
 def accion_consolidar_consulta():
-    """Ejecuta la consulta SQL de consolidación y devuelve los valores únicos de Descripción."""
-    import re
-    import os
-    import pickle
-    import uuid
-    import pandas as pd
-    import pyodbc
+    """
+    Ejecuta la consulta SQL de consolidación ORION.
 
-    # Limpiar posibles residuos grandes en sesión de ejecuciones anteriores
-    session.pop("consolidado_df", None)
-    session.pop("consolidado_valores", None)
-
+    La lógica de negocio vive en:
+    app.services.orion_consolidado_query_service
+    """
     fecha = request.form.get("fecha", "2026-05-05")
     meses = request.form.get("meses", "202605")
     conexion = request.form.get("conexion", "local")
 
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
 
-    # Leer el archivo SQL
-    sql_path = os.path.join(os.path.dirname(__file__), "..", "sql", "consolidado.sql")
-    try:
-        with open(sql_path, "r", encoding="utf-8") as f:
-            sql_template = f.read()
-    except FileNotFoundError:
-        return "<div class='log-line error'>❌ No se encuentra el archivo SQL de consolidación.</div>"
-
-    # Validar formatos
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$", fecha):
-        return "<div class='log-line error'>❌ Formato de fecha inválido. Use YYYY-MM-DD.</div>"
-    if not re.match(r"^\d{6}$", meses):
-        return "<div class='log-line error'>❌ Formato de meses inválido. Use YYYYMM.</div>"
-
-    # Reemplazar variables en el SQL
-    sql_final = sql_template.format(fecha=fecha, meses=meses)
-
-    try:
-        conn_str = construir_cadena_conexion(cfg)
-        conn = pyodbc.connect(conn_str, timeout=60)
-        engine = construir_sqlalchemy_engine(cfg)
-
-        try:
-            with engine.connect() as conn_sqlalchemy:
-                df = pd.read_sql(sql_final, conn_sqlalchemy)
-        finally:
-            engine.dispose()
-        
-        conn.close()
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error en consulta SQL: {str(e)}</div>"
-
-    if df.empty:
-        return (
-            "<div class='log-line warning'>⚠️ La consulta no devolvió resultados.</div>"
-        )
-
-    # Filtrar filas con fecha de compromiso no vacía
-    df_con_fecha = df[df["Fecha_Compromiso"].notna() & (df["Fecha_Compromiso"] != "")]
-    valores_unicos = sorted(
-        df_con_fecha["Descripcion Codigo De Gestion"].dropna().unique()
+    resultado = ejecutar_consulta_consolidado_orion(
+        data_dir=DATA_DIR,
+        fecha=fecha,
+        meses=meses,
+        cfg_sql=cfg,
     )
 
-    # Guardar DataFrame en archivo temporal (no en sesión)
-    temp_id = uuid.uuid4().hex[:10]
-    temp_path = os.path.join(DATA_DIR, f"temp_consolidado_{temp_id}.pkl")
-    with open(temp_path, "wb") as f:
-        pickle.dump(df, f)
+    return render_consolidado_consulta_orion(resultado)
 
-    # Construir HTML con checkboxes
-    html = f"<p style='font-size:0.75rem; color:#ccc;'>Valores únicos en 'Descripción Codigo de Gestion' con fecha de compromiso ({len(valores_unicos)}):</p>"
-    html += "<div style='max-height:200px; overflow-y:auto; margin-bottom:10px;'>"
-    html += "<table class='dataframe' style='width:100%;'>"
-    html += "<tr><th>Seleccionar</th><th>Descripción</th></tr>"
-    for val in valores_unicos:
-        html += f"<tr><td><input type='checkbox' name='descripcion' value='{val}'></td><td>{val}</td></tr>"
-    html += "</table>"
-    html += "</div>"
-    html += f"<input type='hidden' id='cons-temp-id' value='{temp_id}'>"
-    html += "<button onclick='aplicarFiltroYExportar()' style='background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;'>Aplicar Filtro y Exportar a Excel</button>"
-    return html
 
-def _obtener_carpeta_diaria_orion_desde_fecha(fecha: str) -> str:
-    """
-    Devuelve la carpeta diaria ORION con la nueva estructura:
 
-    data\\YYYYMMDD\\Orion
-    """
-    fecha_yyyymmdd = normalizar_fecha_yyyymmdd(fecha)
-
-    return ruta_orion(DATA_DIR, fecha_yyyymmdd)
 
 @carga_bp.route("/accion/consolidar-aplicar", methods=["POST"])
 def accion_consolidar_aplicar():
