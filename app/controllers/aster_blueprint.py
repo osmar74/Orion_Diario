@@ -72,6 +72,12 @@ from app.services.aster_sqlserver_service import (
     valor_config_sql as valor_config_sql_service,
 )
 
+from app.services.aster_entities_export_service import (
+    generar_excel_entidades_aster as generar_excel_entidades_aster_service,
+    normalizar_entidades_filtradas_finales_aster,
+)
+
+
 
 aster_bp = Blueprint("aster", __name__)
 
@@ -2447,70 +2453,42 @@ def _resolver_archivo_aster_normalizado() -> str:
 
 def _obtener_entidades_filtradas_finales_aster() -> list[dict[str, Any]]:
     """
-    Obtiene las entidades filtradas finales que quedaron para ASTER.
-
-    Prioridad:
-    1. Entidades SQL validadas por conciliación.
-    2. Bases Cobranza + Integral + No seleccionadas.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_entities_export_service.
     """
-    entidades_validadas = session.get("aster_entidades_sql_validadas") or []
-
-    if entidades_validadas:
-        return entidades_validadas
-
-    cobranza = session.get("aster_bases_cobranza") or []
-    integral = session.get("aster_bases_integral") or []
-    no_seleccionadas = session.get("aster_bases_no_seleccionadas") or []
-
-    return cobranza + integral + no_seleccionadas
+    return normalizar_entidades_filtradas_finales_aster(
+        entidades_validadas=session.get("aster_entidades_sql_validadas") or [],
+        cobranza=session.get("aster_bases_cobranza") or [],
+        integral=session.get("aster_bases_integral") or [],
+        no_seleccionadas=session.get("aster_bases_no_seleccionadas") or [],
+    )
 
 
 def _generar_excel_entidades_aster(
     fecha_yyyymmdd: str,
 ) -> tuple[str, str, int]:
     """
-    Genera Excel con las entidades filtradas finales de ASTER.
-
-    Archivo:
-    entidades_aster_YYYYMMDD.xlsx
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_entities_export_service.
     """
-    carpeta_entidades = ruta_aster_subcarpeta(
-        DATA_DIR,
-        fecha_yyyymmdd,
-        "Entidades",
-    )
-    os.makedirs(carpeta_entidades, exist_ok=True)
-
-    nombre_archivo = f"entidades_aster_{fecha_yyyymmdd}.xlsx"
-    ruta_archivo = os.path.join(carpeta_entidades, nombre_archivo)
-
     entidades = _obtener_entidades_filtradas_finales_aster()
 
-    filas = []
-
-    for idx, entidad_info in enumerate(entidades, start=1):
-        entidad = str(entidad_info.get("entidad") or "").strip()
-
-        if not entidad:
-            continue
-
-        filas.append(
-            {
-                "Nro": idx,
-                "Entidad": entidad,
-                "Numero": int(entidad_info.get("numero") or 0),
-                "SSS": str(entidad_info.get("SSS") or f"'{entidad}'"),
-            }
-        )
-
-    df_entidades = pd.DataFrame(
-        filas,
-        columns=["Nro", "Entidad", "Numero", "SSS"],
+    resultado = generar_excel_entidades_aster_service(
+        data_dir=DATA_DIR,
+        fecha_yyyymmdd=fecha_yyyymmdd,
+        entidades=entidades,
     )
 
-    df_entidades.to_excel(ruta_archivo, index=False)
+    if not resultado.get("success"):
+        raise RuntimeError(
+            str(resultado.get("error", "Error generando Excel de entidades ASTER."))
+        )
 
-    return ruta_archivo, nombre_archivo, len(df_entidades)
+    return (
+        str(resultado["ruta_archivo"]),
+        str(resultado["nombre_archivo"]),
+        int(resultado["total_entidades"]),
+    )
 
 
 def _validar_cuadre_final_aster(
