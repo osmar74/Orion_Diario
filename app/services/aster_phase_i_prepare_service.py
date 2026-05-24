@@ -22,6 +22,7 @@ import pandas as pd
 from app.services.aster_file_service import normalizar_fecha_aster
 from app.services.aster_sqlserver_service import obtener_columnas_sqlserver_tabla
 from app.services.daily_paths import ruta_aster_subcarpeta
+from app.services.sql_loader import cargar_sql
 
 
 def columnas_mysql_usuarios_fase_i() -> list[str]:
@@ -247,7 +248,7 @@ def contar_usuarios_mysql_fase_i(
     """
     Cuenta usuarios desde MySQL usuarios.crm.
     """
-    sql = "SELECT COUNT(*) AS total FROM crm"
+    sql = cargar_sql("aster/fase_i/mysql_count_usuarios.sql")
     validar_sql_mysql_solo_select(sql)
 
     conn = conectar_mysql_fase_i(db_usuarios)
@@ -255,7 +256,7 @@ def contar_usuarios_mysql_fase_i(
     try:
         with conn.cursor() as cursor:
             cursor.execute(sql)
-            row = cursor.fetchone()
+            row = cursor.fetchone() or {}
 
             return int(row.get("total") or 0)
 
@@ -279,13 +280,9 @@ def contar_comentarios_mysql_fase_i(
     fecha_sql = datetime.strptime(fecha_yyyymmdd, "%Y%m%d").strftime("%Y-%m-%d")
     placeholders = ", ".join(["%s"] * len(entidades))
 
-    sql = f"""
-        SELECT COUNT(*) AS total
-        FROM comentarios
-        WHERE DATE(fecha) = %s
-          AND entidad IN ({placeholders})
-          AND COALESCE(TRIM(usuario), '') <> 'SystemUser'
-    """
+    sql = cargar_sql("aster/fase_i/mysql_count_comentarios.sql").format(
+        placeholders=placeholders
+    )
 
     validar_sql_mysql_solo_select(sql)
 
@@ -294,7 +291,7 @@ def contar_comentarios_mysql_fase_i(
     try:
         with conn.cursor() as cursor:
             cursor.execute(sql, [fecha_sql, *entidades])
-            row = cursor.fetchone()
+            row = cursor.fetchone() or {}
 
             return int(row.get("total") or 0)
 
@@ -328,7 +325,7 @@ def probar_conexiones_fase_i_aster(
 
     try:
         with conn_usuarios.cursor() as cursor:
-            cursor.execute("SELECT 1 AS ok")
+            cursor.execute(cargar_sql("aster/fase_i/mysql_probar_conexion.sql"))
             cursor.fetchone()
     finally:
         conn_usuarios.close()
@@ -337,7 +334,7 @@ def probar_conexiones_fase_i_aster(
 
     try:
         with conn_gestion.cursor() as cursor:
-            cursor.execute("SELECT 1 AS ok")
+            cursor.execute(cargar_sql("aster/fase_i/mysql_probar_conexion.sql"))
             cursor.fetchone()
     finally:
         conn_gestion.close()

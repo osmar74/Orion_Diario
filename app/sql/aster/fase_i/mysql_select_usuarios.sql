@@ -1,0 +1,2 @@
+SELECT {columnas}
+FROM crm

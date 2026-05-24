@@ -25,6 +25,7 @@ from typing import Any
 import pandas as pd
 import pyodbc
 
+from app.services.sql_loader import cargar_sql
 from app.services.aster_insert_prepare_service import (
     convertir_valor_sql_aster,
     es_valor_vacio_aster,
@@ -33,6 +34,7 @@ from app.services.aster_insert_prepare_service import (
 from app.services.aster_insert_service import (
     limpiar_parametro_sql_aster,
     sql_identificador_aster,
+    sql_use_database_aster,
 )
 from app.services.aster_phase_i_prepare_service import (
     columnas_mysql_comentarios_fase_i,
@@ -56,6 +58,16 @@ def nombre_tabla_sql_fase_i(schema: str, tabla: str) -> str:
         f"{sql_identificador_aster(schema)}."
         f"{sql_identificador_aster(tabla)}"
     )
+
+
+def numero_fila_excel_fase_i(indice: Any) -> int:
+    """
+    Convierte índice de DataFrame a número de fila Excel aproximado.
+    """
+    try:
+        return int(indice) + 2
+    except Exception:
+        return 0
 
 
 def agregar_paso_pipeline_fase_i(
@@ -96,10 +108,9 @@ def leer_usuarios_mysql_fase_i(db_usuarios: str) -> pd.DataFrame:
         for col in columnas
     )
 
-    sql = f"""
-        SELECT {columnas_sql}
-        FROM crm
-    """
+    sql = cargar_sql("aster/fase_i/mysql_select_usuarios.sql").format(
+        columnas=columnas_sql
+    )
 
     validar_sql_mysql_solo_select(sql)
 
@@ -140,13 +151,10 @@ def leer_comentarios_mysql_fase_i(
     fecha_sql = datetime.strptime(fecha_yyyymmdd, "%Y%m%d").strftime("%Y-%m-%d")
     placeholders = ", ".join(["%s"] * len(entidades))
 
-    sql = f"""
-        SELECT {columnas_sql}
-        FROM comentarios
-        WHERE DATE(`fecha`) = %s
-          AND `entidad` IN ({placeholders})
-          AND COALESCE(TRIM(usuario), '') <> 'SystemUser'
-    """
+    sql = cargar_sql("aster/fase_i/mysql_select_comentarios.sql").format(
+        columnas=columnas_sql,
+        placeholders=placeholders,
+    )
 
     validar_sql_mysql_solo_select(sql)
 
@@ -301,10 +309,11 @@ def insertar_dataframe_sql_fase_i(
     )
     placeholders = ", ".join("?" for _ in columnas)
 
-    sql_insert = f"""
-        INSERT INTO {tabla_sql} ({columnas_sql})
-        VALUES ({placeholders})
-    """
+    sql_insert = cargar_sql("aster/insert_table.sql").format(
+        tabla=tabla_sql,
+        columnas=columnas_sql,
+        placeholders=placeholders,
+    )
 
     total_insertados = 0
     cursor.fast_executemany = True
@@ -381,7 +390,7 @@ def validar_claves_comentarios_fase_i(
         if faltantes:
             errores.append(
                 {
-                    "fila": int(idx) + 2,
+                    "fila": numero_fila_excel_fase_i(idx),
                     "id": row.get("id", ""),
                     "data": row.get("data", ""),
                     "usuario": row.get("usuario", ""),
@@ -437,19 +446,22 @@ def contar_duplicados_comentarios_fase_i(
         return int(duplicados_origen.sum()), ejemplos_origen
 
     cursor.execute(
-        "IF OBJECT_ID('tempdb..#fase_i_comentarios_claves') IS NOT NULL "
-        "DROP TABLE #fase_i_comentarios_claves"
+        cargar_sql("aster/drop_temp_table_if_exists.sql").format(
+            tabla="#fase_i_comentarios_claves"
+        )
+    )
+
+    columnas_temp_select = ",\n    ".join(
+        sql_identificador_aster(columna)
+        for columna in columnas_clave
     )
 
     cursor.execute(
-        f"""
-        SELECT TOP 0
-            {sql_identificador_aster(columnas_clave[0])},
-            {sql_identificador_aster(columnas_clave[1])},
-            {sql_identificador_aster(columnas_clave[2])}
-        INTO #fase_i_comentarios_claves
-        FROM {nombre_tabla_sql_fase_i(schema, tabla_comentarios)}
-        """
+        cargar_sql("aster/fase_i/select_top_0_claves_comentarios.sql").format(
+            columnas_select=columnas_temp_select,
+            tabla_temp="#fase_i_comentarios_claves",
+            tabla_origen=nombre_tabla_sql_fase_i(schema, tabla_comentarios),
+        )
     )
 
     df_claves = df_claves_base.drop_duplicates().copy()
@@ -460,10 +472,11 @@ def contar_duplicados_comentarios_fase_i(
     )
     placeholders = ", ".join("?" for _ in columnas_clave)
 
-    sql_insert_temp = f"""
-        INSERT INTO #fase_i_comentarios_claves ({columnas_sql})
-        VALUES ({placeholders})
-    """
+    sql_insert_temp = cargar_sql("aster/insert_table.sql").format(
+        tabla="#fase_i_comentarios_claves",
+        columnas=columnas_sql,
+        placeholders=placeholders,
+    )
 
     valores_temp = [
         tuple(
@@ -500,13 +513,13 @@ def contar_duplicados_comentarios_fase_i(
         for columna in columnas_clave
     )
 
-    sql_ejemplos = f"""
-        SELECT TOP ({limite_ejemplos})
-            {columnas_select}
-        FROM {nombre_tabla_sql_fase_i(schema, tabla_comentarios)} t
-        INNER JOIN #fase_i_comentarios_claves k
-            ON {join_sql}
-    """
+    sql_ejemplos = cargar_sql("aster/select_duplicados_temp.sql").format(
+        limite=limite_ejemplos,
+        columnas_select=columnas_select,
+        tabla_origen=nombre_tabla_sql_fase_i(schema, tabla_comentarios),
+        tabla_temp="#fase_i_comentarios_claves",
+        join_sql=join_sql,
+    )
 
     cursor.execute(sql_ejemplos)
     rows = cursor.fetchall()
@@ -738,7 +751,7 @@ def ejecutar_fase_i_aster(
         conn_sql.timeout = 120
 
         cursor = conn_sql.cursor()
-        cursor.execute(f"USE {sql_identificador_aster(base)}")
+        cursor.execute(sql_use_database_aster(base))
 
         total_duplicados, ejemplos_duplicados = contar_duplicados_comentarios_fase_i(
             cursor=cursor,
@@ -778,7 +791,9 @@ def ejecutar_fase_i_aster(
             }
 
         cursor.execute(
-            f"SELECT COUNT(*) FROM {nombre_tabla_sql_fase_i(schema, tabla_usuarios)}"
+            cargar_sql("aster/fase_i/count_table.sql").format(
+                tabla=nombre_tabla_sql_fase_i(schema, tabla_usuarios)
+            )
         )
         row_usuarios_antes = cursor.fetchone()
         usuarios_borrados = (
@@ -788,7 +803,9 @@ def ejecutar_fase_i_aster(
         )
 
         cursor.execute(
-            f"DELETE FROM {nombre_tabla_sql_fase_i(schema, tabla_usuarios)}"
+            cargar_sql("aster/fase_i/delete_table.sql").format(
+                tabla=nombre_tabla_sql_fase_i(schema, tabla_usuarios)
+            )
         )
 
         agregar_paso_pipeline_fase_i(
