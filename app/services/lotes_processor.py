@@ -9,7 +9,7 @@ import pandas as pd
 from app.services.log_service import LogService
 from app.services.orion_excel_utils import (
     escribir_excel,
-    generar_preview_html,
+    generar_preview_data,
     leer_csv_texto_latin1,
     leer_excel_texto,
     listar_archivos_por_extension,
@@ -108,7 +108,10 @@ class LotesProcessor:
 
         return " ".join(partes).strip()
 
-    def obtener_valores_lote_discador(self, ruta_discador_limpio: str) -> list[str]:
+    def obtener_valores_lote_discador(
+        self,
+        ruta_discador_limpio: Optional[str],
+    ) -> list[str]:
         """
         Lee el Discador consolidado y devuelve valores únicos de la columna Lote.
         """
@@ -244,9 +247,14 @@ class LotesProcessor:
             'ruta_consolidado': '',
             'total_filas': 0,
             'validacion_cruzada': None,
-            'preview_html': '',
-            'estadisticas_archivos': []  # Lista de dict con datos por archivo
+            'preview_data': {},
+            'estadisticas_archivos': [],
+            'reporte_lotes': [],
+            'valores_lote_discador': [],
         }
+        
+        reporte_lotes: list[dict] = []
+        valores_lote_discador: list[str] = []
 
         if self.log_service:
             self.log_service.log('4.3', 'Procesar Lotes', 'info',
@@ -266,7 +274,7 @@ class LotesProcessor:
             estadisticas = []
             
             valores_lote_discador = self.obtener_valores_lote_discador(ruta_discador_limpio)
-            reporte_lotes = []
+            
 
             for archivo in archivos_csv:
                 ruta_completa = os.path.join(carpeta_lotes, archivo)
@@ -359,7 +367,7 @@ class LotesProcessor:
                     mensajes.extend(validacion['mensajes'])
 
             # Vista previa (primeras 10 filas)
-            preview_html = generar_preview_html(df_consolidado, filas=10)
+            preview_data = generar_preview_data(df_consolidado, filas=10)
 
             if self.log_service:
                 if validacion and not validacion['ok']:
@@ -375,7 +383,7 @@ class LotesProcessor:
                 'ruta_consolidado': ruta_consolidado,
                 'total_filas': len(df_consolidado),
                 'validacion_cruzada': validacion,
-                'preview_html': preview_html,
+                'preview_data': preview_data,
                 'estadisticas_archivos': estadisticas
             })
 

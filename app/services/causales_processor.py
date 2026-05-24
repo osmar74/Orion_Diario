@@ -7,7 +7,7 @@ import pandas as pd
 from app.services.log_service import LogService
 from app.services.orion_excel_utils import (
     escribir_excel,
-    generar_preview_html,
+    generar_preview_data,
     leer_excel_texto,
     listar_archivos_por_extension,
 )
@@ -89,7 +89,7 @@ class CausalesProcessor:
             'total_filas': 0,
             'total_archivos': 0,
             'estadisticas_archivos': [],
-            'preview_html': ''
+            'preview_data': {}
         }
 
         if self.log_service:
@@ -168,7 +168,7 @@ class CausalesProcessor:
         ruta_consolidado = os.path.join(carpeta_salida, nombre_consolidado)
         escribir_excel(df_consolidado, ruta_consolidado)
 
-        preview_html = generar_preview_html(df_consolidado, filas=10)
+        preview_data = generar_preview_data(df_consolidado, filas=10)
 
         resultado.update({
             'success': True,
@@ -176,7 +176,7 @@ class CausalesProcessor:
             'total_filas': len(df_consolidado),
             'total_archivos': len(dataframes),
             'estadisticas_archivos': estadisticas,
-            'preview_html': preview_html
+            'preview_data': preview_data
         })
 
         if self.log_service:

@@ -451,3 +451,49 @@ def render_comparacion_lotes_result(res: dict[str, Any]) -> str:
         )
 
     return html
+
+def render_preview_data(
+    preview_data: dict,
+    titulo: str = "📋 Vista previa",
+) -> str:
+    """
+    Renderiza preview estructurado generado por los processors.
+    """
+    if not preview_data:
+        return ""
+
+    columnas = preview_data.get("columns") or []
+    filas = preview_data.get("rows") or []
+
+    if not columnas or not filas:
+        return ""
+
+    html = f"""
+    <details style='margin-top:8px;'>
+        <summary style='font-size:0.75rem; color:#ccc; cursor:pointer;'>
+            {escape(str(titulo))}
+        </summary>
+        <table class='dataframe' style='width:100%; margin-top:8px;'>
+            <tr>
+    """
+
+    for columna in columnas:
+        html += f"<th>{escape(str(columna))}</th>"
+
+    html += "</tr>"
+
+    for fila in filas:
+        html += "<tr>"
+
+        for columna in columnas:
+            html += f"<td>{escape(str(fila.get(columna, '')))}</td>"
+
+        html += "</tr>"
+
+    html += """
+        </table>
+    </details>
+    """
+
+    return html
+

@@ -89,3 +89,39 @@ def generar_preview_html(
     Genera preview HTML estándar para renderers ORION.
     """
     return df.head(filas).to_html(index=False, classes="dataframe")
+
+def generar_preview_data(
+    df: pd.DataFrame,
+    filas: int = 10,
+) -> dict[str, Any]:
+    """
+    Genera datos de preview sin HTML.
+
+    El renderer será responsable de convertir esto a tabla HTML.
+    """
+    if df is None or df.empty:
+        return {
+            "columns": [],
+            "rows": [],
+        }
+
+    preview_df = df.head(filas).copy()
+    preview_df = preview_df.where(pd.notna(preview_df), "")
+
+    columnas = [str(col) for col in preview_df.columns]
+    filas_preview = []
+
+    for _, row in preview_df.iterrows():
+        fila = {}
+
+        for col in preview_df.columns:
+            valor = row[col]
+            fila[str(col)] = "" if pd.isna(valor) else str(valor)
+
+        filas_preview.append(fila)
+
+    return {
+        "columns": columnas,
+        "rows": filas_preview,
+    }
+    

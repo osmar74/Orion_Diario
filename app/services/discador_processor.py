@@ -4,7 +4,11 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from app.services.log_service import LogService
-from app.services.orion_excel_utils import escribir_excel, leer_excel_texto
+from app.services.orion_excel_utils import (
+    escribir_excel,
+    generar_preview_data,
+    leer_excel_texto,
+)
 
 
 class DiscadorProcessor:
@@ -80,6 +84,7 @@ class DiscadorProcessor:
             "ruta_no_validos": "",
             "pasos_filtrado": {},
             "reemplazos": {},
+            "preview_data": {},
         }
 
         if self.log_service:
@@ -108,6 +113,7 @@ class DiscadorProcessor:
 
             # Limpiar válidos y obtener conteo de reemplazos
             df_validos, reemplazos = self.limpiar(df_validos)
+            preview_data = generar_preview_data(df_validos, filas=5)
 
             total_validos = len(df_validos)
             total_no_validos = len(df_no_validos)
@@ -158,6 +164,7 @@ class DiscadorProcessor:
                     "mensaje": mensaje,
                     "ruta_limpio": ruta_limpio,
                     "ruta_no_validos": ruta_no_validos,
+                    "preview_data": preview_data,
                 }
             )
 
