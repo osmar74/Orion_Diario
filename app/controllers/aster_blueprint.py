@@ -1291,16 +1291,6 @@ def accion_aster_fase_i_preparar():
 
 
 
-
-
-
-
-
-    
-
-
-
-
 @aster_bp.route("/accion/aster-fase-i-ejecutar", methods=["POST"])
 def accion_aster_fase_i_ejecutar():
     """
