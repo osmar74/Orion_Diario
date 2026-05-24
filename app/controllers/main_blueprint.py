@@ -5,6 +5,7 @@ import os
 
 from app.config import LOG_DB_PATH, DATA_DIR
 from app.controllers.helpers import obtener_log_service
+from app.services.sql_loader import cargar_sql
 from flask import Blueprint, render_template, send_file
 from flask import request
 from flask import session
@@ -91,7 +92,7 @@ def reset_logs():
 
     try:
         with sqlite3.connect(LOG_DB_PATH) as conn:
-            conn.execute("DELETE FROM action_log")
+            conn.execute(cargar_sql("local/log_delete.sql"))
             conn.commit()
         return "<div class='log-line success'>✅ Logs eliminados correctamente.</div>"
     except Exception as e:

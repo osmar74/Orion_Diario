@@ -2,6 +2,8 @@ import sqlite3
 from datetime import datetime
 from typing import List, Dict, Optional
 
+from app.services.sql_loader import cargar_sql
+
 
 class LogService:
     """Servicio para registrar y consultar logs del proceso Orion/Aister."""
@@ -17,17 +19,7 @@ class LogService:
     def _init_db(self):
         """Crea la tabla de logs si no existe."""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS action_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-                    fase TEXT NOT NULL,
-                    accion TEXT NOT NULL,
-                    resultado TEXT NOT NULL CHECK(resultado IN ('éxito', 'error', 'info', 'advertencia')),
-                    detalle TEXT,
-                    datos_extra TEXT
-                )
-            """)
+            conn.execute(cargar_sql("local/log_create_table.sql"))
             conn.commit()
 
     def log(
@@ -50,8 +42,7 @@ class LogService:
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
-                """INSERT INTO action_log (fase, accion, resultado, detalle, datos_extra)
-                   VALUES (?, ?, ?, ?, ?)""",
+                cargar_sql("local/log_insert.sql"),
                 (fase, accion, resultado, detalle, datos_extra),
             )
             conn.commit()
@@ -73,17 +64,17 @@ class LogService:
         Returns:
             Lista de diccionarios con los campos de la tabla.
         """
-        query = "SELECT * FROM action_log WHERE 1=1"
+        query = cargar_sql("local/log_select_base.sql").strip()
         params = []
 
         if fase:
-            query += " AND fase = ?"
+            query += " " + cargar_sql("local/log_filter_fase.sql").strip()
             params.append(fase)
         if resultado:
-            query += " AND resultado = ?"
+            query += " " + cargar_sql("local/log_filter_resultado.sql").strip()
             params.append(resultado)
 
-        query += " ORDER BY timestamp DESC LIMIT ?"
+        query += " " + cargar_sql("local/log_select_order_limit.sql").strip()
         params.append(limite)
 
         with sqlite3.connect(self.db_path) as conn:

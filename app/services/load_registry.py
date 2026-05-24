@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 
 from app.config import DATA_DIR
+from app.services.sql_loader import cargar_sql
 
 
 LOAD_REGISTRY_DB = os.path.join(DATA_DIR, "load_registry.db")
@@ -17,23 +18,7 @@ def inicializar_load_registry():
 
     with sqlite3.connect(LOAD_REGISTRY_DB) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS load_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tipo TEXT NOT NULL,
-                conexion TEXT NOT NULL,
-                tabla_destino TEXT NOT NULL,
-                nombre_archivo TEXT NOT NULL,
-                ruta_archivo TEXT NOT NULL,
-                archivo_hash TEXT NOT NULL,
-                registros_archivo INTEGER NOT NULL,
-                registros_insertados INTEGER NOT NULL,
-                fecha_carga TEXT NOT NULL,
-                UNIQUE(tipo, conexion, tabla_destino, archivo_hash)
-            )
-            """
-        )
+        cursor.execute(cargar_sql("local/load_registry_create_table.sql"))
         conn.commit()
 
 
@@ -62,26 +47,7 @@ def buscar_carga_previa(tipo, conexion, tabla_destino, archivo_hash):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
-            """
-            SELECT
-                id,
-                tipo,
-                conexion,
-                tabla_destino,
-                nombre_archivo,
-                ruta_archivo,
-                archivo_hash,
-                registros_archivo,
-                registros_insertados,
-                fecha_carga
-            FROM load_history
-            WHERE tipo = ?
-              AND conexion = ?
-              AND tabla_destino = ?
-              AND archivo_hash = ?
-            ORDER BY id DESC
-            LIMIT 1
-            """,
+            cargar_sql("local/load_registry_find_previous.sql"),
             (tipo, conexion, tabla_destino, archivo_hash),
         )
         row = cursor.fetchone()
@@ -111,20 +77,7 @@ def registrar_carga(
     with sqlite3.connect(LOAD_REGISTRY_DB) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            """
-            INSERT OR IGNORE INTO load_history (
-                tipo,
-                conexion,
-                tabla_destino,
-                nombre_archivo,
-                ruta_archivo,
-                archivo_hash,
-                registros_archivo,
-                registros_insertados,
-                fecha_carga
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+            cargar_sql("local/load_registry_insert.sql"),
             (
                 tipo,
                 conexion,
