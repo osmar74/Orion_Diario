@@ -14,6 +14,14 @@ from typing import Any
 
 import pyodbc
 
+from app.services.sql_loader import cargar_sql
+
+
+def sql_identificador_aster(nombre: str) -> str:
+    """
+    Escapa identificadores SQL Server con corchetes.
+    """
+    return f"[{str(nombre).replace(']', ']]')}]"
 
 def valor_config_sql(config: Any, *nombres: str) -> str:
     """
@@ -31,13 +39,6 @@ def valor_config_sql(config: Any, *nombres: str) -> str:
             return str(valor).strip()
 
     return ""
-
-
-def _sql_identificador(nombre: str) -> str:
-    """
-    Escapa identificadores SQL Server con corchetes.
-    """
-    return f"[{str(nombre).replace(']', ']]')}]"
 
 
 def construir_cadena_pyodbc_aster(
@@ -160,32 +161,18 @@ def obtener_columnas_sqlserver_tabla(
         database_default=base,
     )
 
-    sql = """
-        SELECT
-            COLUMN_NAME,
-            DATA_TYPE,
-            IS_NULLABLE,
-            CHARACTER_MAXIMUM_LENGTH,
-            NUMERIC_PRECISION,
-            NUMERIC_SCALE,
-            ORDINAL_POSITION,
-            COLUMNPROPERTY(
-                OBJECT_ID(TABLE_SCHEMA + '.' + TABLE_NAME),
-                COLUMN_NAME,
-                'IsIdentity'
-            ) AS IS_IDENTITY
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = ?
-          AND TABLE_NAME = ?
-        ORDER BY ORDINAL_POSITION
-    """
+    sql = cargar_sql("aster/columnas_tabla.sql")
 
     conn = pyodbc.connect(cadena, timeout=10)
     conn.timeout = 120
 
     try:
         cursor = conn.cursor()
-        cursor.execute(f"USE {_sql_identificador(base)}")
+
+        sql_use = cargar_sql("aster/use_database.sql").format(
+            base=sql_identificador_aster(base)
+        )
+        cursor.execute(sql_use)
 
         cursor.execute(
             sql,
@@ -247,24 +234,24 @@ def probar_conexion_tabla_sqlserver_aster(
 
         try:
             cursor = conn.cursor()
-            cursor.execute(f"USE {_sql_identificador(base)}")
-            cursor.execute("SELECT DB_NAME() AS base_actual")
+
+            sql_use = cargar_sql("aster/use_database.sql").format(
+                base=sql_identificador_aster(base)
+            )
+            cursor.execute(sql_use)
+
+            cursor.execute(cargar_sql("aster/base_actual.sql"))
             row_base = cursor.fetchone()
-            base_actual = str(row_base.base_actual)
+            base_actual = str(row_base[0]) if row_base is not None else base
 
             cursor.execute(
-                """
-                SELECT COUNT(*) AS total_columnas
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = ?
-                  AND TABLE_NAME = ?
-                """,
+                cargar_sql("aster/total_columnas_tabla.sql"),
                 schema,
                 tabla,
             )
 
             row_cols = cursor.fetchone()
-            total_columnas = int(row_cols.total_columnas or 0)
+            total_columnas = int(row_cols[0] or 0) if row_cols is not None else 0
 
         finally:
             conn.close()
