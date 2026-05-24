@@ -78,6 +78,8 @@ from app.services.aster_entities_export_service import (
 )
 
 from app.services.aster_insert_prepare_service import preparar_insercion_aster
+from app.services.aster_insert_service import insertar_datos_aster
+
 
 
 aster_bp = Blueprint("aster", __name__)
@@ -3391,18 +3393,17 @@ def accion_aster_preparar_insercion():
         return f"<div class='log-line error'>❌ Error preparando inserción ASTER: {escape(str(exc))}</div>"
     
 
-
 @aster_bp.route("/accion/aster-insertar-datos", methods=["POST"])
 def accion_aster_insertar_datos():
     """
     Inserta datos ASTER en SQL Server con validación anti-duplicados.
-    """
-    conn = None
 
+    La lógica de inserción vive en:
+    app.services.aster_insert_service
+    """
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
         confirmar_remoto = request.form.get("confirmar_remoto", "").strip().upper()
-        _ruta_archivo_form = request.form.get("ruta_archivo", "").strip()
 
         if conexion not in {"local", "remoto"}:
             conexion = "local"
@@ -3416,7 +3417,7 @@ def accion_aster_insertar_datos():
                 Para insertar en remoto debe confirmar explícitamente. No use remoto para pruebas.
             </div>
             """
-            
+
         if not bool(session.get("aster_informacion_verificada")):
             return """
             <div class='log-line error'>
@@ -3440,101 +3441,44 @@ def accion_aster_insertar_datos():
             </div>
             """
 
-        if not os.path.isfile(ruta_archivo):
-            return f"""
-            <div class='log-line error'>
-                ❌ El archivo ASTER no existe.
-            </div>
-            <div class='log-line warning'>
-                Ruta: <code>{escape(ruta_archivo)}</code>
-            </div>
-            """
-
-        df = pd.read_excel(ruta_archivo, dtype=str)
-
-        if df.empty:
-            return """
-            <div class='log-line error'>
-                ❌ El archivo ASTER no tiene registros para insertar.
-            </div>
-            """
-
         columnas_sql = _obtener_columnas_sqlserver_aster(conexion)
-        columnas_insert = _preparar_columnas_insert_aster(df, columnas_sql)
-
-        error_columnas = _validar_columnas_minimas_insert_aster(columnas_insert)
-
-        if error_columnas:
-            return f"""
-            <div class='log-line error'>
-                ❌ {escape(error_columnas)}
-            </div>
-            """
-
-        df_insert = _construir_dataframe_insert_aster(df, columnas_insert)
-        df_insert = _normalizar_dataframe_sql_aster(df_insert)
-
-        errores_validacion = _validar_dataframe_insert_aster(
-            df_insert=df_insert,
-            columnas_insert=columnas_insert,
-        )
-
-        if errores_validacion:
-            return _generar_html_errores_validacion_insert_aster(errores_validacion)
-
-        columnas_clave = _seleccionar_columnas_clave_duplicados_aster(columnas_insert)
-
         cadena = _obtener_cadena_sqlserver_aster(conexion)
-        conn = pyodbc.connect(cadena, timeout=10)
-        conn.timeout = 120
 
-        cursor = conn.cursor()
-        cursor.execute(f"USE [{ASTER_BASE_INSERCION}]")
-
-        errores_sql_reales = _diagnosticar_insert_sql_aster(
-            conn=conn,
-            df_insert=df_insert,
-            columnas_insert=columnas_insert,
+        resultado = insertar_datos_aster(
+            ruta_archivo=ruta_archivo,
+            columnas_sql=columnas_sql,
+            cadena_sqlserver=cadena,
+            base=ASTER_BASE_INSERCION,
+            schema=ASTER_SCHEMA_INSERCION,
+            tabla=ASTER_TABLA_INSERCION,
+            total_general_aster=session.get("total_aster"),
         )
 
-        if errores_sql_reales:
-            conn.rollback()
-            return _generar_html_errores_validacion_insert_aster(errores_sql_reales)
+        status = str(resultado.get("status") or "")
 
-        total_duplicados, ejemplos_duplicados = _contar_duplicados_sql_aster(
-            cursor=cursor,
-            df_insert=df_insert,
-            columnas_clave=columnas_clave,
-            columnas_insert=columnas_insert,
-        )
-
-        if total_duplicados > 0:
-            conn.rollback()
-
-            return _generar_html_duplicados_aster(
-                total_duplicados=total_duplicados,
-                columnas_clave=columnas_clave,
-                ejemplos=ejemplos_duplicados,
+        if status in {"errores_validacion", "errores_sql_reales"}:
+            return _generar_html_errores_validacion_insert_aster(
+                resultado.get("errores", [])
             )
 
-        total_insertados = _insertar_dataframe_sql_aster(conn, df_insert)
+        if status == "duplicados":
+            return _generar_html_duplicados_aster(
+                total_duplicados=int(resultado.get("total_duplicados", 0)),
+                columnas_clave=resultado.get("columnas_clave", []),
+                ejemplos=resultado.get("ejemplos_duplicados", []),
+            )
 
-        cuadre_ok, detalle_cuadre = _validar_cuadre_final_aster(
-            total_filas_excel=len(df),
-            total_insertados=total_insertados,
-        )
-
-        if not cuadre_ok:
-            conn.rollback()
-
+        if status == "cuadre_fallido":
             fecha_yyyymmdd = _obtener_fecha_proceso_aster()
             ruta_entidades, nombre_entidades, total_entidades = _generar_excel_entidades_aster(
                 fecha_yyyymmdd
             )
 
+            detalle_cuadre = resultado.get("detalle_cuadre", {})
+
             _registrar_historial_carga_aster(
                 fecha_proceso=fecha_yyyymmdd,
-                archivo_excel=os.path.basename(ruta_archivo),
+                archivo_excel=os.path.basename(str(resultado.get("ruta_archivo", ""))),
                 conexion=conexion,
                 total_general_aster=detalle_cuadre.get("total_general_aster"),
                 filas_excel=detalle_cuadre.get("filas_excel") or 0,
@@ -3545,7 +3489,7 @@ def accion_aster_insertar_datos():
                 ruta_reporte_entidades=ruta_entidades,
             )
 
-            html_reporte = _generar_html_reporte_final_aster(
+            return _generar_html_reporte_final_aster(
                 fecha_yyyymmdd=fecha_yyyymmdd,
                 detalle_cuadre=detalle_cuadre,
                 ruta_entidades=ruta_entidades,
@@ -3553,22 +3497,29 @@ def accion_aster_insertar_datos():
                 total_entidades=total_entidades,
             )
 
-            return html_reporte
-
-        conn.commit()
+        if not resultado.get("success"):
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(str(resultado.get("error", "Error insertando datos ASTER.")))}
+            </div>
+            """
 
         fecha_yyyymmdd = _obtener_fecha_proceso_aster()
         ruta_entidades, nombre_entidades, total_entidades = _generar_excel_entidades_aster(
             fecha_yyyymmdd
         )
 
+        detalle_cuadre = resultado.get("detalle_cuadre", {})
+        total_insertados = int(resultado.get("total_insertados", 0))
+        ruta_archivo_insertado = str(resultado.get("ruta_archivo", ruta_archivo))
+
         session["aster_ultimo_insert_conexion"] = conexion
         session["aster_ultimo_insert_total"] = total_insertados
         session["aster_reporte_entidades"] = ruta_entidades
-        
+
         _registrar_historial_carga_aster(
             fecha_proceso=fecha_yyyymmdd,
-            archivo_excel=os.path.basename(ruta_archivo),
+            archivo_excel=os.path.basename(ruta_archivo_insertado),
             conexion=conexion,
             total_general_aster=detalle_cuadre.get("total_general_aster"),
             filas_excel=detalle_cuadre.get("filas_excel") or 0,
@@ -3581,11 +3532,11 @@ def accion_aster_insertar_datos():
 
         return _generar_html_insert_ok_aster(
             conexion=conexion,
-            ruta_archivo=ruta_archivo,
-            total_leidos=len(df),
+            ruta_archivo=ruta_archivo_insertado,
+            total_leidos=int(resultado.get("total_leidos", 0)),
             total_insertados=total_insertados,
-            columnas_insertadas=list(df_insert.columns),
-            columnas_clave=columnas_clave,
+            columnas_insertadas=resultado.get("columnas_insertadas", []),
+            columnas_clave=resultado.get("columnas_clave", []),
             detalle_cuadre=detalle_cuadre,
             ruta_entidades=ruta_entidades,
             nombre_entidades=nombre_entidades,
@@ -3593,15 +3544,9 @@ def accion_aster_insertar_datos():
         )
 
     except Exception as exc:
-        if conn is not None:
-            conn.rollback()
-
         return f"<div class='log-line error'>❌ Error insertando datos ASTER: {escape(str(exc))}</div>"
 
-    finally:
-        if conn is not None:
-            conn.close()
-            
+
 
 @aster_bp.route("/accion/aster-historial-cargas", methods=["POST", "GET"])
 def accion_aster_historial_cargas():
