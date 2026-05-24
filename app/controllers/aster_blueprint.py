@@ -77,6 +77,7 @@ from app.services.aster_entities_export_service import (
     normalizar_entidades_filtradas_finales_aster,
 )
 
+from app.services.aster_insert_prepare_service import preparar_insercion_aster
 
 
 aster_bp = Blueprint("aster", __name__)
@@ -3319,10 +3320,12 @@ def accion_aster_preparar_insercion():
     """
     Prepara inserción ASTER comparando Excel normalizado vs tabla SQL.
     No inserta datos.
+
+    La lógica vive en:
+    app.services.aster_insert_prepare_service
     """
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
-        _ruta_archivo_form = request.form.get("ruta_archivo", "").strip()
 
         if conexion not in {"local", "remoto"}:
             conexion = "local"
@@ -3330,49 +3333,47 @@ def accion_aster_preparar_insercion():
         try:
             ruta_archivo = _resolver_archivo_aster_normalizado()
         except FileNotFoundError as exc:
+            session["aster_preparacion_insercion_ok"] = False
             return f"""
             <div class='log-line error'>
                 ❌ {escape(str(exc))}
             </div>
             """
 
-        if not os.path.isfile(ruta_archivo):
-            return f"""
-            <div class='log-line error'>
-                ❌ El archivo ASTER no existe.
-            </div>
-            <div class='log-line warning'>
-                Ruta: <code>{escape(ruta_archivo)}</code>
-            </div>
-            """
-
-        df = pd.read_excel(ruta_archivo, dtype=str)
-
         columnas_sql = _obtener_columnas_sqlserver_aster(conexion)
-        comparacion = _comparar_excel_vs_sql_aster(df, columnas_sql)
 
-        columnas_insert = _preparar_columnas_insert_aster(df, columnas_sql)
-        error_columnas = _validar_columnas_minimas_insert_aster(columnas_insert)
-
-        if error_columnas:
-            session["aster_preparacion_insercion_ok"] = False
-            return f"""
-            <div class='log-line error'>
-                ❌ {escape(error_columnas)}
-            </div>
-            """
-
-        df_insert = _construir_dataframe_insert_aster(df, columnas_insert)
-        df_insert = _normalizar_dataframe_sql_aster(df_insert)
-
-        errores_validacion = _validar_dataframe_insert_aster(
-            df_insert=df_insert,
-            columnas_insert=columnas_insert,
+        resultado = preparar_insercion_aster(
+            ruta_archivo=ruta_archivo,
+            columnas_sql=columnas_sql,
         )
 
-        if errores_validacion:
+        if not resultado.get("success"):
             session["aster_preparacion_insercion_ok"] = False
-            return _generar_html_errores_validacion_insert_aster(errores_validacion)
+
+            status = str(resultado.get("status") or "")
+
+            if status == "archivo_no_existe":
+                return f"""
+                <div class='log-line error'>
+                    ❌ {escape(str(resultado.get("error", "El archivo ASTER no existe.")))}
+                </div>
+                <div class='log-line warning'>
+                    Ruta: <code>{escape(str(resultado.get("ruta_archivo", "")))}</code>
+                </div>
+                """
+
+            if status == "errores_validacion":
+                return _generar_html_errores_validacion_insert_aster(
+                    resultado.get("errores_validacion", [])
+                )
+
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(str(resultado.get("error", "Error preparando inserción ASTER.")))}
+            </div>
+            """
+
+        comparacion = resultado["comparacion"]
 
         session["aster_conexion_insercion"] = conexion
         session["aster_preparacion_insercion_ok"] = True
@@ -3380,14 +3381,15 @@ def accion_aster_preparar_insercion():
 
         return _generar_html_preparacion_insercion_aster(
             conexion=conexion,
-            ruta_archivo=ruta_archivo,
-            total_registros=len(df),
+            ruta_archivo=str(resultado["ruta_archivo"]),
+            total_registros=int(resultado["total_registros"]),
             comparacion=comparacion,
         )
 
     except Exception as exc:
         session["aster_preparacion_insercion_ok"] = False
         return f"<div class='log-line error'>❌ Error preparando inserción ASTER: {escape(str(exc))}</div>"
+    
 
 
 @aster_bp.route("/accion/aster-insertar-datos", methods=["POST"])
