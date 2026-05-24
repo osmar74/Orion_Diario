@@ -13,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 
+from app.services.sql_loader import cargar_sql
+
 
 TIPOS_TEXTO_SQL = {
     "char",
@@ -51,18 +53,7 @@ def obtener_columnas_texto_sql(conn: Any, tabla_destino: str) -> list[ColumnaTex
     """
     cursor = conn.cursor()
     cursor.execute(
-        """
-        SELECT
-            COLUMN_NAME,
-            DATA_TYPE,
-            CHARACTER_MAXIMUM_LENGTH
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME = ?
-          AND DATA_TYPE IN ('char', 'nchar', 'varchar', 'nvarchar')
-          AND CHARACTER_MAXIMUM_LENGTH IS NOT NULL
-          AND CHARACTER_MAXIMUM_LENGTH > 0
-        ORDER BY ORDINAL_POSITION
-        """,
+        cargar_sql("orion/columnas_texto_tabla.sql"),
         tabla_destino,
     )
 

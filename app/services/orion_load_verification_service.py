@@ -24,6 +24,7 @@ from app.controllers.helpers import (
 )
 from app.services.daily_paths import ruta_orion
 from app.services.orion_file_lookup_service import buscar_archivo_consolidado_orion
+from app.services.sql_loader import cargar_sql
 
 
 TABLA_ORION_POR_TIPO = {
@@ -31,6 +32,25 @@ TABLA_ORION_POR_TIPO = {
     "lote": "Lote",
     "discador": "Discador",
 }
+
+
+def _sql_identificador_orion(nombre: str) -> str:
+    """
+    Escapa identificadores SQL Server con corchetes.
+    """
+    return f"[{str(nombre).replace(']', ']]')}]"
+
+
+def _tabla_sql_orion(tabla_destino: str) -> str:
+    """
+    Valida y devuelve tabla ORION segura.
+    """
+    tablas_validas = set(TABLA_ORION_POR_TIPO.values())
+
+    if tabla_destino not in tablas_validas:
+        raise ValueError(f"Tabla ORION no permitida: {tabla_destino}")
+
+    return _sql_identificador_orion(tabla_destino)
 
 
 def verificar_carga_orion(
@@ -53,6 +73,8 @@ def verificar_carga_orion(
             "success": False,
             "error": "Tipo de carga no válido.",
         }
+
+    tabla_sql = _tabla_sql_orion(tabla_destino)
 
     carpeta_orion = ruta_orion(data_dir, fecha)
 
@@ -101,12 +123,7 @@ def verificar_carga_orion(
         cursor = conn.cursor()
 
         cursor.execute(
-            """
-            SELECT COLUMN_NAME, DATA_TYPE
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = ?
-            ORDER BY ORDINAL_POSITION
-            """,
+            cargar_sql("orion/columnas_tabla.sql"),
             tabla_destino,
         )
 
@@ -135,9 +152,13 @@ def verificar_carga_orion(
 
         try:
             primera_col = columnas_servidor[0]
-            cursor.execute(
-                f"SELECT MAX(CAST({primera_col} AS BIGINT)) FROM [{tabla_destino}]"
+            primera_col_sql = _sql_identificador_orion(primera_col)
+
+            sql_max = cargar_sql("orion/max_bigint_column.sql").format(
+                columna=primera_col_sql,
+                tabla=tabla_sql,
             )
+            cursor.execute(sql_max)
             row = cursor.fetchone()
             val = row[0] if row else None
 
@@ -146,7 +167,10 @@ def verificar_carga_orion(
         except Exception:
             ultimo_id = None
 
-        cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
+        sql_count = cargar_sql("orion/count_table.sql").format(
+            tabla=tabla_sql,
+        )
+        cursor.execute(sql_count)
         row = cursor.fetchone()
         total_tabla = row[0] if row else 0
 
