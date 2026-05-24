@@ -40,6 +40,10 @@ from app.services.aster_file_service import (
 
 from app.services.aster_normalization_service import normalizar_archivo_aster
 from app.services.aster_entity_service import analizar_entidades_excel_aster
+from app.services.aster_sql_entity_service import (
+    consultar_entidades_sql_aster,
+    normalizar_fecha_sql_aster,
+)
 
 aster_bp = Blueprint("aster", __name__)
 
@@ -373,103 +377,26 @@ def _generar_html_entidades_excel_aster(
 
 def _normalizar_fecha_sql_aster(fecha_raw: str) -> str:
     """
-    Convierte una fecha recibida en distintos formatos a YYYY-MM-DD.
-
-    Acepta:
-    - 20260513
-    - 2026-05-13
-    - 202605_13
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sql_entity_service.
     """
-    fecha_yyyymmdd = _normalizar_fecha_aster(fecha_raw)
-
-    fecha_dt = datetime.strptime(fecha_yyyymmdd, "%Y%m%d")
-
-    return fecha_dt.strftime("%Y-%m-%d")
-
-
-def _obtener_config_mysql_aster() -> dict[str, str]:
-    """
-    Obtiene configuración MySQL ASTER desde variables de entorno.
-    """
-    config = {
-        "host": os.getenv("ASTER_DB_HOST", "").strip(),
-        "user": os.getenv("ASTER_DB_USER", "").strip(),
-        "password": os.getenv("ASTER_DB_PASSWORD", "").strip(),
-        "database": os.getenv("ASTER_DB_NAME", "gestioncomercial").strip(),
-    }
-
-    faltantes = [
-        nombre
-        for nombre, valor in config.items()
-        if nombre != "password" and not valor
-    ]
-
-    if not config["password"]:
-        faltantes.append("password")
-
-    if faltantes:
-        raise ValueError(
-            "Faltan variables de entorno ASTER: "
-            + ", ".join(f"ASTER_DB_{campo.upper()}" for campo in faltantes)
-        )
-
-    return config
+    return normalizar_fecha_sql_aster(fecha_raw)
 
 
 def _consultar_entidades_sql_aster(fecha_sql: str) -> list[dict[str, Any]]:
     """
-    Ejecuta la consulta SQL contra el servidor ASTER.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_sql_entity_service.
+
+    Recibe fecha en YYYY-MM-DD desde llamadas existentes.
     """
-    try:
-        import pymysql
-    except ImportError as exc:
-        raise RuntimeError(
-            "No está instalado PyMySQL. Ejecute: pip install PyMySQL"
-        ) from exc
+    resultado = consultar_entidades_sql_aster(fecha_sql)
 
-    config = _obtener_config_mysql_aster()
+    if not resultado.get("success"):
+        raise RuntimeError(str(resultado.get("error", "Error consultando entidades ASTER.")))
 
-    sql = """
-        SELECT
-            entidad,
-            count(distinct data) as numero
-        FROM comentarios
-        WHERE DATE(fecha) = %s
-        GROUP BY entidad
-        ORDER BY numero DESC
-    """
+    return resultado.get("resultados", [])
 
-    conexion = pymysql.connect(
-        host=config["host"],
-        user=config["user"],
-        password=config["password"],
-        database=config["database"],
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor,
-    )
-
-    try:
-        with conexion.cursor() as cursor:
-            cursor.execute(sql, (fecha_sql,))
-            filas = cursor.fetchall()
-    finally:
-        conexion.close()
-
-    resultados: list[dict[str, Any]] = []
-
-    for fila in filas:
-        entidad = str(fila.get("entidad") or "").strip()
-        numero = int(fila.get("numero") or 0)
-
-        resultados.append(
-            {
-                "entidad": entidad,
-                "numero": numero,
-                "SSS": f"'{entidad}'",
-            }
-        )
-
-    return resultados
 
 
 def _generar_html_consulta_sql_aster(
@@ -3416,11 +3343,13 @@ def accion_aster_entidades_excel():
         return f"<div class='log-line error'>❌ Error analizando entidades ASTER: {escape(str(exc))}</div>"
     
 
-
 @aster_bp.route("/accion/aster-consulta-sql", methods=["POST"])
 def accion_aster_consulta_sql():
     """
-    Ejecuta consulta SQL ASTER para obtener entidades del día.
+    Ejecuta consulta SQL/MySQL ASTER para obtener entidades del día.
+
+    La lógica de consulta vive en:
+    app.services.aster_sql_entity_service
     """
     try:
         fecha_raw = request.form.get("fecha_consulta", "").strip()
@@ -3439,15 +3368,22 @@ def accion_aster_consulta_sql():
             </div>
             """
 
-        fecha_sql = _normalizar_fecha_sql_aster(fecha_raw)
-        resultados = _consultar_entidades_sql_aster(fecha_sql)
+        resultado = consultar_entidades_sql_aster(fecha_raw)
+
+        if not resultado.get("success"):
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(str(resultado.get("error", "Error ejecutando consulta SQL ASTER.")))}
+            </div>
+            """
+
+        fecha_sql = str(resultado["fecha_sql"])
+        resultados = resultado["resultados"]
 
         session["aster_fecha_sql"] = fecha_sql
         session["aster_resultados_sql"] = resultados
-        session["aster_total_entidades_sql"] = len(resultados)
-        session["aster_total_registros_sql"] = sum(
-            int(fila["numero"]) for fila in resultados
-        )
+        session["aster_total_entidades_sql"] = resultado["total_entidades"]
+        session["aster_total_registros_sql"] = resultado["total_registros"]
 
         return _generar_html_consulta_sql_aster(
             fecha_sql=fecha_sql,
@@ -3457,6 +3393,7 @@ def accion_aster_consulta_sql():
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error ejecutando consulta SQL ASTER: {escape(str(exc))}</div>"
     
+ 
 
 @aster_bp.route("/accion/aster-conciliar-entidades", methods=["POST"])
 def accion_aster_conciliar_entidades():
