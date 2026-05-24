@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from flask import Blueprint, request, session
 from app.services.daily_paths import ruta_orion, normalizar_fecha_yyyymmdd
+from app.services.orion_file_lookup_service import buscar_archivo_consolidado_orion
 
 from typing import cast
 from datetime import datetime
@@ -126,50 +127,6 @@ def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
     return html
 
 
-def _buscar_archivo_consolidado_orion(
-    carpeta_diaria: str,
-    tipo: str,
-) -> tuple[str | None, str | None]:
-    """
-    Busca archivos consolidados ORION exclusivamente en:
-
-    data\\YYYYMMDD\\Orion\\Consolidados
-    """
-    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
-
-    if not os.path.isdir(carpeta_consolidados):
-        return None, None
-
-    archivos = []
-
-    for archivo in os.listdir(carpeta_consolidados):
-        nombre = archivo.lower()
-
-        if not nombre.endswith(".xlsx"):
-            continue
-
-        if tipo == "causales":
-            if nombre.startswith("causales_consolidado"):
-                archivos.append(archivo)
-
-        elif tipo == "lote":
-            if nombre.startswith("lote_consolidado"):
-                archivos.append(archivo)
-
-        elif tipo == "discador":
-            if "discador" in nombre and nombre.endswith("consolidado.xlsx"):
-                archivos.append(archivo)
-
-    if not archivos:
-        return None, None
-
-    archivos.sort()
-
-    nombre_archivo = archivos[0]
-    ruta_archivo = os.path.join(carpeta_consolidados, nombre_archivo)
-
-    return ruta_archivo, nombre_archivo
-
 
 
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
@@ -268,7 +225,7 @@ def accion_verificar_carga():
     if not tabla_destino:
         return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
 
-    ruta_archivo, nombre_archivo = _buscar_archivo_consolidado_orion(
+    ruta_archivo, nombre_archivo = buscar_archivo_consolidado_orion(
         carpeta_diaria,
         tipo,
     )
@@ -485,7 +442,7 @@ def accion_insertar_datos():
     if not tabla_destino:
         return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
 
-    ruta_archivo, nombre_archivo = _buscar_archivo_consolidado_orion(
+    ruta_archivo, nombre_archivo = buscar_archivo_consolidado_orion(
         carpeta_diaria,
         tipo,
     )
