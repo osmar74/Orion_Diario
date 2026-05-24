@@ -800,3 +800,433 @@ def render_conciliacion_aster(
     """
 
     return html
+
+def render_preparacion_insercion_aster(
+    conexion: str,
+    tabla_destino: str,
+    ruta_archivo: str,
+    total_registros: int,
+    comparacion: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML de comparación previa a inserción ASTER.
+    """
+    conexion_normalizada = (conexion or "local").strip().lower()
+    es_remoto = conexion_normalizada == "remoto"
+
+    html = ""
+
+    if es_remoto:
+        html += """
+        <div class='log-line warning'>
+            ⚠️ Atención: seleccionó conexión REMOTA. Esta conexión es producción.
+            No se debe usar para pruebas.
+        </div>
+        """
+    else:
+        html += """
+        <div class='log-line success'>
+            ✅ Conexión LOCAL seleccionada para pruebas.
+        </div>
+        """
+
+    total_ok = sum(1 for fila in comparacion if fila["estado"] == "OK")
+    total_no_sql = sum(1 for fila in comparacion if fila["estado"] == "NO_EXISTE_EN_SQL")
+    total_no_excel = sum(1 for fila in comparacion if fila["estado"] == "NO_EXISTE_EN_EXCEL")
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen preparación inserción ASTER
+            </th>
+        </tr>
+    """
+
+    filas_resumen = [
+        ("Conexión seleccionada", conexion_normalizada.upper()),
+        ("Tabla destino", tabla_destino),
+        ("Archivo Excel", ruta_archivo),
+        ("Registros en Excel", total_registros),
+        ("Columnas coincidentes", total_ok),
+        ("Columnas Excel sin campo SQL", total_no_sql),
+        ("Campos SQL sin columna Excel", total_no_excel),
+    ]
+
+    for etiqueta, valor in filas_resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.8rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Columna Excel</th>
+            <th>Tipo Excel</th>
+            <th>Campo SQL</th>
+            <th>Tipo SQL</th>
+            <th>Nullable</th>
+            <th>Longitud</th>
+            <th>Estado</th>
+        </tr>
+    """
+
+    for idx, fila in enumerate(comparacion, start=1):
+        estado = str(fila["estado"])
+
+        if estado == "OK":
+            color = "#28a745"
+            texto_estado = "✅ OK"
+        elif estado == "NO_EXISTE_EN_SQL":
+            color = "#dc3545"
+            texto_estado = "❌ No existe en SQL"
+        else:
+            color = "#ffc107"
+            texto_estado = "⚠️ No existe en Excel"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td><b>{escape(str(fila["columna_excel"]))}</b></td>
+            <td>{escape(str(fila["tipo_excel"]))}</td>
+            <td><b>{escape(str(fila["columna_sql"]))}</b></td>
+            <td>{escape(str(fila["tipo_sql"]))}</td>
+            <td>{escape(str(fila["nullable"]))}</td>
+            <td>{escape(str(fila["longitud"]))}</td>
+            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div id='aster-preparacion-insercion-data' style='display:none;' data-preparado='1'></div>
+    """
+
+    return html
+
+
+def render_duplicados_aster(
+    total_duplicados: int,
+    columnas_clave: list[str],
+    ejemplos: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML de bloqueo por duplicados.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Inserción ASTER bloqueada. Se detectaron {total_duplicados} registros posiblemente duplicados.
+    </div>
+    <div class='log-line warning'>
+        No se insertó ningún registro. Revise los datos o limpie la carga previa si corresponde.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Validación anti-duplicados ASTER
+            </th>
+        </tr>
+        <tr>
+            <td><b>Columnas usadas como clave</b></td>
+            <td>{escape(", ".join(columnas_clave))}</td>
+        </tr>
+        <tr>
+            <td><b>Duplicados detectados</b></td>
+            <td>{escape(str(total_duplicados))}</td>
+        </tr>
+    </table>
+    """
+
+    if ejemplos:
+        html += """
+        <table class='dataframe' style='width:100%; margin-top:10px;'>
+            <tr style='background:#1e3a5f; color:#fff;'>
+                <th>#</th>
+        """
+
+        for columna in columnas_clave:
+            html += f"<th>{escape(str(columna))}</th>"
+
+        html += "</tr>"
+
+        for idx, ejemplo in enumerate(ejemplos, start=1):
+            html += f"<tr><td>{idx}</td>"
+
+            for columna in columnas_clave:
+                html += f"<td>{escape(str(ejemplo.get(columna, '')))}</td>"
+
+            html += "</tr>"
+
+        html += "</table>"
+
+    return html
+
+
+def render_errores_validacion_insert_aster(
+    errores: list[dict[str, Any]],
+) -> str:
+    """
+    Genera HTML con errores de validación previa.
+    """
+    html = f"""
+    <div class='log-line error'>
+        ❌ Preparación de inserción ASTER bloqueada. Se detectaron {len(errores)} errores de datos.
+    </div>
+    <div class='log-line warning'>
+        No se debe insertar hasta corregir estos valores o ajustar los tipos/longitudes de la tabla SQL.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Fila Excel</th>
+            <th>Columna</th>
+            <th>Tipo SQL</th>
+            <th>Valor</th>
+            <th>Problema</th>
+        </tr>
+    """
+
+    for idx, error in enumerate(errores, start=1):
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(error.get("fila", "")))}</td>
+            <td><b>{escape(str(error.get("columna", "")))}</b></td>
+            <td>{escape(str(error.get("tipo_sql", "")))}</td>
+            <td style='word-break:break-all;'>{escape(str(error.get("valor", "")))}</td>
+            <td style='color:#dc3545; font-weight:bold;'>{escape(str(error.get("problema", "")))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += """
+    <div id='aster-preparacion-insercion-data' style='display:none;' data-preparado='0'></div>
+    """
+
+    return html
+
+
+def render_historial_cargas_aster(
+    registros: list[dict[str, Any]],
+    ruta_db: str,
+) -> str:
+    """
+    Genera HTML del historial de cargas ASTER.
+    """
+    html = """
+    <div class='log-line info'>
+        📜 Historial local de cargas ASTER.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='12' style='background:#1e3a5f; color:#fff;'>
+                Últimas cargas ASTER
+            </th>
+        </tr>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>#</th>
+            <th>Fecha registro</th>
+            <th>Fecha proceso</th>
+            <th>Conexión</th>
+            <th>Total ASTER</th>
+            <th>Filas Excel</th>
+            <th>Insertados</th>
+            <th>Estado</th>
+            <th>Archivo Excel</th>
+            <th>Reporte entidades</th>
+            <th>Ruta reporte</th>
+            <th>Mensaje</th>
+        </tr>
+    """
+
+    if not registros:
+        html += """
+        <tr>
+            <td colspan='12' style='text-align:center; color:#888;'>
+                Todavía no hay cargas ASTER registradas.
+            </td>
+        </tr>
+        """
+
+    for idx, registro in enumerate(registros, start=1):
+        estado = str(registro.get("estado") or "")
+
+        if estado == "CORRECTO":
+            color = "#28a745"
+        elif estado in {"FALLÓ_CUADRE", "ERROR_DATOS"}:
+            color = "#dc3545"
+        else:
+            color = "#ffc107"
+
+        html += f"""
+        <tr>
+            <td>{idx}</td>
+            <td>{escape(str(registro.get("fecha_hora_registro") or ""))}</td>
+            <td>{escape(str(registro.get("fecha_proceso") or ""))}</td>
+            <td>{escape(str(registro.get("conexion") or ""))}</td>
+            <td>{escape(str(registro.get("total_general_aster") or ""))}</td>
+            <td>{escape(str(registro.get("filas_excel") or ""))}</td>
+            <td>{escape(str(registro.get("registros_insertados") or ""))}</td>
+            <td style='font-weight:bold; color:{color};'>{escape(estado)}</td>
+            <td style='word-break:break-all;'>{escape(str(registro.get("archivo_excel") or ""))}</td>
+            <td>{escape(str(registro.get("archivo_reporte_entidades") or ""))}</td>
+            <td style='word-break:break-all;'>{escape(str(registro.get("ruta_reporte_entidades") or ""))}</td>
+            <td style='word-break:break-all;'>{escape(str(registro.get("mensaje") or ""))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += f"""
+    <div class='log-line info' style='margin-top:10px;'>
+        Base local historial: <code>{escape(str(ruta_db))}</code>
+    </div>
+    """
+
+    return html
+
+
+def render_reporte_final_aster(
+    fecha_yyyymmdd: str,
+    detalle_cuadre: dict[str, Any],
+    ruta_entidades: str,
+    nombre_entidades: str,
+    total_entidades: int,
+) -> str:
+    """
+    Genera reporte visual final de Fase H ASTER.
+    """
+    cumple = bool(detalle_cuadre.get("cumple"))
+
+    if cumple:
+        html = """
+        <div class='log-line success'>
+            ✅ Proceso ASTER correcto. La cantidad insertada coincide con el Excel y con el Total general ASTER.
+        </div>
+        """
+    else:
+        html = """
+        <div class='log-line error'>
+            ❌ Proceso ASTER falló. La cantidad insertada no coincide con el Excel o con el Total general ASTER.
+        </div>
+        """
+
+    filas = [
+        ("Fecha proceso", fecha_yyyymmdd),
+        ("Filas del archivo Excel", detalle_cuadre.get("filas_excel")),
+        ("Registros insertados", detalle_cuadre.get("registros_insertados")),
+        ("Total general ASTER", detalle_cuadre.get("total_general_aster")),
+        ("Resultado de comparación", "CORRECTO" if cumple else "FALLÓ"),
+        ("Archivo de entidades creado", nombre_entidades),
+        ("Ruta archivo entidades", ruta_entidades),
+        ("Entidades filtradas exportadas", total_entidades),
+    ]
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Reporte final Fase H ASTER
+            </th>
+        </tr>
+    """
+
+    for etiqueta, valor in filas:
+        color = ""
+
+        if etiqueta == "Resultado de comparación":
+            color = "color:#28a745;" if cumple else "color:#dc3545;"
+
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.85rem; word-break:break-all; font-weight:bold; {color}'>
+                {escape(str(valor))}
+            </td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    return html
+
+
+def render_insert_ok_aster(
+    fecha_yyyymmdd: str,
+    conexion: str,
+    tabla_destino: str,
+    ruta_archivo: str,
+    total_leidos: int,
+    total_insertados: int,
+    columnas_insertadas: list[str],
+    columnas_clave: list[str],
+    detalle_cuadre: dict[str, Any],
+    ruta_entidades: str,
+    nombre_entidades: str,
+    total_entidades: int,
+) -> str:
+    """
+    Genera HTML de inserción exitosa ASTER con validación final.
+    """
+    conexion_txt = "REMOTO - PRODUCCIÓN" if conexion == "remoto" else "LOCAL - PRUEBAS"
+
+    html = """
+    <div class='log-line success'>
+        ✅ Inserción ASTER completada correctamente.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Resumen inserción ASTER
+            </th>
+        </tr>
+    """
+
+    resumen = [
+        ("Conexión usada", conexion_txt),
+        ("Tabla destino", tabla_destino),
+        ("Archivo", ruta_archivo),
+        ("Registros leídos del Excel", total_leidos),
+        ("Registros duplicados detectados", 0),
+        ("Registros insertados", total_insertados),
+        ("Columnas insertadas", ", ".join(columnas_insertadas)),
+        ("Clave anti-duplicados", ", ".join(columnas_clave)),
+    ]
+
+    for etiqueta, valor in resumen:
+        html += f"""
+        <tr>
+            <td><b>{escape(str(etiqueta))}</b></td>
+            <td style='font-size:0.8rem; word-break:break-all;'>{escape(str(valor))}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    html += render_reporte_final_aster(
+        fecha_yyyymmdd=fecha_yyyymmdd,
+        detalle_cuadre=detalle_cuadre,
+        ruta_entidades=ruta_entidades,
+        nombre_entidades=nombre_entidades,
+        total_entidades=total_entidades,
+    )
+
+    return html
+
