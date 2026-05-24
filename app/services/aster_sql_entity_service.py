@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any
 
 from app.services.aster_file_service import normalizar_fecha_aster
+from app.services.sql_loader import cargar_sql
 
 
 def normalizar_fecha_sql_aster(fecha_raw: str) -> str:
@@ -114,15 +115,7 @@ def consultar_entidades_sql_aster(
     try:
         config = obtener_config_mysql_aster()
 
-        sql = """
-            SELECT
-                entidad,
-                COUNT(DISTINCT data) AS numero
-            FROM comentarios
-            WHERE DATE(fecha) = %s
-            GROUP BY entidad
-            ORDER BY numero DESC
-        """
+        sql = cargar_sql("aster/entidades/count_distinct_data_por_entidad.sql")
 
         conexion = pymysql.connect(
             host=config["host"],
