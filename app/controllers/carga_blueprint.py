@@ -5,6 +5,7 @@ Blueprint para la Fase G: Carga de datos a SQL Server.
 import json
 
 from flask import Blueprint, request, session
+
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
 
 from app.services.orion_load_renderer import (
@@ -34,63 +35,6 @@ from app.services.orion_connection_service import (
 )
 
 carga_bp = Blueprint("carga", __name__)
-
-def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
-    """
-    Genera tabla visual de asignación Nombre_Lote desde Discador[Lote].
-    """
-    if not reporte_lotes:
-        return """
-        <div class='log-line warning'>
-            ⚠️ No se generó reporte de asignación Nombre_Lote.
-        </div>
-        """
-
-    html = """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='6' style='background:#1e3a5f; color:#fff;'>
-                Asignación Nombre_Lote desde Discador[Lote]
-            </th>
-        </tr>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Archivo lote</th>
-            <th>Nombre base</th>
-            <th>Nombre_Lote asignado</th>
-            <th>Similitud</th>
-            <th>Estado</th>
-        </tr>
-    """
-
-    for idx, fila in enumerate(reporte_lotes, start=1):
-        estado = str(fila.get("estado", ""))
-
-        if estado == "OK":
-            color = "#28a745"
-            texto_estado = "✅ OK"
-        elif estado == "REVISAR":
-            color = "#ffc107"
-            texto_estado = "⚠️ Revisar"
-        else:
-            color = "#dc3545"
-            texto_estado = "❌ Sin coincidencia confiable"
-
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td>{fila.get("archivo_lote", "")}</td>
-            <td>{fila.get("nombre_base", "")}</td>
-            <td><b>{fila.get("nombre_lote_asignado", "")}</b></td>
-            <td>{fila.get("similitud", "")}</td>
-            <td style='font-weight:bold; color:{color};'>{texto_estado}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    return html
-
 
 
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
