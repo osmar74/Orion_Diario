@@ -94,6 +94,7 @@ from app.services.aster_phase_i_prepare_service import (
     ruta_entidades_fase_i as ruta_entidades_fase_i_service,
     validar_sql_mysql_solo_select as validar_sql_mysql_solo_select_service,
 )
+from app.services.aster_phase_i_execution_service import ejecutar_fase_i_aster
 
 
 
@@ -3730,21 +3731,12 @@ def _generar_html_reporte_fase_i(
 @aster_bp.route("/accion/aster-fase-i-ejecutar", methods=["POST"])
 def accion_aster_fase_i_ejecutar():
     """
-    Ejecuta Fase I completa:
+    Ejecuta Fase I completa.
 
-    1. DELETE FROM Aster_Api.dbo.usuarios
-    2. SELECT usuarios.crm
-    3. INSERT Aster_Api.dbo.usuarios
-    4. SELECT gestioncomercial.comentarios filtrado
-    5. Transformación fechaagenda
-    6. Validación anti-duplicados comentarios
-    7. INSERT Aster_Api.dbo.comentarios
+    La lógica de ejecución vive en:
+    app.services.aster_phase_i_execution_service
     """
-    conn_sql = None
-
     try:
-        pipeline_fase_i: list[dict[str, Any]] = []
-
         conexion = request.form.get("conexion", "local").strip().lower()
         fecha_raw = request.form.get("fecha_proceso", "").strip()
         confirmar_remoto = request.form.get("confirmar_remoto", "").strip().upper()
@@ -3759,129 +3751,36 @@ def accion_aster_fase_i_ejecutar():
             </div>
             """
 
-        fecha_yyyymmdd = _obtener_fecha_fase_i(fecha_raw)
-        entidades, ruta_entidades = _leer_entidades_fase_i(fecha_yyyymmdd)
-
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            1,
-            "Leer entidades filtro",
-            ruta_entidades,
-            "Filtro entidad IN (...)",
-            "Traídos",
-            len(entidades),
+        resultado = ejecutar_fase_i_aster(
+            data_dir=DATA_DIR,
+            fecha_raw=fecha_raw,
+            fecha_default=_obtener_fecha_proceso_aster(),
+            conexion=conexion,
+            sql_local=SQL_LOCAL,
+            sql_remoto=SQL_REMOTO,
+            base=ASTER_FASE_I_BASE,
+            schema=ASTER_FASE_I_SCHEMA,
+            tabla_usuarios=ASTER_FASE_I_TABLA_USUARIOS,
+            tabla_comentarios=ASTER_FASE_I_TABLA_COMENTARIOS,
+            db_usuarios=ASTER_MYSQL_DB_USUARIOS,
+            db_gestion=ASTER_MYSQL_DB_GESTION,
         )
 
-        df_usuarios = _leer_usuarios_mysql_fase_i()
-
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            2,
-            "Traer usuarios",
-            "MySQL usuarios.crm",
-            "Python DataFrame usuarios",
-            "Traídos",
-            len(df_usuarios),
+        status = str(resultado.get("status") or "")
+        fecha_yyyymmdd = str(
+            resultado.get("fecha_yyyymmdd")
+            or _obtener_fecha_fase_i(fecha_raw)
         )
+        ruta_entidades = str(resultado.get("ruta_entidades") or "")
+        pipeline = resultado.get("pipeline") or []
 
-        df_comentarios = _leer_comentarios_mysql_fase_i(fecha_yyyymmdd, entidades)
-
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            3,
-            "Traer comentarios",
-            "MySQL gestioncomercial.comentarios excluyendo SystemUser",
-            "Python DataFrame comentarios",
-            "Traídos",
-            len(df_comentarios),
-        )
-
-        df_usuarios = _leer_usuarios_mysql_fase_i()
-        df_comentarios = _leer_comentarios_mysql_fase_i(fecha_yyyymmdd, entidades)
-
-        columnas_clave_origen = ["id", "fecha", "fechainicio", "telefono"]
-
-        faltan_origen = [
-            columna
-            for columna in columnas_clave_origen
-            if columna not in df_comentarios.columns
-        ]
-
-        if faltan_origen:
-            return (
-                "<div class='log-line error'>❌ Fase I bloqueada. "
-                "Faltan columnas clave en origen MySQL comentarios: "
-                + escape(", ".join(faltan_origen))
-                + "</div>"
-            )
-
-        df_comentarios = _transformar_comentarios_fase_i(df_comentarios)
-
-        columnas_sql_usuarios = _obtener_columnas_sqlserver_fase_i(
-            conexion,
-            ASTER_FASE_I_TABLA_USUARIOS,
-        )
-        columnas_sql_comentarios = _obtener_columnas_sqlserver_fase_i(
-            conexion,
-            ASTER_FASE_I_TABLA_COMENTARIOS,
-        )
-
-        columnas_insert_usuarios = _preparar_columnas_insert_fase_i(
-            df_usuarios,
-            columnas_sql_usuarios,
-        )
-
-        columnas_insert_comentarios = _preparar_columnas_insert_fase_i(
-            df_comentarios,
-            columnas_sql_comentarios,
-        )
-
-        error_usuarios = _validar_columnas_minimas_fase_i(
-            columnas_insert_usuarios,
-            ["id", "usuario"],
-            "usuarios",
-        )
-
-        if error_usuarios:
-            return f"<div class='log-line error'>❌ {escape(error_usuarios)}</div>"
-
-        error_comentarios = _validar_columnas_minimas_fase_i(
-            columnas_insert_comentarios,
-            ["id", "data", "usuario", "entidad"],
-            "comentarios",
-        )
-
-        if error_comentarios:
-            return f"<div class='log-line error'>❌ {escape(error_comentarios)}</div>"
-
-        df_insert_usuarios = _construir_dataframe_insert_fase_i(
-            df_usuarios,
-            columnas_insert_usuarios,
-        )
-
-        df_insert_comentarios = _construir_dataframe_insert_fase_i(
-            df_comentarios,
-            columnas_insert_comentarios,
-        )
-
-        cadena = _obtener_cadena_sqlserver_aster(conexion)
-        conn_sql = pyodbc.connect(cadena, timeout=10)
-        conn_sql.timeout = 120
-
-        cursor = conn_sql.cursor()
-        cursor.execute(f"USE [{ASTER_FASE_I_BASE}]")
-
-        errores_clave = _validar_claves_comentarios_fase_i(df_insert_comentarios)
-
-        if errores_clave:
-            conn_sql.rollback()
-
+        if status == "claves_invalidas":
             _registrar_historial_carga_aster(
                 fecha_proceso=fecha_yyyymmdd,
                 archivo_excel=os.path.basename(ruta_entidades),
                 conexion=conexion,
                 total_general_aster=None,
-                filas_excel=len(df_comentarios),
+                filas_excel=int(resultado.get("comentarios_leidos", 0)),
                 registros_insertados=0,
                 estado="GESTIONES_CLAVE_INCOMPLETA",
                 mensaje="Fase I bloqueada por claves incompletas en comentarios.",
@@ -3889,35 +3788,17 @@ def accion_aster_fase_i_ejecutar():
                 ruta_reporte_entidades=ruta_entidades,
             )
 
-            return _generar_html_claves_invalidas_comentarios_fase_i(errores_clave)
+            return _generar_html_claves_invalidas_comentarios_fase_i(
+                resultado.get("errores_clave", [])
+            )
 
-        total_duplicados, ejemplos_duplicados = _contar_duplicados_comentarios_fase_i(
-            cursor,
-            df_insert_comentarios,
-            fecha_yyyymmdd,
-        )
-
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            4,
-            "Validar duplicados comentarios",
-            "Clave id + data + usuario",
-            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_COMENTARIOS),
-            "Duplicados detectados",
-            total_duplicados,
-            "OK" if total_duplicados == 0 else "ERROR",
-        )
-        
-        
-        if total_duplicados > 0:
-            conn_sql.rollback()
-
+        if status == "duplicados":
             _registrar_historial_carga_aster(
                 fecha_proceso=fecha_yyyymmdd,
                 archivo_excel=os.path.basename(ruta_entidades),
                 conexion=conexion,
                 total_general_aster=None,
-                filas_excel=len(df_comentarios),
+                filas_excel=int(resultado.get("comentarios_leidos", 0)),
                 registros_insertados=0,
                 estado="GESTIONES_DUPLICADO",
                 mensaje="Fase I bloqueada por duplicados en comentarios.",
@@ -3926,69 +3807,47 @@ def accion_aster_fase_i_ejecutar():
             )
 
             return _generar_html_duplicados_comentarios_fase_i(
-                total_duplicados,
-                ejemplos_duplicados,
+                int(resultado.get("total_duplicados", 0)),
+                resultado.get("ejemplos_duplicados", []),
             )
 
-        cursor.execute(
-            f"SELECT COUNT(*) FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS)}"
-        )
-        row_usuarios_antes = cursor.fetchone()
-        usuarios_borrados = int(row_usuarios_antes[0] or 0) if row_usuarios_antes else 0
+        if status in {"faltan_columnas_origen", "error_columnas"}:
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(str(resultado.get("error", "Fase I bloqueada por validación.")))}
+            </div>
+            """
 
-        cursor.execute(f"DELETE FROM {_nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS)}")
+        if not resultado.get("success"):
+            try:
+                _registrar_historial_carga_aster(
+                    fecha_proceso=fecha_yyyymmdd,
+                    archivo_excel=os.path.basename(ruta_entidades),
+                    conexion=conexion,
+                    total_general_aster=None,
+                    filas_excel=int(resultado.get("comentarios_leidos", 0) or 0),
+                    registros_insertados=0,
+                    estado="GESTIONES_ERROR",
+                    mensaje=str(resultado.get("error", "Error ejecutando Fase I ASTER.")),
+                    archivo_reporte_entidades=os.path.basename(ruta_entidades),
+                    ruta_reporte_entidades=ruta_entidades,
+                )
+            except Exception:
+                pass
 
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            5,
-            "Borrar usuarios destino",
-            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS),
-            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS),
-            "Borrados",
-            usuarios_borrados,
-        )
-
-        usuarios_insertados = _insertar_dataframe_sql_fase_i(
-            cursor,
-            ASTER_FASE_I_TABLA_USUARIOS,
-            df_insert_usuarios,
-        )
-
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            6,
-            "Insertar usuarios",
-            "Python DataFrame usuarios",
-            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_USUARIOS),
-            "Insertados",
-            usuarios_insertados,
-        )
-
-        comentarios_insertados = _insertar_dataframe_sql_fase_i(
-            cursor,
-            ASTER_FASE_I_TABLA_COMENTARIOS,
-            df_insert_comentarios,
-        )
-
-        _agregar_paso_pipeline_fase_i(
-            pipeline_fase_i,
-            7,
-            "Insertar comentarios",
-            "Python DataFrame comentarios",
-            _nombre_tabla_sql_fase_i(ASTER_FASE_I_TABLA_COMENTARIOS),
-            "Insertados",
-            comentarios_insertados,
-        )
-
-        conn_sql.commit()
+            return f"""
+            <div class='log-line error'>
+                ❌ Error ejecutando Fase I ASTER: {escape(str(resultado.get("error", "Error desconocido.")))}
+            </div>
+            """
 
         _registrar_historial_carga_aster(
             fecha_proceso=fecha_yyyymmdd,
             archivo_excel=os.path.basename(ruta_entidades),
             conexion=conexion,
             total_general_aster=None,
-            filas_excel=len(df_comentarios),
-            registros_insertados=comentarios_insertados,
+            filas_excel=int(resultado.get("comentarios_leidos", 0)),
+            registros_insertados=int(resultado.get("comentarios_insertados", 0)),
             estado="GESTIONES_CORRECTO",
             mensaje=(
                 "Fase I correcta. Usuarios recargados y comentarios insertados "
@@ -4002,21 +3861,18 @@ def accion_aster_fase_i_ejecutar():
             fecha_yyyymmdd=fecha_yyyymmdd,
             conexion=conexion,
             ruta_entidades=ruta_entidades,
-            total_entidades=len(entidades),
-            usuarios_leidos=len(df_usuarios),
-            usuarios_insertados=usuarios_insertados,
-            comentarios_leidos=len(df_comentarios),
-            comentarios_insertados=comentarios_insertados,
+            total_entidades=int(resultado.get("total_entidades", 0)),
+            usuarios_leidos=int(resultado.get("usuarios_leidos", 0)),
+            usuarios_insertados=int(resultado.get("usuarios_insertados", 0)),
+            comentarios_leidos=int(resultado.get("comentarios_leidos", 0)),
+            comentarios_insertados=int(resultado.get("comentarios_insertados", 0)),
             estado="CORRECTO",
             mensaje="Usuarios recargados y comentarios insertados correctamente.",
-            pipeline=pipeline_fase_i,
+            pipeline=pipeline,
             mostrar_boton_gestion=True,
         )
 
     except Exception as exc:
-        if conn_sql is not None:
-            conn_sql.rollback()
-
         try:
             fecha_yyyymmdd_error = _obtener_fecha_fase_i(
                 request.form.get("fecha_proceso", "").strip()
@@ -4041,10 +3897,6 @@ def accion_aster_fase_i_ejecutar():
             pass
 
         return f"<div class='log-line error'>❌ Error ejecutando Fase I ASTER: {escape(str(exc))}</div>"
-
-    finally:
-        if conn_sql is not None:
-            conn_sql.close()
 
 
 def _ejecutar_consulta_gestion_aster_fase_i(
