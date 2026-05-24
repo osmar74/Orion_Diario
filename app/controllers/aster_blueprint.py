@@ -45,6 +45,13 @@ from app.services.aster_sql_entity_service import (
     normalizar_fecha_sql_aster,
 )
 
+from app.services.aster_classification_service import (
+    aplicar_exclusiones_aster,
+    guardar_clasificacion_aster,
+    preparar_depuracion_aster,
+    normalizar_resultados_sql_aster,
+)
+
 aster_bp = Blueprint("aster", __name__)
 
 RUTAS_ASTER_DEFAULT = [
@@ -478,19 +485,13 @@ def _generar_html_consulta_sql_aster(
 
 def _obtener_resultados_sql_aster_desde_sesion() -> list[dict[str, Any]]:
     """
-    Obtiene resultados SQL ASTER guardados en sesión.
+    Compatibilidad temporal.
+    La normalización real vive en app.services.aster_classification_service.
     """
     resultados = session.get("aster_resultados_sql") or []
 
-    return [
-        {
-            "entidad": str(fila.get("entidad") or "").strip(),
-            "numero": int(fila.get("numero") or 0),
-            "SSS": str(fila.get("SSS") or ""),
-        }
-        for fila in resultados
-        if str(fila.get("entidad") or "").strip()
-    ]
+    return normalizar_resultados_sql_aster(resultados)
+
 
 
 def _generar_tabla_entidades_aster(
@@ -6001,51 +6002,55 @@ def accion_aster_total_actual():
 def accion_aster_preparar_depuracion():
     """
     Prepara la tabla para excluir entidades que no corresponden a cobranzas %.
+
+    La lógica vive en:
+    app.services.aster_classification_service
     """
     try:
-        resultados = _obtener_resultados_sql_aster_desde_sesion()
+        resultado = preparar_depuracion_aster(
+            session.get("aster_resultados_sql") or []
+        )
 
-        if not resultados:
-            return """
+        if not resultado.get("success"):
+            return f"""
             <div class='log-line error'>
-                ❌ No hay resultados SQL ASTER en sesión. Ejecute primero la Fase E.
+                ❌ {escape(str(resultado.get("error", "No hay resultados SQL ASTER.")))}
             </div>
             """
 
-        return _generar_html_preparar_depuracion_aster(resultados)
+        return _generar_html_preparar_depuracion_aster(
+            resultado["resultados"]
+        )
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error preparando depuración ASTER: {escape(str(exc))}</div>"
-
+    
 
 @aster_bp.route("/accion/aster-aplicar-exclusiones", methods=["POST"])
 def accion_aster_aplicar_exclusiones():
     """
     Aplica exclusiones seleccionadas y genera tabla de clasificación.
+
+    La lógica vive en:
+    app.services.aster_classification_service
     """
     try:
-        resultados = _obtener_resultados_sql_aster_desde_sesion()
+        entidades_excluir = set(request.form.getlist("entidades_excluir"))
 
-        if not resultados:
-            return """
+        resultado = aplicar_exclusiones_aster(
+            resultados_sql=session.get("aster_resultados_sql") or [],
+            entidades_excluir=entidades_excluir,
+        )
+
+        if not resultado.get("success"):
+            return f"""
             <div class='log-line error'>
-                ❌ No hay resultados SQL ASTER en sesión. Ejecute primero la Fase E.
+                ❌ {escape(str(resultado.get("error", "No hay resultados SQL ASTER.")))}
             </div>
             """
 
-        entidades_excluir = set(request.form.getlist("entidades_excluir"))
-
-        removidos = [
-            fila
-            for fila in resultados
-            if str(fila.get("entidad") or "") in entidades_excluir
-        ]
-
-        filtrados = [
-            fila
-            for fila in resultados
-            if str(fila.get("entidad") or "") not in entidades_excluir
-        ]
+        removidos = resultado["removidos"]
+        filtrados = resultado["filtrados"]
 
         session["aster_sql_removidos"] = removidos
         session["aster_sql_filtrados"] = filtrados
@@ -6063,39 +6068,34 @@ def accion_aster_aplicar_exclusiones():
 def accion_aster_guardar_clasificacion():
     """
     Guarda clasificación final de entidades ASTER.
+
+    La lógica vive en:
+    app.services.aster_classification_service
     """
     try:
         clasificaciones_raw = request.form.get("clasificaciones", "[]")
 
-        clasificaciones = json.loads(clasificaciones_raw)
+        try:
+            clasificaciones = json.loads(clasificaciones_raw)
+        except Exception:
+            clasificaciones = []
 
-        if not isinstance(clasificaciones, list):
-            return "<div class='log-line error'>❌ Formato inválido de clasificación ASTER.</div>"
+        resultado = guardar_clasificacion_aster(
+            clasificaciones=clasificaciones,
+            removidos=session.get("aster_sql_removidos") or [],
+        )
 
-        removidos = session.get("aster_sql_removidos") or []
+        if not resultado.get("success"):
+            return f"""
+            <div class='log-line error'>
+                ❌ {escape(str(resultado.get("error", "Formato inválido de clasificación ASTER.")))}
+            </div>
+            """
 
-        cobranza: list[dict[str, Any]] = []
-        integral: list[dict[str, Any]] = []
-        no_seleccionados: list[dict[str, Any]] = []
-
-        for item in clasificaciones:
-            entidad = str(item.get("entidad") or "").strip()
-            numero = int(item.get("numero") or 0)
-            sss = str(item.get("SSS") or f"'{entidad}'")
-            clasificacion = str(item.get("clasificacion") or "").strip()
-
-            fila = {
-                "entidad": entidad,
-                "numero": numero,
-                "SSS": sss,
-            }
-
-            if clasificacion == "cobranza":
-                cobranza.append(fila)
-            elif clasificacion == "integral":
-                integral.append(fila)
-            else:
-                no_seleccionados.append(fila)
+        removidos = resultado["removidos"]
+        cobranza = resultado["cobranza"]
+        integral = resultado["integral"]
+        no_seleccionados = resultado["no_seleccionados"]
 
         session["aster_bases_cobranza"] = cobranza
         session["aster_bases_integral"] = integral
@@ -6110,6 +6110,8 @@ def accion_aster_guardar_clasificacion():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error guardando clasificación ASTER: {escape(str(exc))}</div>"
+
+
     
     
     
