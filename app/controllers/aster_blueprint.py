@@ -10,7 +10,7 @@ import base64
 import json
 import os
 import re
-import sqlite3
+
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from html import escape
