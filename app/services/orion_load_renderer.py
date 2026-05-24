@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from html import escape
 from typing import Any
+from app.services.schema_validator import generar_html_errores_longitud
 
 
 def render_log_error(mensaje: str) -> str:
@@ -177,4 +178,109 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     """
 
     return html
+
+def render_carga_duplicada_orion(res: dict[str, Any]) -> str:
+    """
+    Genera HTML para carga duplicada bloqueada.
+    """
+    carga_previa = res.get("carga_previa") or {}
+
+    return f"""
+    <div class='log-line warning'>
+        ⚠️ Este archivo ya fue insertado anteriormente.
+    </div>
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#8a6d3b; color:#fff;'>
+                Carga duplicada bloqueada
+            </th>
+        </tr>
+        <tr><td><b>Tipo</b></td><td>{escape(str(res.get("tipo", "")))}</td></tr>
+        <tr><td><b>Conexión</b></td><td>{escape(str(res.get("conexion", "")))}</td></tr>
+        <tr><td><b>Tabla destino</b></td><td>{escape(str(res.get("tabla_destino", "")))}</td></tr>
+        <tr><td><b>Archivo</b></td><td>{escape(str(carga_previa.get("nombre_archivo", "")))}</td></tr>
+        <tr><td><b>Registros archivo</b></td><td>{escape(str(carga_previa.get("registros_archivo", "")))}</td></tr>
+        <tr><td><b>Registros insertados</b></td><td>{escape(str(carga_previa.get("registros_insertados", "")))}</td></tr>
+        <tr><td><b>Fecha de carga</b></td><td>{escape(str(carga_previa.get("fecha_carga", "")))}</td></tr>
+    </table>
+    """
+
+
+def render_insercion_orion_ok(res: dict[str, Any]) -> str:
+    """
+    Genera HTML final de inserción ORION.
+    """
+    exito = bool(res.get("exito"))
+
+    color_coincide = "#28a745" if exito else "#dc3545"
+    texto_coincide = "Coincide" if exito else "No coincide"
+
+    tipo = str(res.get("tipo", ""))
+    tabla_destino = str(res.get("tabla_destino", ""))
+    nombre_archivo = str(res.get("nombre_archivo", ""))
+    ruta_archivo = str(res.get("ruta_archivo", ""))
+
+    html = "<div style='margin-top:10px;'>"
+
+    html += f"""
+    <div class='log-line {"success" if exito else "error"}'>
+        {"✅" if exito else "⚠️"} Inserción de {escape(tipo.capitalize())} completada.
+    </div>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr>
+            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
+                Información de la carga
+            </th>
+        </tr>
+    """
+
+    html += f"<tr><td><b>Tabla destino</b></td><td>{escape(tabla_destino)}</td></tr>"
+    html += f"<tr><td><b>Archivo</b></td><td>{escape(nombre_archivo)}</td></tr>"
+    html += f"<tr><td><b>Ruta</b></td><td style='font-size:0.7rem;'>{escape(ruta_archivo)}</td></tr>"
+    html += "</table>"
+
+    html += """
+    <table class='dataframe' style='width:100%; margin-top:10px;'>
+        <tr style='background:#1e3a5f; color:#fff;'>
+            <th>Registros en archivo</th>
+            <th>Registros antes</th>
+            <th>Registros después</th>
+            <th>Insertados</th>
+        </tr>
+    """
+
+    html += "<tr>"
+    html += f"<td style='font-size:1.1rem; font-weight:bold;'>{escape(str(res.get('registros_archivo', 0)))}</td>"
+    html += f"<td>{escape(str(res.get('registros_antes', 0)))}</td>"
+    html += f"<td>{escape(str(res.get('registros_despues', 0)))}</td>"
+    html += (
+        f"<td style='color:{color_coincide}; font-weight:bold;'>"
+        f"{escape(str(res.get('insertados', 0)))} ({texto_coincide})"
+        "</td>"
+    )
+    html += "</tr></table>"
+    html += "</div>"
+
+    return html
+
+
+def render_insercion_orion_resultado(res: dict[str, Any]) -> str:
+    """
+    Decide qué HTML devolver según el resultado del service.
+    """
+    status = str(res.get("status", ""))
+
+    if status == "duplicado":
+        return render_carga_duplicada_orion(res)
+
+    if status == "errores_longitud":
+        return generar_html_errores_longitud(res.get("errores_longitud", []))
+
+    if status == "insertado":
+        return render_insercion_orion_ok(res)
+
+    return render_log_error(res.get("error", "Error desconocido en inserción ORION."))
 
