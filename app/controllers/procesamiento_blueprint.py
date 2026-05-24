@@ -17,6 +17,7 @@ from app.services.orion_file_lookup_service import (
     buscar_archivo_discador_para_lotes,
     buscar_archivo_discador_procesamiento,
 )
+from app.services.orion_comparison_service import comparar_lotes_orion
 
 
 proc_bp = Blueprint("procesamiento", __name__)
@@ -344,185 +345,135 @@ def accion_procesar_lotes():
     return html
 
 
+def _generar_html_comparacion_lotes_orion(res: dict) -> str:
+    """
+    Genera HTML visual de comparación ORION desde resultado estructurado.
+    Temporalmente queda aquí hasta mover HTML a partials.
+    """
+    rutas = res.get("rutas", {})
+    faltantes = res.get("faltantes", [])
+    errores = res.get("errores", [])
+    comparacion = res.get("comparacion", [])
+
+    html = """
+    <p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>
+        📁 Archivos limpios generados:
+    </p>
+    """
+
+    html += """
+    <table class='dataframe' style='width:100%;'>
+        <tr>
+            <th>Tipo</th>
+            <th>Ruta</th>
+        </tr>
+    """
+
+    html += f"""
+        <tr>
+            <td>Discador Consolidado</td>
+            <td>{escape(str(rutas.get("discador") or "No encontrado"))}</td>
+        </tr>
+        <tr>
+            <td>Causales Consolidado</td>
+            <td>{escape(str(rutas.get("causales") or "No encontrado"))}</td>
+        </tr>
+        <tr>
+            <td>Lotes Consolidado</td>
+            <td>{escape(str(rutas.get("lotes") or "No encontrado"))}</td>
+        </tr>
+    """
+
+    html += "</table>"
+
+    if faltantes:
+        html += (
+            "<p style='color:#ffc107; font-size:0.75rem;'>"
+            "⚠️ Falta(n) archivo(s) consolidado(s) de: "
+            + escape(", ".join(faltantes))
+            + ". Ejecute primero los procesamientos correspondientes.</p>"
+        )
+
+    if errores:
+        for error in errores:
+            html += f"""
+            <p style='color:#dc3545; font-size:0.75rem;'>
+                ❌ {escape(str(error))}
+            </p>
+            """
+
+    if comparacion:
+        html += """
+        <p style='font-size:0.75rem; color:#ccc; margin:10px 0 5px 0;'>
+            🔍 Comparación de lotes:
+        </p>
+        <table class='dataframe' style='width:100%;'>
+            <tr>
+                <th>Lote</th>
+                <th>En Discador</th>
+                <th>En Lotes</th>
+            </tr>
+        """
+
+        for fila in comparacion:
+            en_discador = "✅" if fila.get("en_discador_bool") else "❌"
+            en_lotes = "✅" if fila.get("en_lotes_bool") else "❌"
+
+            html += f"""
+            <tr>
+                <td>{escape(str(fila.get("Lote", "")))}</td>
+                <td>{en_discador}</td>
+                <td>{en_lotes}</td>
+            </tr>
+            """
+
+        html += "</table>"
+
+        if res.get("match_ok"):
+            html += """
+            <p style='color:#28a745; font-size:0.8rem;'>
+                ✅ Todos los lotes coinciden.
+            </p>
+            """
+        else:
+            faltan_en_discador = res.get("faltan_en_discador", [])
+            faltan_en_lotes = res.get("faltan_en_lotes", [])
+
+            if faltan_en_discador:
+                html += (
+                    "<p style='color:#ffc107; font-size:0.8rem;'>"
+                    "⚠️ Lotes en archivo Lotes que no están en Discador: "
+                    + escape(", ".join(faltan_en_discador))
+                    + "</p>"
+                )
+
+            if faltan_en_lotes:
+                html += (
+                    "<p style='color:#ffc107; font-size:0.8rem;'>"
+                    "⚠️ Lotes en Discador que no están en archivo Lotes: "
+                    + escape(", ".join(faltan_en_lotes))
+                    + "</p>"
+                )
+
+    ruta_resumen = res.get("ruta_resumen")
+
+    if ruta_resumen:
+        html += (
+            f"<p style='color:#28a745; font-size:0.8rem; margin-top:10px;'>"
+            f"📊 Resumen Excel generado: {escape(str(ruta_resumen))}</p>"
+        )
+
+    return html
+
 @proc_bp.route("/accion/comparar-lotes")
 def accion_comparar_lotes():
     fecha = request.args.get("fecha", "202605_12")
     carpeta_diaria = ruta_orion(DATA_DIR, fecha)
 
-    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
-    os.makedirs(carpeta_consolidados, exist_ok=True)
-
-    archivos_disc = (
-        [
-            f
-            for f in os.listdir(carpeta_consolidados)
-            if f.lower().endswith(".xlsx")
-            and "discador" in f.lower()
-            and "consolidado" in f.lower()
-        ]
-        if os.path.isdir(carpeta_consolidados)
-        else []
-    )
-    ruta_disc = (
-        os.path.join(carpeta_consolidados, archivos_disc[0])
-        if archivos_disc
-        else None
+    res = comparar_lotes_orion(
+        carpeta_orion=carpeta_diaria,
+        fecha=fecha,
     )
 
-    archivos_lotes = (
-        [
-            f
-            for f in os.listdir(carpeta_consolidados)
-            if f.lower().startswith("lote_consolidado") and f.lower().endswith(".xlsx")
-        ]
-        if os.path.isdir(carpeta_consolidados)
-        else []
-    )
-    ruta_lotes = (
-        os.path.join(carpeta_consolidados, archivos_lotes[0])
-        if archivos_lotes
-        else None
-    )
+    return _generar_html_comparacion_lotes_orion(res)
 
-    archivos_caus = (
-        [
-            f
-            for f in os.listdir(carpeta_consolidados)
-            if f.lower().startswith("causales_consolidado") and f.lower().endswith(".xlsx")
-        ]
-        if os.path.isdir(carpeta_consolidados)
-        else []
-    )
-    ruta_caus = (
-        os.path.join(carpeta_consolidados, archivos_caus[0])
-        if archivos_caus
-        else None
-    )
-
-    html = "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>📁 Archivos limpios generados:</p>"
-    html += "<table class='dataframe' style='width:100%;'><tr><th>Tipo</th><th>Ruta</th></tr>"
-    html += (
-        f"<tr><td>Discador Consolidado</td><td>{ruta_disc or 'No encontrado'}</td></tr>"
-    )
-    html += (
-        f"<tr><td>Causales Consolidado</td><td>{ruta_caus or 'No encontrado'}</td></tr>"
-    )
-    html += (
-        f"<tr><td>Lotes Consolidado</td><td>{ruta_lotes or 'No encontrado'}</td></tr>"
-    )
-    html += "</table>"
-
-    if not ruta_disc or not ruta_caus or not ruta_lotes:
-        faltantes = []
-        if not ruta_disc:
-            faltantes.append("Discador")
-        if not ruta_caus:
-            faltantes.append("Causales")
-        if not ruta_lotes:
-            faltantes.append("Lotes")
-        html += (
-            "<p style='color:#ffc107; font-size:0.75rem;'>⚠️ Falta(n) archivo(s) consolidado(s) de: "
-            + ", ".join(faltantes)
-            + ". Ejecute primero los procesamientos correspondientes.</p>"
-        )
-
-    datos_comparacion = []
-    if ruta_disc and ruta_lotes:
-        try:
-            df_disc = pd.read_excel(ruta_disc, dtype=str)
-            df_lotes = pd.read_excel(ruta_lotes, dtype=str)
-            if "Lote" in df_disc.columns and "Nombre_Lote" in df_lotes.columns:
-                lotes_disc = set(df_disc["Lote"].dropna().unique())
-                lotes_lotes = set(df_lotes["Nombre_Lote"].dropna().unique())
-                todos = sorted(lotes_disc.union(lotes_lotes))
-                html += (
-                    "<p style='font-size:0.75rem; color:#ccc; margin:10px 0 5px 0;'>"
-                    "🔍 Comparación de lotes:</p>"
-                    "<table class='dataframe' style='width:100%;'>"
-                    "<tr><th>Lote</th><th>En Discador</th><th>En Lotes</th></tr>"
-                )
-                for lote in todos:
-                    en_disc = "✅" if lote in lotes_disc else "❌"
-                    en_lotes = "✅" if lote in lotes_lotes else "❌"
-                    html += (
-                        f"<tr><td>{lote}</td><td>{en_disc}</td><td>{en_lotes}</td></tr>"
-                    )
-                    datos_comparacion.append(
-                        {
-                            "Lote": lote,
-                            "En Discador": "Sí" if lote in lotes_disc else "No",
-                            "En Lotes": "Sí" if lote in lotes_lotes else "No",
-                        }
-                    )
-                html += "</table>"
-                faltan_en_disc = lotes_lotes - lotes_disc
-                faltan_en_lotes = lotes_disc - lotes_lotes
-                if not faltan_en_disc and not faltan_en_lotes:
-                    html += "<p style='color:#28a745; font-size:0.8rem;'>✅ Todos los lotes coinciden.</p>"
-                else:
-                    if faltan_en_disc:
-                        html += (
-                            "<p style='color:#ffc107; font-size:0.8rem;'>⚠️ Lotes en archivo Lotes que no están en Discador: "
-                            + ", ".join(faltan_en_disc)
-                            + "</p>"
-                        )
-                    if faltan_en_lotes:
-                        html += (
-                            "<p style='color:#ffc107; font-size:0.8rem;'>⚠️ Lotes en Discador que no están en archivo Lotes: "
-                            + ", ".join(faltan_en_lotes)
-                            + "</p>"
-                        )
-        except Exception as e:
-            html += f"<p style='color:#dc3545;'>❌ Error al comparar: {e}</p>"
-
-    # Generar Excel de resumen
-    try:
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-
-        wb = Workbook()
-        ws = wb.active
-
-        if ws is None:
-            ws = wb.create_sheet("Comparación")
-
-        ws.title = "Comparación"
-        ws.append(["Lote", "En Discador", "En Lotes"])
-        for fila in datos_comparacion:
-            ws.append([fila["Lote"], fila["En Discador"], fila["En Lotes"]])
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(
-            start_color="4F81BD", end_color="4F81BD", fill_type="solid"
-        )
-        thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
-        )
-        for col in range(1, 4):
-            cell = ws.cell(row=1, column=col)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = thin_border
-        fecha_archivo = fecha.replace("_", "")[4:]
-
-        carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
-        os.makedirs(carpeta_consolidados, exist_ok=True)
-
-        ruta_resumen = os.path.join(
-            carpeta_consolidados,
-            f"Resumen_Comparacion_{fecha_archivo}.xlsx",
-        )
-        wb.save(ruta_resumen)
-        html += (
-            f"<p style='color:#28a745; font-size:0.8rem; margin-top:10px;'>"
-            f"📊 Resumen Excel generado: {ruta_resumen}</p>"
-        )
-    except Exception as e:
-        html += (
-            f"<p style='color:#dc3545;'>❌ Error al generar Excel de resumen: {e}</p>"
-        )
-
-    return html
