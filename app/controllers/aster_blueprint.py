@@ -27,6 +27,11 @@ from flask import Blueprint, request, session
 from werkzeug.utils import secure_filename
 
 from app.config import DATA_DIR, TESSERACT_PATH
+from app.services.daily_paths import (
+    crear_estructura_aster,
+    ruta_aster_base,
+    ruta_aster_subcarpeta,
+)
 from app.controllers.helpers import obtener_log_service
 from app.services.ocr_processor import OCRProcessor
 
@@ -2680,19 +2685,95 @@ def _obtener_fecha_proceso_aster() -> str:
 
 def _obtener_carpeta_proceso_aster(fecha_yyyymmdd: str) -> str:
     """
-    Devuelve la carpeta del proceso ASTER.
+    Devuelve la carpeta base del proceso ASTER.
+
+    Nueva estructura:
+    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD
     """
-    carpeta = os.path.join(
-        DATA_DIR,
-        fecha_yyyymmdd,
-        "Aster",
-        f"aster_{fecha_yyyymmdd}",
-    )
+    carpeta = ruta_aster_base(DATA_DIR, fecha_yyyymmdd)
 
     os.makedirs(carpeta, exist_ok=True)
 
     return carpeta
 
+
+def _buscar_archivo_normalizado_aster_en_disco(fecha_yyyymmdd: str) -> str:
+    """
+    Busca el archivo ASTER normalizado en:
+
+    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD\\Normalizado
+    """
+    carpeta_normalizado = ruta_aster_subcarpeta(
+        DATA_DIR,
+        fecha_yyyymmdd,
+        "Normalizado",
+    )
+
+    if not os.path.isdir(carpeta_normalizado):
+        return ""
+
+    candidatos = []
+
+    for archivo in os.listdir(carpeta_normalizado):
+        nombre = archivo.lower()
+
+        if not nombre.endswith(".xlsx"):
+            continue
+
+        if "normalizado" not in nombre:
+            continue
+
+        ruta = os.path.join(carpeta_normalizado, archivo)
+
+        candidatos.append(
+            {
+                "ruta": ruta,
+                "modificado": os.path.getmtime(ruta),
+            }
+        )
+
+    if not candidatos:
+        return ""
+
+    candidatos.sort(
+        key=lambda item: item["modificado"],
+        reverse=True,
+    )
+
+    return str(candidatos[0]["ruta"])
+
+
+def _resolver_archivo_aster_normalizado() -> str:
+    """
+    Devuelve la ruta del archivo normalizado ASTER que deben usar
+    Fase D y fases posteriores.
+
+    Regla:
+    - Primero usa session["aster_archivo_normalizado"] si existe físicamente.
+    - Si no existe en sesión, busca en carpeta Normalizado.
+    - No permite usar Archivo_Original.
+    """
+    ruta_sesion = str(session.get("aster_archivo_normalizado") or "").strip()
+
+    if ruta_sesion and os.path.isfile(ruta_sesion):
+        return ruta_sesion
+
+    fecha_yyyymmdd = str(session.get("aster_fecha_proceso") or "").strip()
+
+    if not fecha_yyyymmdd:
+        fecha_yyyymmdd = _obtener_fecha_proceso_aster()
+
+    ruta_disco = _buscar_archivo_normalizado_aster_en_disco(fecha_yyyymmdd)
+
+    if ruta_disco and os.path.isfile(ruta_disco):
+        session["aster_archivo_normalizado"] = ruta_disco
+        return ruta_disco
+
+    raise FileNotFoundError(
+        "No se encontró archivo ASTER normalizado. "
+        "Debe ejecutar primero la Fase C: Normalización de encabezados."
+    )
+    
 
 def _obtener_entidades_filtradas_finales_aster() -> list[dict[str, Any]]:
     """
@@ -2723,9 +2804,15 @@ def _generar_excel_entidades_aster(
     Archivo:
     entidades_aster_YYYYMMDD.xlsx
     """
-    carpeta = _obtener_carpeta_proceso_aster(fecha_yyyymmdd)
+    carpeta_entidades = ruta_aster_subcarpeta(
+        DATA_DIR,
+        fecha_yyyymmdd,
+        "Entidades",
+    )
+    os.makedirs(carpeta_entidades, exist_ok=True)
+
     nombre_archivo = f"entidades_aster_{fecha_yyyymmdd}.xlsx"
-    ruta_archivo = os.path.join(carpeta, nombre_archivo)
+    ruta_archivo = os.path.join(carpeta_entidades, nombre_archivo)
 
     entidades = _obtener_entidades_filtradas_finales_aster()
 
@@ -3302,13 +3389,9 @@ def accion_aster_buscar_archivo():
             </div>
             """
 
-        carpeta_destino = os.path.join(
-            DATA_DIR,
-            fecha_yyyymmdd,
-            "Aster",
-            f"aster_{fecha_yyyymmdd}",
-        )
-        os.makedirs(carpeta_destino, exist_ok=True)
+        rutas_aster = crear_estructura_aster(DATA_DIR, fecha_yyyymmdd)
+
+        carpeta_destino = rutas_aster["Archivo_Original"]
 
         nombre_archivo = os.path.basename(ruta_origen)
         ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
@@ -3361,20 +3444,60 @@ def accion_aster_normalizar_encabezados():
             </div>
             """
 
+
         df = pd.read_excel(ruta_archivo, dtype=str)
 
         columnas_originales = list(df.columns)
         columnas_normalizadas = _normalizar_lista_encabezados_aster(columnas_originales)
 
         df.columns = columnas_normalizadas
-        df.to_excel(ruta_archivo, index=False)
 
-        session["aster_archivo_normalizado"] = ruta_archivo
+        fecha_yyyymmdd = str(session.get("aster_fecha_proceso") or "").strip()
+
+        if not fecha_yyyymmdd:
+            coincidencia_fecha = re.search(
+                r"(\d{8})",
+                os.path.basename(ruta_archivo),
+            )
+
+            if coincidencia_fecha:
+                fecha_yyyymmdd = coincidencia_fecha.group(1)
+
+        if not fecha_yyyymmdd:
+            return """
+            <div class='log-line error'>
+                ❌ No se pudo determinar la fecha del proceso ASTER para guardar el archivo normalizado.
+            </div>
+            """
+
+        carpeta_normalizado = ruta_aster_subcarpeta(
+            DATA_DIR,
+            fecha_yyyymmdd,
+            "Normalizado",
+        )
+        os.makedirs(carpeta_normalizado, exist_ok=True)
+
+        nombre_original = os.path.basename(ruta_archivo)
+        nombre_base, extension = os.path.splitext(nombre_original)
+
+        if nombre_base.lower().endswith("_normalizado"):
+            nombre_normalizado = f"{nombre_base}{extension}"
+        else:
+            nombre_normalizado = f"{nombre_base}_normalizado{extension}"
+
+        ruta_normalizado = os.path.join(
+            carpeta_normalizado,
+            nombre_normalizado,
+        )
+
+        df.to_excel(ruta_normalizado, index=False)
+
+        session["aster_archivo_normalizado"] = ruta_normalizado
         session["aster_columnas_originales"] = [str(col) for col in columnas_originales]
         session["aster_columnas_normalizadas"] = columnas_normalizadas
 
         return _generar_html_normalizacion_aster(
-            ruta_archivo=ruta_archivo,
+            ruta_archivo=ruta_normalizado,
             columnas_originales=columnas_originales,
             columnas_normalizadas=columnas_normalizadas,
         )
@@ -3389,19 +3512,12 @@ def accion_aster_entidades_excel():
     Obtiene valores únicos de la columna Entidad del Excel ASTER normalizado.
     """
     try:
-        ruta_archivo = request.form.get("ruta_archivo", "").strip()
-
-        if not ruta_archivo:
-            ruta_archivo = str(
-                session.get("aster_archivo_normalizado")
-                or session.get("aster_archivo_copiado")
-                or ""
-            )
-
-        if not ruta_archivo:
-            return """
+        try:
+            ruta_archivo = _resolver_archivo_aster_normalizado()
+        except FileNotFoundError as exc:
+            return f"""
             <div class='log-line error'>
-                ❌ No hay archivo ASTER disponible. Ejecute primero Fase B y Fase C.
+                ❌ {escape(str(exc))}
             </div>
             """
 
@@ -3664,22 +3780,17 @@ def accion_aster_preparar_insercion():
     """
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
-        ruta_archivo = request.form.get("ruta_archivo", "").strip()
+        _ruta_archivo_form = request.form.get("ruta_archivo", "").strip()
 
         if conexion not in {"local", "remoto"}:
             conexion = "local"
 
-        if not ruta_archivo:
-            ruta_archivo = str(
-                session.get("aster_archivo_normalizado")
-                or session.get("aster_archivo_copiado")
-                or ""
-            )
-
-        if not ruta_archivo:
-            return """
+        try:
+            ruta_archivo = _resolver_archivo_aster_normalizado()
+        except FileNotFoundError as exc:
+            return f"""
             <div class='log-line error'>
-                ❌ No hay archivo ASTER disponible. Ejecute primero Fase B y Fase C.
+                ❌ {escape(str(exc))}
             </div>
             """
 
@@ -3747,7 +3858,7 @@ def accion_aster_insertar_datos():
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
         confirmar_remoto = request.form.get("confirmar_remoto", "").strip().upper()
-        ruta_archivo = request.form.get("ruta_archivo", "").strip()
+        _ruta_archivo_form = request.form.get("ruta_archivo", "").strip()
 
         if conexion not in {"local", "remoto"}:
             conexion = "local"
@@ -3776,17 +3887,12 @@ def accion_aster_insertar_datos():
             </div>
             """
 
-        if not ruta_archivo:
-            ruta_archivo = str(
-                session.get("aster_archivo_normalizado")
-                or session.get("aster_archivo_copiado")
-                or ""
-            )
-
-        if not ruta_archivo:
-            return """
+        try:
+            ruta_archivo = _resolver_archivo_aster_normalizado()
+        except FileNotFoundError as exc:
+            return f"""
             <div class='log-line error'>
-                ❌ No hay archivo ASTER disponible para insertar.
+                ❌ {escape(str(exc))}
             </div>
             """
 
@@ -4115,14 +4221,14 @@ def _obtener_fecha_fase_i(fecha_raw: str = "") -> str:
 def _ruta_entidades_fase_i(fecha_yyyymmdd: str) -> str:
     """
     Ruta esperada del archivo entidades_aster_YYYYMMDD.xlsx.
-    """
-    carpeta = _obtener_carpeta_proceso_aster(fecha_yyyymmdd)
 
+    Nueva ubicación:
+    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD\\Entidades
+    """
     return os.path.join(
-        carpeta,
+        ruta_aster_subcarpeta(DATA_DIR, fecha_yyyymmdd, "Entidades"),
         f"entidades_aster_{fecha_yyyymmdd}.xlsx",
     )
-
 
 def _leer_entidades_fase_i(fecha_yyyymmdd: str) -> tuple[list[str], str]:
     """
@@ -4287,6 +4393,7 @@ def _contar_comentarios_mysql_fase_i(
         FROM comentarios
         WHERE DATE(fecha) = %s
           AND entidad IN ({placeholders})
+          AND COALESCE(TRIM(usuario), '') <> 'SystemUser'
     """
 
     _validar_sql_mysql_solo_select(sql)
@@ -5982,31 +6089,25 @@ def _tratar_gestion_aster_antes_excel(
     return df_tratado, resumen
 
 
-
-
 def _ruta_gestion_aster_fase_i(fecha_yyyymmdd: str) -> tuple[str, str]:
     """
     Devuelve nombre y ruta del Excel Gestión ASTER.
 
-    Carpeta esperada:
-    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD
-
-    Archivo:
-    YYYYMMDD_Gestion_aster.xlsx
+    Nueva ubicación:
+    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD\\Gestion
     """
-    carpeta_aster = os.path.join(
+    carpeta_gestion = ruta_aster_subcarpeta(
         DATA_DIR,
         fecha_yyyymmdd,
-        "Aster",
-        f"aster_{fecha_yyyymmdd}",
+        "Gestion",
     )
-
-    os.makedirs(carpeta_aster, exist_ok=True)
+    os.makedirs(carpeta_gestion, exist_ok=True)
 
     nombre_archivo = f"{fecha_yyyymmdd}_Gestion_aster.xlsx"
-    ruta_archivo = os.path.join(carpeta_aster, nombre_archivo)
+    ruta_archivo = os.path.join(carpeta_gestion, nombre_archivo)
 
     return nombre_archivo, ruta_archivo
+
 
 
 @aster_bp.route("/accion/aster-fase-i-generar-gestion", methods=["POST"])

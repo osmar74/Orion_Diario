@@ -4,6 +4,10 @@ from typing import Dict, List, Optional
 
 from app.config import RED_BASE_PATHS
 from app.services.log_service import LogService
+from app.services.daily_paths import (
+    crear_estructura_orion,
+    normalizar_fecha_orion_legacy,
+)
 
 
 class FileManager:
@@ -15,86 +19,54 @@ class FileManager:
 
     def crear_estructura_diaria(self, fecha_str: str) -> Dict:
         """
-        Crea la carpeta diaria con sus subcarpetas.
+        Crea la estructura diaria ORION bajo:
 
-        Args:
-            fecha_str: Cadena en formato 'YYYYMM_DD' (ej. '202605_12').
-
-        Returns:
-            Diccionario con 'success' (bool) y 'rutas' (dict de rutas creadas).
+        data\\YYYYMMDD\\Orion
         """
-        nombre_carpeta = f"orion_{fecha_str}"
-        carpeta_principal = os.path.join(self.base_path, nombre_carpeta)
-
-        subcarpetas: List[str] = ["Reporte_Imagen", "Causales", "Lotes", "Discador"]
-
-        rutas_creadas = {"principal": carpeta_principal}
-
-        if self.log_service:
-            self.log_service.log(
-                "2.1",
-                "Crear estructura diaria",
-                "info",
-                f"Iniciando creación de estructura para {fecha_str}",
-            )
-
         try:
-            os.makedirs(carpeta_principal, exist_ok=True)
+            rutas = crear_estructura_orion(self.base_path, fecha_str)
 
-            for sub in subcarpetas:
-                ruta_sub = os.path.join(carpeta_principal, sub)
-                os.makedirs(ruta_sub, exist_ok=True)
-                rutas_creadas[sub] = ruta_sub
-
-            rutas_no_creadas = []
-
-            for nombre, ruta in rutas_creadas.items():
-                if not os.path.isdir(ruta):
-                    rutas_no_creadas.append(f"{nombre}: {ruta}")
-
-            if rutas_no_creadas:
-                mensaje_error = (
-                    "Se intentó crear la estructura, pero estas rutas no existen físicamente: "
-                    + " | ".join(rutas_no_creadas)
-                )
-
-                if self.log_service:
-                    self.log_service.log(
-                        "2.1",
-                        "Crear estructura diaria",
-                        "error",
-                        mensaje_error,
-                    )
-
-                return {
-                    "success": False,
-                    "error": mensaje_error,
-                    "rutas": rutas_creadas,
-                }
+            rutas_respuesta = {
+                "dia": rutas["dia"],
+                "principal": rutas["Orion"],
+                "Orion": rutas["Orion"],
+                "Reporte_Imagen": rutas["Reporte_Imagen"],
+                "Causales": rutas["Causales"],
+                "Lotes": rutas["Lotes"],
+                "Discador": rutas["Discador"],
+                "Consolidados": rutas["Consolidados"],
+                "Salidas": rutas["Salidas"],
+                "Logs": rutas["Logs"],
+            }
 
             if self.log_service:
                 self.log_service.log(
-                    "2.1",
+                    "1.1",
                     "Crear estructura diaria",
                     "éxito",
-                    f"Estructura creada y verificada correctamente: {rutas_creadas}",
+                    f"Estructura diaria ORION creada: {rutas['Orion']}",
                 )
 
-            return {"success": True, "rutas": rutas_creadas}
+            return {
+                "success": True,
+                "rutas": rutas_respuesta,
+            }
 
-        except OSError as e:
+        except Exception as e:
             if self.log_service:
                 self.log_service.log(
-                    "2.1",
+                    "1.1",
                     "Crear estructura diaria",
                     "error",
                     f"Error al crear estructura: {str(e)}",
                 )
+
             return {
                 "success": False,
                 "error": f"Error al crear la estructura: {str(e)}",
             }
-
+    
+    
     def verificar_red_y_carpetas(
         self, fecha_str: str, red_base_path: Optional[str] = None
     ) -> Dict:
@@ -103,12 +75,15 @@ class FileManager:
         Si no encuentra archivos en la carpeta del mes original, intenta con el mes anterior.
         Busca archivos por DDMMYYYY y, si no hay, por DDMM.
         """
-        partes = fecha_str.split("_")
-        if len(partes) != 2:
+        try:
+            fecha_orion = normalizar_fecha_orion_legacy(fecha_str)
+        except ValueError as exc:
             return {
                 "success": False,
-                "error": "Formato de fecha inválido. Use YYYYMM_DD.",
+                "error": str(exc),
             }
+
+        partes = fecha_orion.split("_")
 
         anio = partes[0][:4]
         mes_num = partes[0][4:]  # Dos dígitos del mes

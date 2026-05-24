@@ -13,6 +13,7 @@ from flask import Blueprint, request, session
 from app.config import DATA_DIR
 from app.services.file_manager import FileManager
 from app.controllers.helpers import obtener_log_service
+from app.services.daily_paths import ruta_orion
 
 fases_ab_bp = Blueprint("fases_ab", __name__)
 
@@ -269,7 +270,7 @@ def accion_distribuir():
     if not res_verif["success"]:
         return f"<div class='log-line error'>❌ No se puede preparar distribución: {escape(res_verif['error'])}</div>"
 
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
     os.makedirs(carpeta_diaria, exist_ok=True)
 
     session["orion_distribucion_fecha"] = fecha
@@ -339,7 +340,7 @@ def accion_distribuir_seleccionados():
         </div>
         """
 
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
     os.makedirs(carpeta_diaria, exist_ok=True)
 
     res_dist = fm.distribuir_archivos(

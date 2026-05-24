@@ -8,6 +8,7 @@ import pyodbc
 import pandas as pd
 import numpy as np
 from flask import Blueprint, request, session
+from app.services.daily_paths import ruta_orion, normalizar_fecha_yyyymmdd
 
 from typing import cast
 from datetime import datetime
@@ -125,6 +126,50 @@ def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
     return html
 
 
+def _buscar_archivo_consolidado_orion(
+    carpeta_diaria: str,
+    tipo: str,
+) -> tuple[str | None, str | None]:
+    """
+    Busca archivos consolidados ORION exclusivamente en:
+
+    data\\YYYYMMDD\\Orion\\Consolidados
+    """
+    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
+
+    if not os.path.isdir(carpeta_consolidados):
+        return None, None
+
+    archivos = []
+
+    for archivo in os.listdir(carpeta_consolidados):
+        nombre = archivo.lower()
+
+        if not nombre.endswith(".xlsx"):
+            continue
+
+        if tipo == "causales":
+            if nombre.startswith("causales_consolidado"):
+                archivos.append(archivo)
+
+        elif tipo == "lote":
+            if nombre.startswith("lote_consolidado"):
+                archivos.append(archivo)
+
+        elif tipo == "discador":
+            if "discador" in nombre and nombre.endswith("consolidado.xlsx"):
+                archivos.append(archivo)
+
+    if not archivos:
+        return None, None
+
+    archivos.sort()
+
+    nombre_archivo = archivos[0]
+    ruta_archivo = os.path.join(carpeta_consolidados, nombre_archivo)
+
+    return ruta_archivo, nombre_archivo
+
 
 
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
@@ -208,48 +253,25 @@ def accion_verificar_carga():
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
 
     fecha = session.get("ultima_fecha", "202605_12")
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
 
     # --- Rutas y tabla destino ---
-    ruta_archivo = None
-    nombre_archivo = None
-    tabla_destino = None
-    if tipo == "causales":
-        carpeta = os.path.join(carpeta_diaria, "Causales")
-        if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Causales_Consolidado") and f.endswith(".xlsx")
-            ]
-            if archivos:
-                ruta_archivo = os.path.join(carpeta, archivos[0])
-                nombre_archivo = archivos[0]
-        tabla_destino = "Causales"
-    elif tipo == "lote":
-        carpeta = os.path.join(carpeta_diaria, "Lotes")
-        if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Lote_Consolidado") and f.endswith(".xlsx")
-            ]
-            if archivos:
-                ruta_archivo = os.path.join(carpeta, archivos[0])
-                nombre_archivo = archivos[0]
-        tabla_destino = "Lote"
-    elif tipo == "discador":
-        archivos = [
-            f
-            for f in os.listdir(carpeta_diaria)
-            if "discador" in f.lower() and f.endswith("Consolidado.xlsx")
-        ]
-        if archivos:
-            ruta_archivo = os.path.join(carpeta_diaria, archivos[0])
-            nombre_archivo = archivos[0]
-        tabla_destino = "Discador"
-    else:
+    # --- Rutas y tabla destino ---
+    tabla_por_tipo = {
+        "causales": "Causales",
+        "lote": "Lote",
+        "discador": "Discador",
+    }
+
+    tabla_destino = tabla_por_tipo.get(tipo)
+
+    if not tabla_destino:
         return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
+
+    ruta_archivo, nombre_archivo = _buscar_archivo_consolidado_orion(
+        carpeta_diaria,
+        tipo,
+    )
 
     if not ruta_archivo or not os.path.isfile(ruta_archivo):
         return f"<div class='log-line error'>❌ No se encontró el archivo consolidado de {tipo}.</div>"
@@ -448,48 +470,25 @@ def accion_insertar_datos():
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
 
     fecha = session.get("ultima_fecha", "202605_12")
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
 
     # ---------- Rutas y tabla destino ----------
-    ruta_archivo = None
-    nombre_archivo = None
-    tabla_destino = None
-    if tipo == "causales":
-        carpeta = os.path.join(carpeta_diaria, "Causales")
-        if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Causales_Consolidado") and f.endswith(".xlsx")
-            ]
-            if archivos:
-                ruta_archivo = os.path.join(carpeta, archivos[0])
-                nombre_archivo = archivos[0]
-        tabla_destino = "Causales"
-    elif tipo == "lote":
-        carpeta = os.path.join(carpeta_diaria, "Lotes")
-        if os.path.isdir(carpeta):
-            archivos = [
-                f
-                for f in os.listdir(carpeta)
-                if f.startswith("Lote_Consolidado") and f.endswith(".xlsx")
-            ]
-            if archivos:
-                ruta_archivo = os.path.join(carpeta, archivos[0])
-                nombre_archivo = archivos[0]
-        tabla_destino = "Lote"
-    elif tipo == "discador":
-        archivos = [
-            f
-            for f in os.listdir(carpeta_diaria)
-            if "discador" in f.lower() and f.endswith("Consolidado.xlsx")
-        ]
-        if archivos:
-            ruta_archivo = os.path.join(carpeta_diaria, archivos[0])
-            nombre_archivo = archivos[0]
-        tabla_destino = "Discador"
-    else:
+    # ---------- Rutas y tabla destino ----------
+    tabla_por_tipo = {
+        "causales": "Causales",
+        "lote": "Lote",
+        "discador": "Discador",
+    }
+
+    tabla_destino = tabla_por_tipo.get(tipo)
+
+    if not tabla_destino:
         return "<div class='log-line error'>❌ Tipo de carga no válido.</div>"
+
+    ruta_archivo, nombre_archivo = _buscar_archivo_consolidado_orion(
+        carpeta_diaria,
+        tipo,
+    )
 
     if not ruta_archivo or not os.path.isfile(ruta_archivo):
         return f"<div class='log-line error'>❌ No se encontró el archivo consolidado de {tipo}.</div>"
@@ -841,33 +840,13 @@ def accion_consolidar_consulta():
 
 def _obtener_carpeta_diaria_orion_desde_fecha(fecha: str) -> str:
     """
-    Devuelve la carpeta diaria ORION.
+    Devuelve la carpeta diaria ORION con la nueva estructura:
 
-    Entrada:
-    20260429
-
-    Salida:
-    data\\orion_202604_29
+    data\\YYYYMMDD\\Orion
     """
-    fecha_limpia = "".join(ch for ch in str(fecha or "") if ch.isdigit())
+    fecha_yyyymmdd = normalizar_fecha_yyyymmdd(fecha)
 
-    if len(fecha_limpia) != 8:
-        raise ValueError(
-            f"Fecha inválida para carpeta ORION: {fecha}. Se esperaba YYYYMMDD."
-        )
-
-    anio_mes = fecha_limpia[:6]
-    dia = fecha_limpia[6:8]
-
-    carpeta = os.path.join(
-        DATA_DIR,
-        f"orion_{anio_mes}_{dia}",
-    )
-
-    os.makedirs(carpeta, exist_ok=True)
-
-    return carpeta
-
+    return ruta_orion(DATA_DIR, fecha_yyyymmdd)
 
 @carga_bp.route("/accion/consolidar-aplicar", methods=["POST"])
 def accion_consolidar_aplicar():
@@ -952,17 +931,27 @@ def accion_consolidar_aplicar():
 
     nombre_archivo = f"{fecha_limpia}_Gestion_orion.xlsx"
 
+    carpeta_salidas = os.path.join(carpeta_diaria_orion, "Salidas")
+    os.makedirs(carpeta_salidas, exist_ok=True)
+
     ruta_salida = os.path.join(
-        carpeta_diaria_orion,
+        carpeta_salidas,
         nombre_archivo,
     )
+
+    ruta_relativa_descarga = os.path.join(
+        fecha_limpia,
+        "Orion",
+        "Salidas",
+        nombre_archivo,
+    ).replace("\\", "/")
     
     df.to_excel(ruta_salida, index=False)
 
     html = html_estadisticas
     # Generar enlace de descarga
     html = "<div class='log-line success'>✅ Excel generado correctamente.</div>"
-    html += f"<p style='font-size:0.8rem;'><b>Archivo:</b> {nombre_archivo}</p>"
+    html += f"<p><a href='/descargar/{ruta_relativa_descarga}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
     html += f"<p><a href='/descargar/{nombre_archivo}' style='color:#1e90ff; text-decoration:none; font-weight:bold;'>📥 Descargar {nombre_archivo}</a></p>"
     html += f"<p style='font-size:0.7rem; color:#888;'>Ruta: {ruta_salida}</p>"
     html = html_estadisticas + html

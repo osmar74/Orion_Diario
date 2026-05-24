@@ -224,11 +224,14 @@ class LotesProcessor:
         except Exception as e:
             return {'ok': False, 'mensajes': [f"Error en validación cruzada: {e}"]}
 
+
+
     def procesar_carpeta_lotes(
         self,
-        ruta_carpeta: str,
+        carpeta_lotes: str,
         fecha_str: str,
-        ruta_discador_limpio: Optional[str] = None
+        ruta_discador_limpio: Optional[str] = None,
+        carpeta_salida: Optional[str] = None,
     ) -> Dict:
         """
         Procesa todos los CSV en la carpeta de lotes.
@@ -246,11 +249,11 @@ class LotesProcessor:
 
         if self.log_service:
             self.log_service.log('4.3', 'Procesar Lotes', 'info',
-                                 f'Iniciando procesamiento de carpeta: {ruta_carpeta}')
+                                 f'Iniciando procesamiento de carpeta: {carpeta_lotes}')
 
         try:
             archivos_csv = [
-                f for f in os.listdir(ruta_carpeta) if f.lower().endswith('.csv')
+                f for f in os.listdir(carpeta_lotes) if f.lower().endswith('.csv')
             ]
             if not archivos_csv:
                 msg = "No se encontraron archivos CSV en la carpeta."
@@ -267,7 +270,7 @@ class LotesProcessor:
             reporte_lotes = []
 
             for archivo in archivos_csv:
-                ruta_completa = os.path.join(ruta_carpeta, archivo)
+                ruta_completa = os.path.join(carpeta_lotes, archivo)
                 coincidencia_lote = self.seleccionar_nombre_lote_desde_discador(
                     archivo,
                     valores_lote_discador,
@@ -341,9 +344,14 @@ class LotesProcessor:
             df_consolidado = pd.concat(dataframes, ignore_index=True)
 
             # Exportar consolidado
-            fecha_archivo = fecha_str.replace('_', '')[4:]   # DDMMYYYY
+            # Exportar consolidado
+            fecha_archivo = fecha_str.replace('_', '')[4:]
             nombre_consolidado = f"Lote_Consolidado_{fecha_archivo}.xlsx"
-            ruta_consolidado = os.path.join(ruta_carpeta, nombre_consolidado)
+
+            carpeta_salida = carpeta_salida or carpeta_lotes
+            os.makedirs(carpeta_salida, exist_ok=True)
+
+            ruta_consolidado = os.path.join(carpeta_salida, nombre_consolidado)
             df_consolidado.to_excel(ruta_consolidado, index=False)
 
             # Validación cruzada opcional

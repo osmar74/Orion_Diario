@@ -12,6 +12,7 @@ from werkzeug.utils import secure_filename
 from app.config import DATA_DIR, TESSERACT_PATH
 from app.controllers.helpers import obtener_log_service
 from app.services.ocr_processor import OCRProcessor
+from app.services.daily_paths import ruta_orion_subcarpeta
 
 
 ocr_bp = Blueprint("ocr", __name__)
@@ -32,7 +33,7 @@ def accion_ocr_subir():
     if not archivos_validos:
         return "<div class='log-line error'>❌ No se seleccionó ninguna imagen.</div>"
 
-    carpeta_destino = os.path.join(DATA_DIR, f"orion_{fecha}", "Reporte_Imagen")
+    carpeta_destino = ruta_orion_subcarpeta(DATA_DIR, fecha, "Reporte_Imagen")
     os.makedirs(carpeta_destino, exist_ok=True)
 
     log_srv = obtener_log_service()

@@ -12,6 +12,7 @@ from app.services.discador_processor import DiscadorProcessor
 from app.services.causales_processor import CausalesProcessor
 from app.services.lotes_processor import LotesProcessor
 from app.controllers.helpers import obtener_log_service
+from app.services.daily_paths import ruta_orion
 
 
 proc_bp = Blueprint("procesamiento", __name__)
@@ -88,8 +89,11 @@ def accion_procesar_discador():
         total_esperado = request.args.get("total", 0, type=int)
 
     disc = DiscadorProcessor(log_service=obtener_log_service())
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
-    
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
+
+    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
+    os.makedirs(carpeta_consolidados, exist_ok=True)
+
     ruta_disc = _buscar_archivo_discador_procesamiento(carpeta_diaria)
 
     if not ruta_disc:
@@ -117,7 +121,7 @@ def accion_procesar_discador():
     except Exception:
         pass
 
-    res = disc.procesar(ruta_disc, total_esperado, carpeta_diaria)
+    res = disc.procesar(ruta_disc, total_esperado, carpeta_consolidados)
 
     if res["success"]:
         html = (
@@ -179,12 +183,20 @@ def accion_procesar_discador():
 @proc_bp.route("/accion/procesar-causales")
 def accion_procesar_causales():
     fecha = request.args.get("fecha", "202605_12")
+
     caus = CausalesProcessor(log_service=obtener_log_service())
-    carpeta_causales = os.path.join(DATA_DIR, f"orion_{fecha}", "Causales")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
+    carpeta_causales = os.path.join(carpeta_diaria, "Causales")
+
+    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
+    os.makedirs(carpeta_consolidados, exist_ok=True)
+
     if not os.path.isdir(carpeta_causales):
         return "<div class='log-line error'>❌ No existe la carpeta Causales.</div>"
 
-    res = caus.procesar_carpeta_causales(carpeta_causales, carpeta_causales)
+    res = caus.procesar_carpeta_causales(carpeta_causales, carpeta_consolidados)
+
+
     if res["success"]:
         html = "<div class='log-line success'>✅ Causales procesados correctamente. ({} archivos)</div>".format(
             res["total_archivos"]
@@ -298,8 +310,9 @@ def _buscar_archivo_discador_orion(carpeta_diaria: str) -> str | None:
     3. Busca en carpeta raíz del día y en subcarpeta Discador
     """
     carpetas_busqueda = [
-        carpeta_diaria,
+        os.path.join(carpeta_diaria, "Consolidados"),
         os.path.join(carpeta_diaria, "Discador"),
+        carpeta_diaria,
     ]
 
     candidatos = []
@@ -354,9 +367,13 @@ def _buscar_archivo_discador_orion(carpeta_diaria: str) -> str | None:
 @proc_bp.route("/accion/procesar-lotes")
 def accion_procesar_lotes():
     fecha = request.args.get("fecha", "202605_12")
+
     lotes = LotesProcessor(log_service=obtener_log_service())
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
     carpeta_lotes = os.path.join(carpeta_diaria, "Lotes")
+
+    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
+    os.makedirs(carpeta_consolidados, exist_ok=True)
 
     if not os.path.isdir(carpeta_lotes):
         return "<div class='log-line error'>❌ No existe la carpeta Lotes.</div>"
@@ -367,6 +384,7 @@ def accion_procesar_lotes():
         carpeta_lotes,
         fecha,
         ruta_disc,
+        carpeta_salida=carpeta_consolidados,
     )
 
     if res["success"]:
@@ -448,45 +466,56 @@ def accion_procesar_lotes():
 @proc_bp.route("/accion/comparar-lotes")
 def accion_comparar_lotes():
     fecha = request.args.get("fecha", "202605_12")
-    carpeta_diaria = os.path.join(DATA_DIR, f"orion_{fecha}")
+    carpeta_diaria = ruta_orion(DATA_DIR, fecha)
 
-    archivos_disc = [
-        f
-        for f in os.listdir(carpeta_diaria)
-        if f.lower().endswith(".xlsx")
-        and "discador" in f.lower()
-        and "consolidado" in f.lower()
-    ]
+    carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
+    os.makedirs(carpeta_consolidados, exist_ok=True)
+
+    archivos_disc = (
+        [
+            f
+            for f in os.listdir(carpeta_consolidados)
+            if f.lower().endswith(".xlsx")
+            and "discador" in f.lower()
+            and "consolidado" in f.lower()
+        ]
+        if os.path.isdir(carpeta_consolidados)
+        else []
+    )
     ruta_disc = (
-        os.path.join(carpeta_diaria, archivos_disc[0]) if archivos_disc else None
+        os.path.join(carpeta_consolidados, archivos_disc[0])
+        if archivos_disc
+        else None
     )
 
-    carpeta_lotes = os.path.join(carpeta_diaria, "Lotes")
     archivos_lotes = (
         [
             f
-            for f in os.listdir(carpeta_lotes)
-            if f.lower().startswith("lote_consolidado") and f.endswith(".xlsx")
+            for f in os.listdir(carpeta_consolidados)
+            if f.lower().startswith("lote_consolidado") and f.lower().endswith(".xlsx")
         ]
-        if os.path.isdir(carpeta_lotes)
+        if os.path.isdir(carpeta_consolidados)
         else []
     )
     ruta_lotes = (
-        os.path.join(carpeta_lotes, archivos_lotes[0]) if archivos_lotes else None
+        os.path.join(carpeta_consolidados, archivos_lotes[0])
+        if archivos_lotes
+        else None
     )
 
-    carpeta_causales = os.path.join(carpeta_diaria, "Causales")
     archivos_caus = (
         [
             f
-            for f in os.listdir(carpeta_causales)
-            if f.lower().startswith("causales_consolidado") and f.endswith(".xlsx")
+            for f in os.listdir(carpeta_consolidados)
+            if f.lower().startswith("causales_consolidado") and f.lower().endswith(".xlsx")
         ]
-        if os.path.isdir(carpeta_causales)
+        if os.path.isdir(carpeta_consolidados)
         else []
     )
     ruta_caus = (
-        os.path.join(carpeta_causales, archivos_caus[0]) if archivos_caus else None
+        os.path.join(carpeta_consolidados, archivos_caus[0])
+        if archivos_caus
+        else None
     )
 
     html = "<p style='font-size:0.75rem; color:#ccc; margin:5px 0;'>📁 Archivos limpios generados:</p>"
@@ -597,8 +626,13 @@ def accion_comparar_lotes():
             cell.alignment = Alignment(horizontal="center")
             cell.border = thin_border
         fecha_archivo = fecha.replace("_", "")[4:]
+
+        carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
+        os.makedirs(carpeta_consolidados, exist_ok=True)
+
         ruta_resumen = os.path.join(
-            carpeta_diaria, f"Resumen_Comparacion_{fecha_archivo}.xlsx"
+            carpeta_consolidados,
+            f"Resumen_Comparacion_{fecha_archivo}.xlsx",
         )
         wb.save(ruta_resumen)
         html += (
