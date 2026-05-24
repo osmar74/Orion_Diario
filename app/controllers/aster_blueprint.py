@@ -58,6 +58,12 @@ from app.services.aster_reconciliation_service import (
     obtener_entidades_sql_validables_aster as obtener_entidades_sql_validables_aster_service,
 )
 
+from app.services.aster_history_service import (
+    inicializar_historial_aster,
+    obtener_historial_cargas_aster,
+    registrar_historial_carga_aster,
+)
+
 
 aster_bp = Blueprint("aster", __name__)
 
@@ -2638,41 +2644,12 @@ def _validar_cuadre_final_aster(
 
     return cumple, detalle
 
-
 def _inicializar_historial_aster() -> None:
     """
-    Crea la base SQLite local para historial de cargas ASTER si no existe.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_history_service.
     """
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    conn = sqlite3.connect(ASTER_HISTORIAL_DB)
-
-    try:
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS aster_load_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha_hora_registro TEXT NOT NULL,
-                fecha_proceso TEXT,
-                archivo_excel TEXT,
-                conexion TEXT,
-                total_general_aster INTEGER,
-                filas_excel INTEGER,
-                registros_insertados INTEGER,
-                estado TEXT,
-                mensaje TEXT,
-                archivo_reporte_entidades TEXT,
-                ruta_reporte_entidades TEXT
-            )
-            """
-        )
-
-        conn.commit()
-
-    finally:
-        conn.close()
+    inicializar_historial_aster(ASTER_HISTORIAL_DB)
 
 
 def _registrar_historial_carga_aster(
@@ -2688,91 +2665,33 @@ def _registrar_historial_carga_aster(
     ruta_reporte_entidades: str = "",
 ) -> None:
     """
-    Registra una carga o intento de carga ASTER en SQLite local.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_history_service.
     """
-    _inicializar_historial_aster()
-
-    conn = sqlite3.connect(ASTER_HISTORIAL_DB)
-
-    try:
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO aster_load_history (
-                fecha_hora_registro,
-                fecha_proceso,
-                archivo_excel,
-                conexion,
-                total_general_aster,
-                filas_excel,
-                registros_insertados,
-                estado,
-                mensaje,
-                archivo_reporte_entidades,
-                ruta_reporte_entidades
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                fecha_proceso,
-                archivo_excel,
-                conexion,
-                total_general_aster,
-                int(filas_excel or 0),
-                int(registros_insertados or 0),
-                estado,
-                mensaje,
-                archivo_reporte_entidades,
-                ruta_reporte_entidades,
-            ),
-        )
-
-        conn.commit()
-
-    finally:
-        conn.close()
+    registrar_historial_carga_aster(
+        db_path=ASTER_HISTORIAL_DB,
+        fecha_proceso=fecha_proceso,
+        archivo_excel=archivo_excel,
+        conexion=conexion,
+        total_general_aster=total_general_aster,
+        filas_excel=filas_excel,
+        registros_insertados=registros_insertados,
+        estado=estado,
+        mensaje=mensaje,
+        archivo_reporte_entidades=archivo_reporte_entidades,
+        ruta_reporte_entidades=ruta_reporte_entidades,
+    )
 
 
 def _obtener_historial_cargas_aster(limite: int = 30) -> list[dict[str, Any]]:
     """
-    Obtiene los últimos registros del historial ASTER.
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_history_service.
     """
-    _inicializar_historial_aster()
-
-    conn = sqlite3.connect(ASTER_HISTORIAL_DB)
-    conn.row_factory = sqlite3.Row
-
-    try:
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            SELECT
-                id,
-                fecha_hora_registro,
-                fecha_proceso,
-                archivo_excel,
-                conexion,
-                total_general_aster,
-                filas_excel,
-                registros_insertados,
-                estado,
-                mensaje,
-                archivo_reporte_entidades,
-                ruta_reporte_entidades
-            FROM aster_load_history
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (limite,),
-        )
-
-        return [dict(row) for row in cursor.fetchall()]
-
-    finally:
-        conn.close()
+    return obtener_historial_cargas_aster(
+        db_path=ASTER_HISTORIAL_DB,
+        limite=limite,
+    )
 
 
 def _generar_html_historial_cargas_aster(
