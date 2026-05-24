@@ -39,6 +39,7 @@ from app.services.aster_file_service import (
 )
 
 from app.services.aster_normalization_service import normalizar_archivo_aster
+from app.services.aster_entity_service import analizar_entidades_excel_aster
 
 aster_bp = Blueprint("aster", __name__)
 
@@ -3343,11 +3344,13 @@ def accion_aster_normalizar_encabezados():
         return f"<div class='log-line error'>❌ Error normalizando encabezados ASTER: {escape(str(exc))}</div>"
     
 
-
 @aster_bp.route("/accion/aster-entidades-excel", methods=["POST"])
 def accion_aster_entidades_excel():
     """
     Obtiene valores únicos de la columna Entidad del Excel ASTER normalizado.
+
+    La lógica de análisis vive en:
+    app.services.aster_entity_service
     """
     try:
         try:
@@ -3359,57 +3362,59 @@ def accion_aster_entidades_excel():
             </div>
             """
 
-        if not os.path.isfile(ruta_archivo):
+        resultado = analizar_entidades_excel_aster(ruta_archivo)
+
+        if not resultado.get("success"):
+            status = str(resultado.get("status") or "")
+
+            if status == "archivo_no_existe":
+                return f"""
+                <div class='log-line error'>
+                    ❌ {escape(str(resultado.get("error", "El archivo ASTER no existe.")))}
+                </div>
+                <div class='log-line warning'>
+                    Ruta: <code>{escape(str(resultado.get("ruta_archivo", "")))}</code>
+                </div>
+                """
+
+            if status == "sin_columna_entidad":
+                columnas = resultado.get("columnas") or []
+
+                columnas_html = "<br>".join(
+                    f"<code>{escape(str(col))}</code>"
+                    for col in columnas
+                )
+
+                return f"""
+                <div class='log-line error'>
+                    ❌ {escape(str(resultado.get("error", "No se encontró la columna Entidad.")))}
+                </div>
+                <div class='log-line warning'>
+                    Columnas disponibles:<br>{columnas_html}
+                </div>
+                """
+
             return f"""
             <div class='log-line error'>
-                ❌ El archivo ASTER no existe en la ruta indicada.
-            </div>
-            <div class='log-line warning'>
-                Ruta: <code>{escape(ruta_archivo)}</code>
+                ❌ {escape(str(resultado.get("error", "Error analizando entidades ASTER.")))}
             </div>
             """
 
-        df = pd.read_excel(ruta_archivo, dtype=str)
-        columnas = list(df.columns)
+        conteo_entidades = resultado["conteo_entidades"]
 
-        if "Entidad" not in columnas:
-            columnas_html = "<br>".join(
-                f"<code>{escape(str(col))}</code>" for col in columnas
-            )
-
-            return f"""
-            <div class='log-line error'>
-                ❌ No se encontró la columna <b>Entidad</b> en el Excel ASTER.
-            </div>
-            <div class='log-line warning'>
-                Columnas disponibles:<br>{columnas_html}
-            </div>
-            """
-
-        serie_entidad = df["Entidad"].fillna("").astype(str).str.strip()
-        serie_valida = serie_entidad[serie_entidad != ""]
-
-        conteo_series = serie_valida.value_counts()
-
-        conteo_entidades = [
-            (str(entidad), int(cantidad))
-            for entidad, cantidad in conteo_series.items()
-        ]
-
-        session["aster_entidades_excel"] = [
-            entidad for entidad, _ in conteo_entidades
-        ]
-        session["aster_total_entidades_excel"] = len(conteo_entidades)
-        session["aster_total_registros_excel"] = len(df)
+        session["aster_entidades_excel"] = resultado["entidades"]
+        session["aster_total_entidades_excel"] = resultado["total_entidades"]
+        session["aster_total_registros_excel"] = resultado["total_registros"]
 
         return _generar_html_entidades_excel_aster(
-            ruta_archivo=ruta_archivo,
-            total_registros=len(df),
+            ruta_archivo=str(resultado["ruta_archivo"]),
+            total_registros=int(resultado["total_registros"]),
             conteo_entidades=conteo_entidades,
         )
 
     except Exception as exc:
-        return f"<div class='log-line error'>❌ Error analizando entidades ASTER: {exc}</div>"
+        return f"<div class='log-line error'>❌ Error analizando entidades ASTER: {escape(str(exc))}</div>"
+    
 
 
 @aster_bp.route("/accion/aster-consulta-sql", methods=["POST"])
