@@ -3,28 +3,17 @@ Blueprint para la Fase G: Carga de datos a SQL Server.
 """
 
 import json
-# import os
-# import re
-import pyodbc
-import pandas as pd
 
 from flask import Blueprint, request, session
-
-# from typing import cast
-# from datetime import datetime
-
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
-from app.controllers.helpers import (
-    construir_cadena_conexion,
-    construir_sqlalchemy_engine,
-)
-
 
 from app.services.orion_load_renderer import (
     render_consolidado_consulta_orion,
     render_gestion_orion_exportada,
     render_insercion_orion_resultado,
     render_log_error,
+    render_prueba_conexion_orion,
+    render_prueba_lectura_orion,
     render_tabla_estadisticas_consolidado,
     render_verificacion_carga_orion,
 )
@@ -39,6 +28,10 @@ from app.services.orion_consolidado_query_service import (
     ejecutar_consulta_consolidado_orion,
 )
 
+from app.services.orion_connection_service import (
+    probar_conexion_sql_server,
+    probar_lectura_tabla_sql_server,
+)
 
 carga_bp = Blueprint("carga", __name__)
 
@@ -100,7 +93,6 @@ def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
 
 
 
-
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
 def accion_probar_conexion():
     servidor = request.form.get("servidor", "")
@@ -110,24 +102,18 @@ def accion_probar_conexion():
     password = request.form.get("password", "")
     autenticacion = request.form.get("autenticacion", "sql")
 
-    if not servidor or not basedatos:
-        return "<div class='log-line error'>❌ Faltan datos obligatorios.</div>"
+    cfg = {
+        "server": servidor,
+        "port": puerto,
+        "database": basedatos,
+        "auth": autenticacion,
+        "username": usuario,
+        "password": password,
+    }
 
-    try:
-        cfg = {
-            "server": servidor,
-            "port": puerto,
-            "database": basedatos,
-            "auth": autenticacion,
-            "username": usuario,
-            "password": password,
-        }
-        conn_str = construir_cadena_conexion(cfg)
-        conn = pyodbc.connect(conn_str, timeout=5)
-        conn.close()
-        return f"<div class='log-line success'>✅ Conexión exitosa a {servidor}/{basedatos}</div>"
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error de conexión: {e}</div>"
+    resultado = probar_conexion_sql_server(cfg)
+
+    return render_prueba_conexion_orion(resultado)
 
 
 @carga_bp.route("/accion/probar-lectura", methods=["POST"])
@@ -139,39 +125,23 @@ def accion_probar_lectura():
     password = request.form.get("password", "")
     autenticacion = request.form.get("autenticacion", "sql")
 
-    if not servidor or not basedatos:
-        return "<div class='log-line error'>❌ Faltan datos obligatorios.</div>"
+    cfg = {
+        "server": servidor,
+        "port": puerto,
+        "database": basedatos,
+        "auth": autenticacion,
+        "username": usuario,
+        "password": password,
+    }
 
-    try:
-        cfg = {
-            "server": servidor,
-            "port": puerto,
-            "database": basedatos,
-            "auth": autenticacion,
-            "username": usuario,
-            "password": password,
-        }
+    resultado = probar_lectura_tabla_sql_server(
+        cfg_sql=cfg,
+        tabla="Causales",
+        limite=5,
+    )
 
-        query = "SELECT TOP 5 * FROM Causales"
+    return render_prueba_lectura_orion(resultado)
 
-        engine = construir_sqlalchemy_engine(cfg)
-
-        try:
-            with engine.connect() as conn_sqlalchemy:
-                df = pd.read_sql(query, conn_sqlalchemy)
-        finally:
-            engine.dispose()
-
-
-        if df.empty:
-            return "<div class='log-line warning'>⚠️ La tabla Causales existe pero no contiene registros.</div>"
-        html = "<div class='log-line success'>✅ Lectura exitosa. {} registros encontrados.</div>".format(
-            len(df)
-        )
-        html += df.to_html(index=False, classes="dataframe")
-        return html
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error al leer Causales: {e}</div>"
 
 
 @carga_bp.route("/accion/verificar-carga", methods=["POST"])
@@ -220,22 +190,19 @@ def accion_insertar_datos():
 
     return render_insercion_orion_resultado(resultado)
 
+
 @carga_bp.route("/accion/probar-conexion-consolidado")
 def accion_probar_conexion_consolidado():
-    """Prueba la conexión para el panel de consolidado."""
+    """
+    Prueba la conexión para el panel de consolidado ORION.
+    """
     conexion = request.args.get("conexion", "local")
-    from app.config import SQL_LOCAL, SQL_REMOTO
-    from app.controllers.helpers import construir_cadena_conexion
-    import pyodbc
 
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
-    try:
-        conn_str = construir_cadena_conexion(cfg)
-        conn = pyodbc.connect(conn_str, timeout=5)
-        conn.close()
-        return "<div class='log-line success'>✅ Conexión exitosa</div>"
-    except Exception as e:
-        return f"<div class='log-line error'>❌ Error: {e}</div>"
+
+    resultado = probar_conexion_sql_server(cfg)
+
+    return render_prueba_conexion_orion(resultado)
 
 
 @carga_bp.route("/accion/consolidar-consulta", methods=["POST"])

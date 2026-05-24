@@ -336,3 +336,57 @@ def render_consolidado_consulta_orion(res: dict[str, Any]) -> str:
 
     return html
 
+def render_prueba_conexion_orion(res: dict[str, Any]) -> str:
+    """
+    HTML para prueba de conexión SQL Server ORION.
+    """
+    if not res.get("success"):
+        return render_log_error(res.get("error", "Error de conexión."))
+
+    return (
+        "<div class='log-line success'>"
+        f"✅ {escape(str(res.get('mensaje', 'Conexión exitosa')))}"
+        "</div>"
+    )
+
+
+def render_prueba_lectura_orion(res: dict[str, Any]) -> str:
+    """
+    HTML para prueba de lectura SQL Server ORION.
+    """
+    if not res.get("success"):
+        if res.get("status") == "sin_registros":
+            return (
+                "<div class='log-line warning'>"
+                f"⚠️ {escape(str(res.get('warning', 'La tabla no contiene registros.')))}"
+                "</div>"
+            )
+
+        return render_log_error(res.get("error", "Error al leer la tabla."))
+
+    columnas = res.get("columnas", [])
+    filas = res.get("filas", [])
+
+    html = (
+        "<div class='log-line success'>"
+        f"✅ Lectura exitosa. {escape(str(res.get('registros', 0)))} registros encontrados."
+        "</div>"
+    )
+
+    html += "<table class='dataframe' style='width:100%; margin-top:10px;'>"
+
+    html += "<tr>"
+    for columna in columnas:
+        html += f"<th>{escape(str(columna))}</th>"
+    html += "</tr>"
+
+    for fila in filas:
+        html += "<tr>"
+        for columna in columnas:
+            html += f"<td>{escape(str(fila.get(columna, '')))}</td>"
+        html += "</tr>"
+
+    html += "</table>"
+
+    return html
+
