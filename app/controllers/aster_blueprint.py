@@ -10,10 +10,9 @@ import base64
 import json
 import os
 import re
-import shutil
 import sqlite3
 import unicodedata
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from html import escape
 from typing import Any
@@ -34,7 +33,11 @@ from app.services.daily_paths import (
 )
 from app.controllers.helpers import obtener_log_service
 from app.services.ocr_processor import OCRProcessor
-
+from app.services.aster_file_service import (
+    buscar_archivo_normalizado_aster_en_disco,
+    copiar_archivo_aster,
+    obtener_carpeta_proceso_aster,
+)
 
 aster_bp = Blueprint("aster", __name__)
 
@@ -190,37 +193,6 @@ def _archivo_aster_corresponde_fecha(nombre_archivo: str, fecha_yyyymmdd: str) -
     nombre_esperado = f"After{fecha_yyyymmdd}.xlsx"
 
     return os.path.basename(nombre_archivo).lower() == nombre_esperado.lower()
-
-
-def _buscar_archivo_aster_en_ruta(ruta_base: str, fecha_yyyymmdd: str) -> str | None:
-    """
-    Busca estrictamente el archivo AfterYYYYMMDD.xlsx correspondiente
-    a la fecha_proceso.
-
-    Ejemplo:
-    fecha_yyyymmdd = 20260521
-    archivo válido = After20260521.xlsx
-
-    No debe aceptar:
-    - After20240521.xlsx
-    - AfterYYYYMMDD de otro año
-    - archivos que solo coincidan por día y mes
-    """
-    if not ruta_base or not os.path.isdir(ruta_base):
-        return None
-
-    nombre_esperado = f"After{fecha_yyyymmdd}.xlsx"
-    nombre_esperado_lower = nombre_esperado.lower()
-
-    for carpeta_actual, _, archivos in os.walk(ruta_base):
-        for archivo in archivos:
-            if archivo.lower() == nombre_esperado_lower:
-                return os.path.join(carpeta_actual, archivo)
-
-    return None
-
-
-
 
 def _generar_html_archivo_aster(
     fecha_yyyymmdd: str,
@@ -2685,63 +2657,20 @@ def _obtener_fecha_proceso_aster() -> str:
 
 def _obtener_carpeta_proceso_aster(fecha_yyyymmdd: str) -> str:
     """
-    Devuelve la carpeta base del proceso ASTER.
-
-    Nueva estructura:
-    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_file_service.
     """
-    carpeta = ruta_aster_base(DATA_DIR, fecha_yyyymmdd)
-
-    os.makedirs(carpeta, exist_ok=True)
-
-    return carpeta
-
+    return obtener_carpeta_proceso_aster(DATA_DIR, fecha_yyyymmdd)
 
 def _buscar_archivo_normalizado_aster_en_disco(fecha_yyyymmdd: str) -> str:
     """
-    Busca el archivo ASTER normalizado en:
-
-    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD\\Normalizado
+    Compatibilidad temporal.
+    La lógica real vive en app.services.aster_file_service.
     """
-    carpeta_normalizado = ruta_aster_subcarpeta(
+    return buscar_archivo_normalizado_aster_en_disco(
         DATA_DIR,
         fecha_yyyymmdd,
-        "Normalizado",
     )
-
-    if not os.path.isdir(carpeta_normalizado):
-        return ""
-
-    candidatos = []
-
-    for archivo in os.listdir(carpeta_normalizado):
-        nombre = archivo.lower()
-
-        if not nombre.endswith(".xlsx"):
-            continue
-
-        if "normalizado" not in nombre:
-            continue
-
-        ruta = os.path.join(carpeta_normalizado, archivo)
-
-        candidatos.append(
-            {
-                "ruta": ruta,
-                "modificado": os.path.getmtime(ruta),
-            }
-        )
-
-    if not candidatos:
-        return ""
-
-    candidatos.sort(
-        key=lambda item: item["modificado"],
-        reverse=True,
-    )
-
-    return str(candidatos[0]["ruta"])
-
 
 def _resolver_archivo_aster_normalizado() -> str:
     """
@@ -3342,10 +3271,10 @@ def accion_aster_consolidar_total():
 @aster_bp.route("/accion/aster-buscar-archivo", methods=["POST"])
 def accion_aster_buscar_archivo():
     """
-    Busca el archivo After del día y lo copia a la carpeta local ASTER.
+    Busca el archivo After del día y lo copia a Archivo_Original.
 
-    Destino:
-    data\\YYYYMMDD\\Aster\\aster_YYYYMMDD
+    La lógica de búsqueda y copia vive en:
+    app.services.aster_file_service
     """
     try:
         fecha_raw = request.form.get("fecha_proceso", "").strip()
@@ -3354,49 +3283,35 @@ def accion_aster_buscar_archivo():
         if not fecha_raw:
             return "<div class='log-line error'>❌ Debe ingresar la fecha del proceso ASTER.</div>"
 
-        fecha_yyyymmdd = _normalizar_fecha_aster(fecha_raw)
+        resultado = copiar_archivo_aster(
+            data_dir=DATA_DIR,
+            fecha_raw=fecha_raw,
+            ruta_base_usuario=ruta_base_usuario,
+            rutas_default=RUTAS_ASTER_DEFAULT,
+        )
 
-        rutas_busqueda = []
+        if not resultado.get("success"):
+            fecha_yyyymmdd = str(resultado.get("fecha_yyyymmdd") or "")
+            rutas_busqueda = resultado.get("rutas_busqueda") or []
 
-        if ruta_base_usuario:
-            rutas_busqueda.append(ruta_base_usuario)
-
-        rutas_busqueda.extend(RUTAS_ASTER_DEFAULT)
-
-        ruta_origen: str | None = None
-
-        for ruta_base in rutas_busqueda:
-            ruta_encontrada = _buscar_archivo_aster_en_ruta(
-                ruta_base,
-                fecha_yyyymmdd,
-            )
-
-            if ruta_encontrada:
-                ruta_origen = ruta_encontrada
-                break
-
-        if not ruta_origen:
             rutas_html = "<br>".join(
-                f"<code>{ruta}</code>" for ruta in rutas_busqueda
+                f"<code>{escape(str(ruta))}</code>"
+                for ruta in rutas_busqueda
             )
 
             return f"""
             <div class='log-line error'>
-                ❌ No se encontró archivo ASTER para la fecha {fecha_yyyymmdd}.
+                ❌ No se encontró archivo ASTER para la fecha {escape(fecha_yyyymmdd)}.
             </div>
             <div class='log-line warning'>
                 Rutas revisadas:<br>{rutas_html}
             </div>
             """
 
-        rutas_aster = crear_estructura_aster(DATA_DIR, fecha_yyyymmdd)
-
-        carpeta_destino = rutas_aster["Archivo_Original"]
-
-        nombre_archivo = os.path.basename(ruta_origen)
-        ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
-
-        shutil.copy2(ruta_origen, ruta_destino)
+        fecha_yyyymmdd = str(resultado["fecha_yyyymmdd"])
+        ruta_origen = str(resultado["ruta_origen"])
+        ruta_destino = str(resultado["ruta_destino"])
+        nombre_archivo = str(resultado["nombre_archivo"])
 
         session["aster_fecha_proceso"] = fecha_yyyymmdd
         session["aster_archivo_origen"] = ruta_origen
@@ -3410,10 +3325,11 @@ def accion_aster_buscar_archivo():
         )
 
     except ValueError as exc:
-        return f"<div class='log-line error'>❌ {exc}</div>"
+        return f"<div class='log-line error'>❌ {escape(str(exc))}</div>"
 
     except Exception as exc:
-        return f"<div class='log-line error'>❌ Error buscando archivo ASTER: {exc}</div>"
+        return f"<div class='log-line error'>❌ Error buscando archivo ASTER: {escape(str(exc))}</div>"
+
 
 
 @aster_bp.route("/accion/aster-normalizar-encabezados", methods=["POST"])
