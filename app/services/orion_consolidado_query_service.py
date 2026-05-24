@@ -25,19 +25,8 @@ from app.controllers.helpers import (
     construir_sqlalchemy_engine,
 )
 
+from app.services.sql_loader import cargar_sql
 
-def _obtener_sql_consolidado_path() -> str:
-    """
-    Devuelve ruta a app/sql/consolidado.sql.
-    """
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "sql",
-            "consolidado.sql",
-        )
-    )
 
 
 def ejecutar_consulta_consolidado_orion(
@@ -66,11 +55,8 @@ def ejecutar_consulta_consolidado_orion(
             "error": "Formato de meses inválido. Use YYYYMM.",
         }
 
-    sql_path = _obtener_sql_consolidado_path()
-
     try:
-        with open(sql_path, "r", encoding="utf-8") as archivo:
-            sql_template = archivo.read()
+        sql_template = cargar_sql("orion/consolidado.sql")
     except FileNotFoundError:
         return {
             "success": False,

@@ -39,6 +39,7 @@ from app.services.schema_validator import (
     obtener_columnas_texto_sql,
     validar_longitudes_dataframe,
 )
+from app.services.sql_loader import cargar_sql
 
 
 TABLA_ORION_POR_TIPO = {
@@ -46,6 +47,27 @@ TABLA_ORION_POR_TIPO = {
     "lote": "Lote",
     "discador": "Discador",
 }
+
+
+def _sql_identificador_orion(nombre: str) -> str:
+    """
+    Escapa identificadores SQL Server con corchetes.
+    """
+    return f"[{str(nombre).replace(']', ']]')}]"
+
+
+def _tabla_sql_orion(tabla_destino: str) -> str:
+    """
+    Devuelve tabla SQL segura.
+
+    La tabla destino viene de TABLA_ORION_POR_TIPO, no del usuario directamente.
+    """
+    tablas_validas = set(TABLA_ORION_POR_TIPO.values())
+
+    if tabla_destino not in tablas_validas:
+        raise ValueError(f"Tabla ORION no permitida: {tabla_destino}")
+
+    return _sql_identificador_orion(tabla_destino)
 
 
 def parsear_fecha_orion_segura(valor: Any) -> datetime | None:
@@ -347,15 +369,8 @@ def insertar_datos_orion(
         conn = pyodbc.connect(conn_str, timeout=5)
         cursor = conn.cursor()
 
-        cursor.execute(
-            """
-            SELECT COLUMN_NAME, DATA_TYPE
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = ?
-            ORDER BY ORDINAL_POSITION
-            """,
-            tabla_destino,
-        )
+        sql_columnas = cargar_sql("orion/columnas_tabla.sql")
+        cursor.execute(sql_columnas, tabla_destino)
 
         info_columnas = cursor.fetchall()
 
@@ -373,7 +388,9 @@ def insertar_datos_orion(
             for row in info_columnas
         }
 
-        cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
+        tabla_sql = _tabla_sql_orion(tabla_destino)
+        sql_count = cargar_sql("orion/count_table.sql").format(tabla=tabla_sql)
+        cursor.execute(sql_count)
         row = cursor.fetchone()
         registros_antes = int(row[0]) if row else 0
 
@@ -421,12 +438,19 @@ def insertar_datos_orion(
             tipos_servidor,
         )
 
-        columnas_sql = ", ".join(f"[{col}]" for col in columnas_insert)
+        tabla_sql = _tabla_sql_orion(tabla_destino)
+
+        columnas_sql = ", ".join(
+            _sql_identificador_orion(col)
+            for col in columnas_insert
+        )
+
         placeholders = ", ".join("?" for _ in columnas_insert)
 
-        sql_insert = (
-            f"INSERT INTO [{tabla_destino}] "
-            f"({columnas_sql}) VALUES ({placeholders})"
+        sql_insert = cargar_sql("orion/insert_table.sql").format(
+            tabla=tabla_sql,
+            columnas=columnas_sql,
+            placeholders=placeholders,
         )
 
         datos = _preparar_datos_insert(
@@ -437,7 +461,9 @@ def insertar_datos_orion(
         cursor.executemany(sql_insert, datos)
         conn.commit()
 
-        cursor.execute(f"SELECT COUNT(*) FROM [{tabla_destino}]")
+        tabla_sql = _tabla_sql_orion(tabla_destino)
+        sql_count = cargar_sql("orion/count_table.sql").format(tabla=tabla_sql)
+        cursor.execute(sql_count)
         row = cursor.fetchone()
         registros_despues = int(row[0]) if row else registros_antes
 
