@@ -13,71 +13,13 @@ from app.services.causales_processor import CausalesProcessor
 from app.services.lotes_processor import LotesProcessor
 from app.controllers.helpers import obtener_log_service
 from app.services.daily_paths import ruta_orion
+from app.services.orion_file_lookup_service import (
+    buscar_archivo_discador_para_lotes,
+    buscar_archivo_discador_procesamiento,
+)
 
 
 proc_bp = Blueprint("procesamiento", __name__)
-
-
-def _buscar_archivo_discador_procesamiento(carpeta_diaria: str) -> str | None:
-    """
-    Busca el archivo Discador para Fase F: Procesar Discador.
-
-    Prioridad:
-    1. data\\orion_YYYYMM_DD\\Discador
-    2. data\\orion_YYYYMM_DD
-
-    Acepta archivos Excel que contengan 'discador' en el nombre.
-    """
-    carpetas_busqueda = [
-        os.path.join(carpeta_diaria, "Discador"),
-        carpeta_diaria,
-    ]
-
-    candidatos = []
-
-    for carpeta in carpetas_busqueda:
-        if not os.path.isdir(carpeta):
-            continue
-
-        for archivo in os.listdir(carpeta):
-            nombre = archivo.lower()
-
-            if not nombre.endswith(".xlsx"):
-                continue
-
-            if "discador" not in nombre:
-                continue
-
-            ruta = os.path.join(carpeta, archivo)
-
-            prioridad = 0
-
-            if os.path.basename(carpeta).lower() == "discador":
-                prioridad += 10
-
-            if "consolidado" in nombre:
-                prioridad += 3
-
-            if "limpio" in nombre:
-                prioridad += 1
-
-            candidatos.append(
-                {
-                    "ruta": ruta,
-                    "prioridad": prioridad,
-                    "modificado": os.path.getmtime(ruta),
-                }
-            )
-
-    if not candidatos:
-        return None
-
-    candidatos.sort(
-        key=lambda item: (item["prioridad"], item["modificado"]),
-        reverse=True,
-    )
-
-    return candidatos[0]["ruta"]
 
 
 
@@ -94,7 +36,7 @@ def accion_procesar_discador():
     carpeta_consolidados = os.path.join(carpeta_diaria, "Consolidados")
     os.makedirs(carpeta_consolidados, exist_ok=True)
 
-    ruta_disc = _buscar_archivo_discador_procesamiento(carpeta_diaria)
+    ruta_disc = buscar_archivo_discador_procesamiento(carpeta_diaria)
 
     if not ruta_disc:
         return """
@@ -300,67 +242,6 @@ def _generar_html_reporte_nombre_lote_orion(reporte_lotes):
 
     return html
 
-def _buscar_archivo_discador_orion(carpeta_diaria: str) -> str | None:
-    """
-    Busca el archivo Discador real para usar sus valores únicos de la columna Lote.
-
-    Prioridad:
-    1. Archivos con 'discador' y 'limpio'
-    2. Archivos con 'discador' y 'consolidado'
-    3. Busca en carpeta raíz del día y en subcarpeta Discador
-    """
-    carpetas_busqueda = [
-        os.path.join(carpeta_diaria, "Consolidados"),
-        os.path.join(carpeta_diaria, "Discador"),
-        carpeta_diaria,
-    ]
-
-    candidatos = []
-
-    for carpeta in carpetas_busqueda:
-        if not os.path.isdir(carpeta):
-            continue
-
-        for archivo in os.listdir(carpeta):
-            nombre = archivo.lower()
-
-            if not nombre.endswith(".xlsx"):
-                continue
-
-            if "discador" not in nombre:
-                continue
-
-            if "limpio" not in nombre and "consolidado" not in nombre:
-                continue
-
-            ruta = os.path.join(carpeta, archivo)
-
-            prioridad = 0
-
-            if "limpio" in nombre:
-                prioridad += 2
-
-            if "consolidado" in nombre:
-                prioridad += 1
-
-            candidatos.append(
-                {
-                    "ruta": ruta,
-                    "prioridad": prioridad,
-                    "modificado": os.path.getmtime(ruta),
-                }
-            )
-
-    if not candidatos:
-        return None
-
-    candidatos.sort(
-        key=lambda item: (item["prioridad"], item["modificado"]),
-        reverse=True,
-    )
-
-    return candidatos[0]["ruta"]
-
 
 
 
@@ -378,7 +259,7 @@ def accion_procesar_lotes():
     if not os.path.isdir(carpeta_lotes):
         return "<div class='log-line error'>❌ No existe la carpeta Lotes.</div>"
 
-    ruta_disc = _buscar_archivo_discador_orion(carpeta_diaria)
+    ruta_disc = buscar_archivo_discador_para_lotes(carpeta_diaria)
 
     res = lotes.procesar_carpeta_lotes(
         carpeta_lotes,
