@@ -71,9 +71,13 @@ from app.services.aster_phase_i_execution_service import ejecutar_fase_i_aster
 from app.services.aster_gestion_export_service import generar_gestion_aster_fase_i
 from app.services.aster_renderer_service import (
     render_archivo_aster,
+    render_clasificacion_final_aster,
+    render_conciliacion_aster,
     render_consulta_sql_aster,
     render_entidades_excel_aster,
+    render_exclusiones_aplicadas_aster,
     render_normalizacion_aster,
+    render_preparar_depuracion_aster,
     render_total_aster,
 )
 
@@ -121,279 +125,10 @@ def _extraer_total_aster_desde_texto(ocr: OCRProcessor, texto: str) -> int | Non
     return None
 
 
-def _generar_tabla_entidades_aster(
-    titulo: str,
-    filas: list[dict[str, Any]],
-) -> str:
-    """
-    Genera tabla simple de entidades ASTER.
-    """
-    html = f"""
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='4' style='background:#1e3a5f; color:#fff;'>
-                {escape(titulo)} ({len(filas)})
-            </th>
-        </tr>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Entidad</th>
-            <th>Número</th>
-            <th>SSS</th>
-        </tr>
-    """
-
-    if not filas:
-        html += """
-        <tr>
-            <td colspan='4' style='text-align:center; color:#888;'>
-                Sin registros.
-            </td>
-        </tr>
-        """
-
-    for idx, fila in enumerate(filas, start=1):
-        entidad = str(fila.get("entidad") or "")
-        numero = int(fila.get("numero") or 0)
-        sss = str(fila.get("SSS") or f"'{entidad}'")
-
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td><b>{escape(entidad)}</b></td>
-            <td style='font-weight:bold;'>{numero}</td>
-            <td><code>{escape(sss)}</code></td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    return html
 
 
-def _generar_html_preparar_depuracion_aster(
-    resultados: list[dict[str, Any]],
-) -> str:
-    """
-    Genera primera tabla para seleccionar registros que no corresponden a cobranzas %.
-    """
-    total_entidades = len(resultados)
-    total_registros = sum(int(fila.get("numero") or 0) for fila in resultados)
-
-    html = """
-    <div class='log-line info'>
-        Seleccione las entidades que NO corresponden a cobranzas %. Luego presione Aplicar exclusiones.
-    </div>
-    """
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='5' style='background:#1e3a5f; color:#fff;'>
-                Depuración inicial ASTER
-            </th>
-        </tr>
-    """
-
-    resumen = [
-        ("Entidades SQL disponibles", total_entidades),
-        ("Total registros SQL", total_registros),
-    ]
-
-    for etiqueta, valor in resumen:
-        html += f"""
-        <tr>
-            <td colspan='2'><b>{escape(str(etiqueta))}</b></td>
-            <td colspan='3' style='font-weight:bold;'>{escape(str(valor))}</td>
-        </tr>
-        """
-
-    html += """
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>Excluir</th>
-            <th>#</th>
-            <th>Entidad</th>
-            <th>Número</th>
-            <th>SSS</th>
-        </tr>
-    """
-
-    for idx, fila in enumerate(resultados, start=1):
-        entidad = str(fila.get("entidad") or "")
-        numero = int(fila.get("numero") or 0)
-        sss = str(fila.get("SSS") or f"'{entidad}'")
-
-        entidad_value = escape(entidad, quote=True)
-
-        html += f"""
-        <tr>
-            <td style='text-align:center;'>
-                <input
-                    type='checkbox'
-                    class='aster-excluir-checkbox'
-                    value="{entidad_value}"
-                >
-            </td>
-            <td>{idx}</td>
-            <td><b>{escape(entidad)}</b></td>
-            <td style='font-weight:bold;'>{numero}</td>
-            <td><code>{escape(sss)}</code></td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += """
-    <div style='margin-top:10px;'>
-        <button type='button' onclick='aplicarExclusionesAster(this)'>
-            Aplicar exclusiones ASTER
-        </button>
-    </div>
-    """
-
-    return html
 
 
-def _generar_html_exclusiones_aplicadas_aster(
-    removidos: list[dict[str, Any]],
-    filtrados: list[dict[str, Any]],
-) -> str:
-    """
-    Muestra removidos y tabla filtrada para clasificar Cobranza % / Integral.
-    """
-    html = "<div class='log-line success'>✅ Exclusiones ASTER aplicadas correctamente.</div>"
-
-    html += _generar_tabla_entidades_aster(
-        "Registros removidos por no corresponder a cobranzas %",
-        removidos,
-    )
-
-    html += """
-    <div class='log-line info' style='margin-top:10px;'>
-        Clasifique las entidades restantes como Cobranza % o Integral. Las que deje sin seleccionar quedarán como no seleccionadas.
-    </div>
-    """
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='5' style='background:#1e3a5f; color:#fff;'>
-                Clasificación de entidades ASTER filtradas
-            </th>
-        </tr>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Entidad</th>
-            <th>Número</th>
-            <th>SSS</th>
-            <th>Clasificación</th>
-        </tr>
-    """
-
-    if not filtrados:
-        html += """
-        <tr>
-            <td colspan='5' style='text-align:center; color:#888;'>
-                Sin entidades disponibles para clasificar.
-            </td>
-        </tr>
-        """
-
-    for idx, fila in enumerate(filtrados, start=1):
-        entidad = str(fila.get("entidad") or "")
-        numero = int(fila.get("numero") or 0)
-        sss = str(fila.get("SSS") or f"'{entidad}'")
-
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td><b>{escape(entidad)}</b></td>
-            <td style='font-weight:bold;'>{numero}</td>
-            <td><code>{escape(sss)}</code></td>
-            <td>
-                <select
-                    class='aster-clasificacion-select'
-                    data-entidad="{escape(entidad, quote=True)}"
-                    data-numero="{numero}"
-                    data-sss="{escape(sss, quote=True)}"
-                    style='padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;'
-                >
-                    <option value=''>No seleccionado</option>
-                    <option value='cobranza'>Cobranza %</option>
-                    <option value='integral'>Integral</option>
-                </select>
-            </td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += """
-    <div style='margin-top:10px;'>
-        <button type='button' onclick='guardarClasificacionAster(this)'>
-            Guardar clasificación ASTER
-        </button>
-    </div>
-    """
-
-    return html
-
-
-def _generar_html_clasificacion_final_aster(
-    removidos: list[dict[str, Any]],
-    cobranza: list[dict[str, Any]],
-    integral: list[dict[str, Any]],
-    no_seleccionados: list[dict[str, Any]],
-) -> str:
-    """
-    Muestra resultado final de la depuración y clasificación ASTER.
-    """
-    total_validado = len(cobranza) + len(integral) + len(no_seleccionados)
-
-    html = "<div class='log-line success'>✅ Clasificación ASTER guardada correctamente.</div>"
-
-    html += """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                Resumen clasificación ASTER
-            </th>
-        </tr>
-    """
-
-    resumen = [
-        ("Registros removidos", len(removidos)),
-        ("Bases Cobranza %", len(cobranza)),
-        ("Bases Integral", len(integral)),
-        ("No seleccionadas", len(no_seleccionados)),
-        ("Entidades revisadas después de exclusiones", total_validado),
-    ]
-
-    for etiqueta, valor in resumen:
-        html += f"""
-        <tr>
-            <td><b>{escape(str(etiqueta))}</b></td>
-            <td style='font-weight:bold;'>{escape(str(valor))}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += _generar_tabla_entidades_aster("Registros removidos", removidos)
-    html += _generar_tabla_entidades_aster("Seleccionadas como Cobranza %", cobranza)
-    html += _generar_tabla_entidades_aster("Seleccionadas como Integral", integral)
-    html += _generar_tabla_entidades_aster("No seleccionadas", no_seleccionados)
-
-    html += (
-        "<div id='aster-clasificacion-data' style='display:none;' "
-        f"data-removidos='{len(removidos)}' "
-        f"data-cobranza='{len(cobranza)}' "
-        f"data-integral='{len(integral)}' "
-        f"data-no-seleccionados='{len(no_seleccionados)}'>"
-        "</div>"
-    )
-
-    return html
 
 def _obtener_entidades_excel_aster_desde_sesion() -> list[str]:
     """
@@ -417,206 +152,6 @@ def _obtener_entidades_sql_validables_aster() -> list[dict[str, Any]]:
     )
 
 
-def _generar_html_tabla_comparativa_aster(
-    comparacion: list[dict[str, Any]],
-    titulo: str = "Comparación Excel vs SQL ASTER",
-) -> str:
-    """
-    Genera tabla comparativa Excel vs SQL desde resultado estructurado.
-    """
-    html = f"""
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='5' style='background:#1e3a5f; color:#fff;'>
-                {escape(titulo)}
-            </th>
-        </tr>
-        <tr style='background:#1e3a5f; color:#fff;'>
-            <th>#</th>
-            <th>Entidad</th>
-            <th>En Excel</th>
-            <th>En SQL</th>
-            <th>Estado</th>
-        </tr>
-    """
-
-    if not comparacion:
-        html += """
-        <tr>
-            <td colspan='5' style='text-align:center; color:#888;'>
-                Sin entidades para comparar.
-            </td>
-        </tr>
-        """
-
-    for idx, fila in enumerate(comparacion, start=1):
-        entidad = str(fila.get("entidad") or "")
-        en_excel = bool(fila.get("en_excel"))
-        en_sql = bool(fila.get("en_sql"))
-        estado_raw = str(fila.get("estado") or "")
-
-        if estado_raw == "MATCH":
-            estado = "✅ Match"
-            color = "#28a745"
-        elif estado_raw == "FALTA_EN_SQL":
-            estado = "⚠️ Está en Excel, falta en SQL"
-            color = "#ffc107"
-        else:
-            estado = "⚠️ Está en SQL, falta en Excel"
-            color = "#dc3545"
-
-        html += f"""
-        <tr>
-            <td>{idx}</td>
-            <td><b>{escape(entidad)}</b></td>
-            <td>{'Sí' if en_excel else 'No'}</td>
-            <td>{'Sí' if en_sql else 'No'}</td>
-            <td style='font-weight:bold; color:{color};'>{estado}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    return html
-
-
-def _generar_html_conciliacion_aster(
-    resultado: dict[str, Any],
-) -> str:
-    """
-    Genera HTML de conciliación ASTER desde resultado estructurado.
-    """
-    faltan_en_sql = resultado.get("faltan_en_sql", [])
-    sobran_en_sql = resultado.get("sobran_en_sql", [])
-    entidades_no_tomar = set(resultado.get("entidades_no_tomar", []))
-    comparacion = resultado.get("comparacion", [])
-    match_ok = bool(resultado.get("match_ok"))
-
-    html = """
-    <table class='dataframe' style='width:100%; margin-top:10px;'>
-        <tr>
-            <th colspan='2' style='background:#1e3a5f; color:#fff;'>
-                Resumen conciliación ASTER
-            </th>
-        </tr>
-    """
-
-    resumen = [
-        ("Entidades únicas en Excel", resultado.get("total_excel", 0)),
-        ("Entidades SQL consideradas", resultado.get("total_sql", 0)),
-        ("Entidades no tomadas en cuenta", resultado.get("total_no_tomar", 0)),
-        ("Entidades en Excel que faltan en SQL", len(faltan_en_sql)),
-        ("Entidades en SQL que faltan en Excel", len(sobran_en_sql)),
-    ]
-
-    for etiqueta, valor in resumen:
-        html += f"""
-        <tr>
-            <td><b>{escape(str(etiqueta))}</b></td>
-            <td style='font-weight:bold;'>{escape(str(valor))}</td>
-        </tr>
-        """
-
-    html += "</table>"
-
-    html += _generar_html_tabla_comparativa_aster(
-        comparacion=comparacion,
-        titulo="Comparación Excel vs SQL ASTER",
-    )
-
-    if match_ok:
-        html = "<div class='log-line success'>✅ Información Verificada.</div>" + html
-
-        html += """
-        <div id='aster-conciliacion-data' style='display:none;' data-validado='1'></div>
-        """
-
-        return html
-
-    html = """
-    <div class='log-line warning'>
-        ⚠️ La conciliación ASTER tiene diferencias. Revise las entidades antes de continuar.
-    </div>
-    """ + html
-
-    if faltan_en_sql:
-        html += """
-        <div class='log-line warning' style='margin-top:10px;'>
-            ⚠️ Hay entidades en el Excel que no aparecen en la consulta SQL ASTER.
-            Esto puede indicar que falta completar información en ASTER o revisar la fecha consultada.
-        </div>
-        """
-
-        html += _generar_tabla_entidades_aster(
-            "Entidades en Excel que faltan en SQL",
-            [
-                {
-                    "entidad": entidad,
-                    "numero": 0,
-                    "SSS": f"'{entidad}'",
-                }
-                for entidad in faltan_en_sql
-            ],
-        )
-
-    if sobran_en_sql:
-        html += """
-        <div class='log-line warning' style='margin-top:10px;'>
-            ⚠️ Hay entidades en SQL que no aparecen en el Excel. Seleccione cuáles no se tomarán en cuenta y vuelva a validar.
-        </div>
-        """
-
-        html += """
-        <table class='dataframe' style='width:100%; margin-top:10px;'>
-            <tr>
-                <th colspan='4' style='background:#1e3a5f; color:#fff;'>
-                    Entidades SQL sobrantes
-                </th>
-            </tr>
-            <tr style='background:#1e3a5f; color:#fff;'>
-                <th>No tomar en cuenta</th>
-                <th>#</th>
-                <th>Entidad</th>
-                <th>SSS</th>
-            </tr>
-        """
-
-        for idx, fila in enumerate(resultado.get("sobrantes_detalle", []), start=1):
-            entidad = str(fila.get("entidad") or "")
-            sss = str(fila.get("SSS") or f"'{entidad}'")
-            checked = "checked" if entidad in entidades_no_tomar else ""
-
-            html += f"""
-            <tr>
-                <td style='text-align:center;'>
-                    <input
-                        type='checkbox'
-                        class='aster-no-tomar-checkbox'
-                        value="{escape(entidad, quote=True)}"
-                        {checked}
-                    >
-                </td>
-                <td>{idx}</td>
-                <td><b>{escape(entidad)}</b></td>
-                <td><code>{escape(sss)}</code></td>
-            </tr>
-            """
-
-        html += "</table>"
-
-        html += """
-        <div style='margin-top:10px;'>
-            <button type='button' onclick='ajustarConciliacionAster(this)'>
-                Aplicar entidades no tomadas en cuenta
-            </button>
-        </div>
-        """
-
-    html += """
-    <div id='aster-conciliacion-data' style='display:none;' data-validado='0'></div>
-    """
-
-    return html
 
 
 
@@ -1623,7 +1158,7 @@ def accion_aster_conciliar_entidades():
             session["aster_informacion_verificada"] = False
             session["aster_entidades_sql_validadas"] = []
 
-        return _generar_html_conciliacion_aster(resultado)
+        return render_conciliacion_aster(resultado)
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error conciliando entidades ASTER: {escape(str(exc))}</div>"
@@ -1665,7 +1200,7 @@ def accion_aster_ajustar_conciliacion():
             session["aster_informacion_verificada"] = False
             session["aster_entidades_sql_validadas"] = []
 
-        return _generar_html_conciliacion_aster(resultado)
+        return render_conciliacion_aster(resultado)
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error ajustando conciliación ASTER: {escape(str(exc))}</div>"
@@ -2847,7 +2382,7 @@ def accion_aster_preparar_depuracion():
             </div>
             """
 
-        return _generar_html_preparar_depuracion_aster(
+        return render_preparar_depuracion_aster(
             resultado["resultados"]
         )
 
@@ -2884,7 +2419,7 @@ def accion_aster_aplicar_exclusiones():
         session["aster_sql_removidos"] = removidos
         session["aster_sql_filtrados"] = filtrados
 
-        return _generar_html_exclusiones_aplicadas_aster(
+        return render_exclusiones_aplicadas_aster(
             removidos=removidos,
             filtrados=filtrados,
         )
@@ -2930,7 +2465,7 @@ def accion_aster_guardar_clasificacion():
         session["aster_bases_integral"] = integral
         session["aster_bases_no_seleccionadas"] = no_seleccionados
 
-        return _generar_html_clasificacion_final_aster(
+        return render_clasificacion_final_aster(
             removidos=removidos,
             cobranza=cobranza,
             integral=integral,
