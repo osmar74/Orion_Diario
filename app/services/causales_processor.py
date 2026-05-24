@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Dict, List, Optional
+from typing import Any,Dict, List, Optional
 
 import pandas as pd
 
@@ -75,14 +75,14 @@ class CausalesProcessor:
     def procesar_carpeta_causales(
         self,
         ruta_carpeta: str,
-        carpeta_salida: str
-    ) -> Dict:
+        carpeta_salida: str,
+    ) -> Dict[str, Any]:
         """
         Procesa todos los archivos .xlsx en la carpeta de causales, los filtra,
         normaliza y consolida en un único archivo.
         Retorna resultado con estadísticas detalladas por archivo y preview del consolidado.
         """
-        resultado = {
+        resultado: Dict[str, Any] = {
             'success': False,
             'mensajes': [],
             'ruta_consolidado': '',

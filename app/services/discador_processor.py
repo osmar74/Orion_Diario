@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Any,Dict, Optional, Tuple
 
 import pandas as pd
 
@@ -65,15 +65,18 @@ class DiscadorProcessor:
         return df, reemplazos
 
     def procesar(
-        self, ruta_archivo: str, total_orion_esperado: int, carpeta_salida: str
-    ) -> Dict:
+        self,
+        ruta_archivo: str,
+        total_orion_esperado: int,
+        carpeta_salida: str,
+    ) -> Dict[str, Any]:
         """
         Ejecuta el flujo completo de Discador.
 
         Returns:
             Diccionario con éxito, totales, pasos_filtrado, reemplazos, rutas, etc.
         """
-        resultado = {
+        resultado: Dict[str, Any] = {
             "success": False,
             "total_esperado": total_orion_esperado,
             "total_validos": 0,

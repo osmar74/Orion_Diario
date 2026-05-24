@@ -2,7 +2,7 @@ import os
 import re
 import unicodedata
 from difflib import SequenceMatcher
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -144,7 +144,7 @@ class LotesProcessor:
         self,
         nombre_archivo_lote: str,
         valores_lote_discador: list[str],
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Selecciona el valor de Discador[Lote] más parecido al nombre del archivo de lote.
         """
@@ -207,8 +207,10 @@ class LotesProcessor:
         return df
 
     def validar_cruzado(
-        self, df_consolidado: pd.DataFrame, ruta_discador: str
-    ) -> Dict:
+        self,
+        df_consolidado: pd.DataFrame,
+        ruta_discador: str,
+    ) -> Dict[str, Any]:
         """Comprueba que los lotes existan en el Discador limpio."""
         try:
             df_disc = leer_excel_texto(ruta_discador)
@@ -236,12 +238,12 @@ class LotesProcessor:
         fecha_str: str,
         ruta_discador_limpio: Optional[str] = None,
         carpeta_salida: Optional[str] = None,
-    ) -> Dict:
+    ) -> Dict[str, Any]:
         """
         Procesa todos los CSV en la carpeta de lotes.
         Retorna diccionario con resultado, estadísticas por archivo, y preview.
         """
-        resultado = {
+        resultado: Dict[str, Any] = {
             'success': False,
             'mensajes': [],
             'ruta_consolidado': '',
@@ -253,7 +255,7 @@ class LotesProcessor:
             'valores_lote_discador': [],
         }
         
-        reporte_lotes: list[dict] = []
+        reporte_lotes: list[dict[str, Any]] = []
         valores_lote_discador: list[str] = []
 
         if self.log_service:
