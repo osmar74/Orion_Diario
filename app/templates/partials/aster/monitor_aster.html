@@ -95,80 +95,156 @@
     </div>
 </details>
 
-        <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">📁</span>
-                FASE B. Ubicación y copia del archivo ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Busque el archivo Excel del día con formato AfterYYYYMMDD.xlsx y cópielo a la carpeta local del proceso.
+        <details class="panel-monitor aster-fase-b-panel">
+    <summary>
+        <span class="panel-icon">📁</span>
+        FASE B. Ubicación y copia del archivo ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-bc-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Parámetros de búsqueda</h4>
+                        <p>Busque el archivo Excel del día con formato AfterYYYYMMDD.xlsx y cópielo a la carpeta local del proceso.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <label for="asterFechaProceso" class="ui-label">
-                        Fecha proceso:
+                <div class="aster-field-stack">
+                    <label for="asterFechaProceso" class="ui-mini-label">
+                        Fecha proceso
                     </label>
+
                     <input
                         id="asterFechaProceso"
                         type="text"
-                        placeholder="Ejemplo: 20260429"
-                        value=""
+                        placeholder="Ejemplo: 20260513"
+                        class="ui-input ui-input-md"
                         oninput="sincronizarFechaAster(this.value)"
                         onchange="sincronizarFechaAster(this.value)"
-                        class="ui-input"
                     >
+                </div>
 
-                    <label for="asterRutaBase" class="ui-label">
-                        Ruta base opcional:
+                <div class="aster-field-stack">
+                    <label for="asterRutaBase" class="ui-mini-label">
+                        Ruta base opcional
                     </label>
+
                     <input
                         id="asterRutaBase"
                         type="text"
-                        placeholder="Opcional: ruta local o red"
+                        placeholder="Dejar vacío para usar rutas por defecto"
                         class="ui-input ui-input-lg"
                     >
-
-                    <button type="button" onclick="buscarYCopiarArchivoAster(this)">
-                        Buscar y copiar archivo ASTER
-                    </button>
                 </div>
 
-                <div class="log-line warning" class="ui-warning-block">
-                    Rutas por defecto: Z:\\COBRANZA %\\... o \\\\10.24.90.118\\COBRANZA %\\...
+                <div class="aster-route-hint">
+                    <span>Rutas por defecto:</span>
+                    <code>Z:\COBRANZA %\...</code>
+                    <code>\\10.24.90.118\COBRANZA %\...</code>
+                </div>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar búsqueda y copia</h4>
+                        <p>Ubica el archivo After del día, valida el nombre y lo copia a la carpeta diaria local.</p>
+                    </div>
                 </div>
 
-                <div id="aster-archivo-resultado" class="ui-result-block">
+                <button type="button" class="ui-btn-success aster-main-action" onclick="buscarYCopiarArchivoAster(this)">
+                    Buscar y copiar archivo ASTER
+                </button>
+
+                <div class="aster-help-text">
+                    Esta fase debe completarse antes de normalizar encabezados en Fase C.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de archivo</h4>
+                        <p>Estado de búsqueda, archivo encontrado, ruta origen y ruta destino.</p>
+                    </div>
+                </div>
+
+                <div id="aster-archivo-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Archivo ASTER pendiente de búsqueda.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 
-                <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">⚙️</span>
-                FASE C. Normalización del Excel ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Normalice los encabezados del archivo ASTER copiado: se quitarán acentos y se reemplazarán espacios, /, *, - por guion bajo.
+                <details class="panel-monitor aster-fase-c-panel">
+    <summary>
+        <span class="panel-icon">⚙️</span>
+        FASE C. Normalización del Excel ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-bc-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Archivo ASTER copiado</h4>
+                        <p>La normalización trabaja sobre el archivo ASTER copiado en la Fase B.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <button type="button" onclick="normalizarEncabezadosAster(this)">
-                        Normalizar encabezados ASTER
-                    </button>
+                <div class="aster-checklist">
+                    <div>✅ Quitar acentos</div>
+                    <div>✅ Reemplazar espacios por guion bajo</div>
+                    <div>✅ Reemplazar /, *, - por guion bajo</div>
+                    <div>✅ Preparar encabezados para las siguientes fases</div>
+                </div>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar normalización</h4>
+                        <p>Transforma los encabezados del Excel ASTER para dejarlos compatibles con el proceso.</p>
+                    </div>
                 </div>
 
-                <div id="aster-normalizacion-resultado" class="ui-result-block">
+                <button type="button" class="ui-btn-success aster-main-action" onclick="normalizarEncabezadosAster(this)">
+                    Normalizar encabezados ASTER
+                </button>
+
+                <div class="aster-help-text">
+                    Revise el resultado antes de continuar con la validación de entidades.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de normalización</h4>
+                        <p>Encabezados detectados, cambios realizados y advertencias.</p>
+                    </div>
+                </div>
+
+                <div id="aster-normalizacion-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Encabezados ASTER pendientes de normalización.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
         <details class="panel-monitor" open>
             <summary>
                 <span class="panel-icon">🧾</span>

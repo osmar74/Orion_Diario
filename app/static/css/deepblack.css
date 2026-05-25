@@ -1618,3 +1618,74 @@ a {
         grid-column: auto;
     }
 }
+
+/* ============================================================
+   UI REFACTOR ASTER FASE B/C - ARCHIVO Y NORMALIZACIÓN
+   ============================================================ */
+
+.aster-fase-bc-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.aster-fase-bc-grid .aster-result-card {
+    grid-column: 1 / -1;
+}
+
+.aster-field-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.aster-route-hint {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 10px;
+    padding: 9px;
+    border-radius: 10px;
+    background: rgba(14, 165, 233, 0.08);
+    border: 1px solid rgba(14, 165, 233, 0.18);
+    color: #cbd5e1;
+    font-size: 0.72rem;
+}
+
+.aster-route-hint span {
+    color: #e0f2fe;
+    font-weight: 800;
+}
+
+.aster-route-hint code {
+    color: #67e8f9;
+    font-size: 0.70rem;
+    word-break: break-all;
+}
+
+.aster-checklist {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+}
+
+.aster-checklist div {
+    padding: 7px 9px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 1000px) {
+    .aster-fase-bc-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aster-fase-bc-grid .aster-result-card {
+        grid-column: auto;
+    }
+}
