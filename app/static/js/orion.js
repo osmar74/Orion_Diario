@@ -1,3 +1,4 @@
+const ORION_DISTRIBUIR_COPIA_FIELD_NAMES = ["seleccionados", "seleccionados[]", "seleccion", "seleccion[]", "archivos", "archivos[]", "archivo", "archivo[]", "archivos_seleccionados", "archivos_seleccionados[]", "rutas", "rutas[]", "paths", "paths[]"];
 /* ============================================================
    ORION - LÓGICA DE FRONTEND
    Depende de helpers globales definidos en main.js:
@@ -7,137 +8,507 @@
    actualizarTotalesHeader, normalizarFechaOrion.
    ============================================================ */
 
-function ejecutarAccion(url, boton) {
-    cerrarOtrosDetails(boton);
 
-    const monitor = getById("monitor-content");
 
-    if (!monitor) {
-        alert("Acción no disponible en esta página.");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function normalizarAccionOrion(accion) {
+    const valor = String(accion || "").trim();
+
+    const mapa = {
+        "crear_carpetas": "crear-carpetas",
+        "crearCarpetas": "crear-carpetas",
+        "crear-carpetas": "crear-carpetas",
+
+        "verificar_red": "verificar-red",
+        "verificarRed": "verificar-red",
+        "verificar-red": "verificar-red",
+    };
+
+    return mapa[valor] || valor;
+}
+
+function resultadoPanelAccionOrion(accionRaw) {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    const paneles = {
+        "crear-carpetas": "panel-crear-carpetas",
+        "verificar-red": "panel-verificar-red",
+        "distribuir": "panel-distribuir",
+        "procesar-discador": "panel-discador",
+        "procesar-causales": "panel-causales",
+        "procesar-lotes": "panel-lotes",
+        "comparar-lotes": "panel-comparar",
+    };
+
+    return getById(paneles[accion] || "");
+}
+
+function wrapperPanelAccionOrion(accionRaw) {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    const wrappers = {
+        "crear-carpetas": "panel-crear-carpetas-wrapper",
+        "verificar-red": "panel-verificar-red-wrapper",
+        "distribuir": "panel-distribuir",
+        "procesar-discador": "panel-discador",
+        "procesar-causales": "panel-causales",
+        "procesar-lotes": "panel-lotes",
+        "comparar-lotes": "panel-comparar",
+    };
+
+    return getById(wrappers[accion] || "");
+}
+
+function fasePorAccionOrion(accionRaw) {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    const fases = {
+        "crear-carpetas": "A",
+        "verificar-red": "B",
+        "ocr-subir": "C",
+        "distribuir": "D",
+        "procesar-discador": "E",
+        "procesar-causales": "E",
+        "procesar-lotes": "E",
+        "comparar-lotes": "F",
+    };
+
+    return fases[accion] || "";
+}
+
+
+function contenedorScrollMonitorOrion() {
+    return (
+        document.querySelector(".monitor") ||
+        document.querySelector("#monitor") ||
+        document.querySelector(".monitor-content") ||
+        document.scrollingElement ||
+        document.documentElement
+    );
+}
+
+function panelCentralAccionOrion(accionRaw) {
+    const wrapper = wrapperPanelAccionOrion(accionRaw);
+
+    if (wrapper) {
+        return wrapper;
+    }
+
+    const resultado = resultadoPanelAccionOrion(accionRaw);
+
+    if (resultado) {
+        const details = resultado.closest("details.panel-monitor");
+
+        if (details) {
+            return details;
+        }
+
+        const panel = resultado.closest(".panel-monitor");
+
+        if (panel) {
+            return panel;
+        }
+    }
+
+    const accion = normalizarAccionOrion(accionRaw);
+    const textoBuscado = {
+        "crear-carpetas": "crear carpetas",
+        "verificar-red": "verificar red",
+    }[accion];
+
+    if (!textoBuscado) {
+        return null;
+    }
+
+    const candidatos = document.querySelectorAll("details.panel-monitor");
+
+    for (const item of candidatos) {
+        const summary = item.querySelector(":scope > summary");
+        const texto = String(summary?.textContent || "").toLowerCase();
+
+        if (texto.includes(textoBuscado)) {
+            return item;
+        }
+    }
+
+    return null;
+}
+
+function resaltarPanelCentralOrion(panel) {
+    if (!panel) {
         return;
     }
 
-    const fechaRaw = getInputValue("fechaInput");
+    panel.classList.remove("orion-panel-focus-flash");
+
+    // Forzar reflow para reiniciar animación
+    void panel.offsetWidth;
+
+    panel.classList.add("orion-panel-focus-flash");
+
+    setTimeout(() => {
+        panel.classList.remove("orion-panel-focus-flash");
+    }, 1800);
+}
+
+
+function abrirPanelAccionOrion(accionRaw) {
+    const panel = panelCentralAccionOrion(accionRaw);
+
+    if (!panel) {
+        console.warn("No se encontró panel central para acción ORION:", accionRaw);
+        return;
+    }
+
+    if (panel.tagName && panel.tagName.toLowerCase() === "details") {
+        panel.open = true;
+    }
+
+    resaltarPanelCentralOrion(panel);
+
+    setTimeout(() => {
+        const contenedor = contenedorScrollMonitorOrion();
+
+        try {
+            panel.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        } catch {
+            // Fallback para navegadores viejos
+        }
+
+        if (
+            contenedor &&
+            contenedor !== document.scrollingElement &&
+            contenedor !== document.documentElement
+        ) {
+            const top =
+                panel.getBoundingClientRect().top -
+                contenedor.getBoundingClientRect().top +
+                contenedor.scrollTop -
+                16;
+
+            contenedor.scrollTo({
+                top,
+                behavior: "smooth",
+            });
+        }
+    }, 120);
+}
+
+
+
+function botonesRelacionadosAccionOrion(accionRaw, boton = null) {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    const ids = {
+        "crear-carpetas": [
+            "btn-crear-carpetas",
+            "btn-panel-crear-carpetas",
+        ],
+        "verificar-red": [
+            "btn-verificar-red",
+            "btn-panel-verificar-red",
+        ],
+    };
+
+    const encontrados = [];
+
+    if (boton) {
+        encontrados.push(boton);
+    }
+
+    (ids[accion] || []).forEach((id) => {
+        const item = getById(id);
+
+        if (item) {
+            encontrados.push(item);
+        }
+    });
+
+    document.querySelectorAll("button").forEach((item) => {
+        const onclick = item.getAttribute("onclick") || "";
+
+        if (
+            onclick.includes(accion) ||
+            onclick.includes(accion.replace("-", "_"))
+        ) {
+            encontrados.push(item);
+        }
+    });
+
+    return [...new Set(encontrados)].filter(Boolean);
+}
+
+function actualizarBotonesAccionOrion(accionRaw, exito, boton = null) {
+    const botones = botonesRelacionadosAccionOrion(accionRaw, boton);
+
+    botones.forEach((item) => {
+        if (typeof actualizarIconoBoton === "function") {
+            actualizarIconoBoton(item, exito);
+            return;
+        }
+
+        let icono = item.querySelector(".status-icon");
+
+        if (!icono) {
+            icono = document.createElement("span");
+            icono.className = "status-icon";
+            item.appendChild(icono);
+        }
+
+        icono.textContent = exito ? "✅" : "❌";
+    });
+}
+
+function prepararYEjecutarAccionOrion(accionRaw, boton = null) {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    abrirPanelAccionOrion(accion);
+
+    const fechaPanel = getInputValue("fechaInputPanelCrear");
+    const fechaPrincipal = getInputValue("fechaInput");
+    const fecha = fechaPanel || fechaPrincipal;
+
+    if (fecha && typeof sincronizarFechaOrionPanel === "function") {
+        sincronizarFechaOrionPanel(fecha);
+    }
+
+    return ejecutarAccion(accion, boton);
+}
+
+
+function ejecutarAccion(accionRaw, boton = null) {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    abrirPanelAccionOrion(accion);
+
+    const panel = resultadoPanelAccionOrion(accion);
+    const fase = fasePorAccionOrion(accion);
+
+    const fechaRaw =
+        getInputValue("fechaInputPanelCrear") ||
+        getInputValue("fechaInput");
+
     const fecha = normalizarFechaOrion(fechaRaw);
 
     if (!fecha) {
-        alert("No se encontró el campo de fecha.");
+        alert("Ingrese una fecha válida antes de ejecutar la acción.");
+        actualizarBotonesAccionOrion(accion, false, boton);
         return;
     }
 
-    setValue("fechaInput", fecha);
-
-    const panelId = buscarPanelPorUrl(url);
-    const separador = url.includes("?") ? "&" : "?";
-    const urlConFecha = `${url}${separador}fecha=${encodeURIComponent(fecha)}&_=${Date.now()}`;
-    console.log("ORION ejecutando acción:", urlConFecha);
-
-    if (panelId) {
-        insertarEnPanel(panelId, htmlLoading("Procesando..."), false);
+    if (typeof sincronizarFechaOrionPanel === "function") {
+        sincronizarFechaOrionPanel(fecha);
     } else {
-        monitor.innerHTML = htmlLoading("Procesando...");
+        setValue("fechaInput", fecha);
     }
 
-    const icono = boton?.querySelector(".status-icon");
-
-    if (icono) {
-        icono.textContent = "";
+    if (fase && typeof actualizarEstadoFaseOrion === "function") {
+        actualizarEstadoFaseOrion(fase, "running", "Ejecutando acción...");
     }
 
-    fetch(urlConFecha, {
-        method: "GET",
+    if (panel) {
+        panel.innerHTML = htmlLoading(`Ejecutando ${accion}...`);
+    }
+
+    const url = `/accion/${encodeURIComponent(accion)}?fecha=${encodeURIComponent(fecha)}&_=${Date.now()}`;
+
+    return fetchTexto(url, {
         cache: "no-store",
         headers: {
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },
     })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            return response.text();
-        })
         .then((html) => {
             const exito = esRespuestaExitosa(html);
 
-            if (panelId) {
-                insertarEnPanel(panelId, html, exito);
-            } else {
-                monitor.innerHTML = html;
+            if (panel) {
+                panel.innerHTML = html;
             }
 
-            if (icono) {
-                icono.textContent = exito ? "✅" : "❌";
-            }
+            actualizarBotonesAccionOrion(accion, exito, boton);
 
-            if (exito) {
-                const clave = Object.keys(panelMap).find((key) =>
-                    url.includes(key)
+            if (fase && typeof actualizarEstadoFaseOrion === "function") {
+                actualizarEstadoFaseOrion(
+                    fase,
+                    exito ? "done" : "error",
+                    exito ? "Completado" : "Error"
                 );
-                const paso = clave ? pasoMap[clave] : null;
-
-                if (paso) {
-                    marcarPasoCompletado(paso);
-                }
             }
 
-            if (url.includes("discador")) {
-                actualizarEstadoDiscador();
-                actualizarTotalesHeader();
+            if (typeof programarActualizacionEstadoOrionDesdePaneles === "function") {
+                programarActualizacionEstadoOrionDesdePaneles();
             }
+
+            return html;
         })
         .catch((err) => {
-            const msg = htmlError(`Error de conexión: ${err}`);
-
-            if (panelId) {
-                insertarEnPanel(panelId, msg, false);
-            } else {
-                monitor.innerHTML = msg;
+            if (panel) {
+                panel.innerHTML = htmlError(`Error: ${err}`);
             }
 
-            if (icono) {
-                icono.textContent = "❌";
+            actualizarBotonesAccionOrion(accion, false, boton);
+
+            if (fase && typeof actualizarEstadoFaseOrion === "function") {
+                actualizarEstadoFaseOrion(fase, "error", String(err));
             }
+
+            return "";
         });
 }
 
 
-function copiarDistribucionSeleccionada(boton) {
-    const fechaRaw = getInputValue("fechaInput");
-    const fecha = normalizarFechaOrion(fechaRaw);
 
-    if (!fecha) {
-        alert("No se encontró el campo de fecha.");
-        return;
+
+
+
+
+
+
+
+
+
+
+
+const ORION_DISTRIBUIR_COPIA_ENDPOINTS = ["/accion/distribuir-seleccionados"];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function obtenerPanelResultadoDistribucionOrion() {
+    return (
+        getById("panel-distribuir") ||
+        document.querySelector("#panel-distribuir-wrapper .orion-result-content") ||
+        document.querySelector("#panel-distribuir-wrapper .panel-body") ||
+        document.querySelector("#panel-distribuir-wrapper")
+    );
+}
+
+function obtenerChecksDistribucionOrion() {
+    const panel =
+        getById("panel-distribuir") ||
+        getById("panel-distribuir-wrapper") ||
+        document;
+
+    return Array.from(
+        panel.querySelectorAll(".chk-distribucion-orion:checked")
+    );
+}
+
+function obtenerSeleccionadosDistribucionOrion() {
+    const checks = obtenerChecksDistribucionOrion();
+
+    return checks
+        .map((check) => {
+            return {
+                categoria: check.dataset.categoria || "",
+                archivo: check.dataset.archivo || "",
+            };
+        })
+        .filter((item) => item.categoria && item.archivo);
+}
+
+function actualizarEstadoDistribucionOrionDesdeHtml(html) {
+    const texto = String(html || "").toLowerCase();
+
+    const sinSeleccion =
+        texto.includes("no seleccionó archivos") ||
+        texto.includes("no selecciono archivos");
+
+    const exito = esRespuestaExitosa(html) && !sinSeleccion;
+
+    if (typeof actualizarEstadoFaseOrion === "function") {
+        actualizarEstadoFaseOrion(
+            "D",
+            exito ? "done" : "error",
+            exito ? "Completado" : "Error"
+        );
     }
 
-    setValue("fechaInput", fecha);
+    if (typeof programarActualizacionEstadoOrionDesdePaneles === "function") {
+        programarActualizacionEstadoOrionDesdePaneles();
+    }
 
-    const checks = Array.from(
-        document.querySelectorAll(".chk-distribucion-orion:checked")
-    );
+    return exito;
+}
 
-    if (!checks.length) {
+
+function copiarDistribucionSeleccionada(boton = null) {
+    const panel = obtenerPanelResultadoDistribucionOrion();
+    const seleccionados = obtenerSeleccionadosDistribucionOrion();
+
+    if (!seleccionados.length) {
         alert("Seleccione al menos un archivo para copiar.");
         return;
     }
 
-    const seleccionados = checks.map((check) => ({
-        categoria: check.dataset.categoria,
-        archivo: check.dataset.archivo,
-    }));
+    const fechaRaw =
+        getInputValue("fechaInputPanelCrear") ||
+        getInputValue("fechaInput");
 
-    const panelId = "panel-distribuir";
+    const fecha = normalizarFechaOrion(fechaRaw);
 
-    insertarEnPanel(
-        panelId,
-        htmlLoading("Copiando archivos seleccionados..."),
-        false
-    );
+    if (!fecha) {
+        alert("No se encontró una fecha válida para copiar archivos.");
+        return;
+    }
 
-    fetch(`/accion/distribuir-seleccionados?_=${Date.now()}`, {
+    if (typeof sincronizarFechaOrionPanel === "function") {
+        sincronizarFechaOrionPanel(fecha);
+    } else {
+        setValue("fechaInput", fecha);
+    }
+
+    if (typeof actualizarEstadoFaseOrion === "function") {
+        actualizarEstadoFaseOrion("D", "running", "Copiando archivos seleccionados...");
+    }
+
+    if (panel) {
+        panel.innerHTML = htmlLoading("Copiando archivos seleccionados...");
+    }
+
+    return fetch(`/accion/distribuir-seleccionados?_=${Date.now()}`, {
         method: "POST",
         cache: "no-store",
         headers: {
@@ -158,28 +529,44 @@ function copiarDistribucionSeleccionada(boton) {
             return response.text();
         })
         .then((html) => {
-            const exito = esRespuestaExitosa(html);
+            const exito = actualizarEstadoDistribucionOrionDesdeHtml(html);
 
-            insertarEnPanel(panelId, html, exito);
-
-            if (boton) {
-                boton.classList.remove("btn-procesando", "btn-error", "btn-ok");
-                boton.classList.add(exito ? "btn-ok" : "btn-error");
+            if (panel) {
+                panel.innerHTML = html;
             }
+
+            if (boton && typeof actualizarIconoBoton === "function") {
+                actualizarIconoBoton(boton, exito);
+            }
+
+            return html;
         })
         .catch((error) => {
-            insertarEnPanel(
-                panelId,
-                htmlError(`Error copiando archivos seleccionados: ${error}`),
-                false
-            );
+            const mensaje = `Error copiando archivos seleccionados: ${error}`;
 
-            if (boton) {
-                boton.classList.remove("btn-procesando", "btn-ok");
-                boton.classList.add("btn-error");
+            if (panel) {
+                panel.innerHTML = htmlError(mensaje);
             }
+
+            if (boton && typeof actualizarIconoBoton === "function") {
+                actualizarIconoBoton(boton, false);
+            }
+
+            if (typeof actualizarEstadoFaseOrion === "function") {
+                actualizarEstadoFaseOrion("D", "error", String(error));
+            }
+
+            return "";
         });
 }
+
+
+
+
+
+
+
+
 
 
 function actualizarEstadoDiscador() {
@@ -1244,3 +1631,189 @@ document.addEventListener("DOMContentLoaded", () => {
 window.actualizarEstadoFaseOrion = actualizarEstadoFaseOrion;
 window.renderizarEstadoFasesOrion = renderizarEstadoFasesOrion;
 window.inicializarEstadoFasesOrion = inicializarEstadoFasesOrion;
+
+function sincronizarFechaOrionPanel(valor) {
+    const fecha = String(valor || "").trim();
+
+    const principal = getById("fechaInput");
+    const panelCrear = getById("fechaInputPanelCrear");
+
+    if (principal && principal.value !== fecha) {
+        principal.value = fecha;
+    }
+
+    if (panelCrear && panelCrear.value !== fecha) {
+        panelCrear.value = fecha;
+    }
+
+    if (typeof persistirEstadoInputsVisibles === "function") {
+        persistirEstadoInputsVisibles();
+    }
+}
+
+function sincronizarFechaOrionPanelDesdePrincipal() {
+    const principal = getById("fechaInput");
+    const panelCrear = getById("fechaInputPanelCrear");
+
+    if (principal && panelCrear && panelCrear.value !== principal.value) {
+        panelCrear.value = principal.value;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(sincronizarFechaOrionPanelDesdePrincipal, 100);
+    setTimeout(sincronizarFechaOrionPanelDesdePrincipal, 600);
+});
+window.sincronizarFechaOrionPanel = sincronizarFechaOrionPanel;
+window.sincronizarFechaOrionPanelDesdePrincipal = sincronizarFechaOrionPanelDesdePrincipal;
+window.wrapperPanelAccionOrion = wrapperPanelAccionOrion;
+window.abrirPanelAccionOrion = abrirPanelAccionOrion;
+window.prepararYEjecutarAccionOrion = prepararYEjecutarAccionOrion;
+window.resultadoPanelAccionOrion = resultadoPanelAccionOrion;
+window.fasePorAccionOrion = fasePorAccionOrion;
+window.normalizarAccionOrion = normalizarAccionOrion;
+window.botonesRelacionadosAccionOrion = botonesRelacionadosAccionOrion;
+window.actualizarBotonesAccionOrion = actualizarBotonesAccionOrion;
+window.contenedorScrollMonitorOrion = contenedorScrollMonitorOrion;
+window.panelCentralAccionOrion = panelCentralAccionOrion;
+window.resaltarPanelCentralOrion = resaltarPanelCentralOrion;
+
+/* ============================================================
+   ORION - SIDEBAR ABRE PANEL CENTRAL DIRECTO
+   ============================================================ */
+
+function buscarPanelCentralOrionPorTexto(textoBuscado) {
+    const textoObjetivo = String(textoBuscado || "").toLowerCase();
+
+    const panels = document.querySelectorAll("details.panel-monitor, .panel-monitor");
+
+    for (const panel of panels) {
+        const summary = panel.querySelector(":scope > summary") || panel.querySelector("summary");
+        const texto = String(summary?.textContent || "").toLowerCase();
+
+        if (texto.includes(textoObjetivo)) {
+            return panel;
+        }
+    }
+
+    return null;
+}
+
+function abrirPanelCentralOrionDirecto(accion) {
+    const mapaTexto = {
+        "crear-carpetas": "crear carpetas",
+        "verificar-red": "verificar red",
+        "distribuir": "distribuir archivos",
+        "ocr-subir": "ocr y totales",
+    };
+
+    const texto = mapaTexto[accion] || accion;
+    const panel = buscarPanelCentralOrionPorTexto(texto);
+
+    if (!panel) {
+        console.warn("No se encontró panel central ORION para:", accion);
+        return null;
+    }
+
+    if (panel.tagName && panel.tagName.toLowerCase() === "details") {
+        panel.open = true;
+    }
+
+    panel.classList.remove("orion-panel-focus-flash");
+    void panel.offsetWidth;
+    panel.classList.add("orion-panel-focus-flash");
+
+    setTimeout(() => {
+        panel.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    }, 50);
+
+    setTimeout(() => {
+        panel.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    }, 350);
+
+    return panel;
+}
+
+function abrirYEjecutarOrionSidebar(accion, boton = null) {
+    abrirPanelCentralOrionDirecto(accion);
+
+    setTimeout(() => {
+        abrirPanelCentralOrionDirecto(accion);
+    }, 250);
+
+    return ejecutarAccion(accion, boton);
+}
+
+function registrarClickSidebarOrionDirecto() {
+    if (window.__orionSidebarDirectOpenRegistered) {
+        return;
+    }
+
+    window.__orionSidebarDirectOpenRegistered = true;
+
+    document.addEventListener(
+        "click",
+        (event) => {
+            const boton = event.target?.closest?.("button");
+
+            if (!boton) {
+                return;
+            }
+
+            const texto = String(boton.textContent || "").toLowerCase();
+            const onclick = String(boton.getAttribute("onclick") || "").toLowerCase();
+
+            const esCrear =
+                texto.includes("crear carpetas") ||
+                onclick.includes("crear-carpetas");
+
+            const esRed =
+                texto.includes("verificar red") ||
+                onclick.includes("verificar-red");
+
+            if (!esCrear && !esRed) {
+                return;
+            }
+
+            const estaEnSidebar =
+                boton.closest(".sidebar") ||
+                boton.closest("#sidebar") ||
+                boton.closest("aside") ||
+                boton.closest(".sidebar-columns");
+
+            if (!estaEnSidebar) {
+                return;
+            }
+
+            const accion = esCrear ? "crear-carpetas" : "verificar-red";
+
+            abrirPanelCentralOrionDirecto(accion);
+
+            setTimeout(() => {
+                abrirPanelCentralOrionDirecto(accion);
+            }, 300);
+        },
+        true
+    );
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    registrarClickSidebarOrionDirecto();
+});
+
+window.buscarPanelCentralOrionPorTexto = buscarPanelCentralOrionPorTexto;
+window.abrirPanelCentralOrionDirecto = abrirPanelCentralOrionDirecto;
+window.abrirYEjecutarOrionSidebar = abrirYEjecutarOrionSidebar;
+window.registrarClickSidebarOrionDirecto = registrarClickSidebarOrionDirecto;
+window.obtenerPanelResultadoDistribucionOrion = obtenerPanelResultadoDistribucionOrion;
+window.obtenerChecksDistribucionOrion = obtenerChecksDistribucionOrion;
+window.actualizarEstadoDistribucionOrionDesdeHtml = actualizarEstadoDistribucionOrionDesdeHtml;
+window.htmlEsNotFoundOrion = htmlEsNotFoundOrion;
+window.valorCheckboxDistribucionOrion = valorCheckboxDistribucionOrion;
+window.obtenerSeleccionadosDistribucionOrion = obtenerSeleccionadosDistribucionOrion;
