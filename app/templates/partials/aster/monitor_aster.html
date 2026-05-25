@@ -245,70 +245,156 @@
         </div>
     </div>
 </details>
-        <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">🧾</span>
-                FASE D. Validación de entidades del Excel ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Obtenga las entidades únicas de la columna Entidad y revise cuántos registros tiene cada una.
+        <details class="panel-monitor aster-fase-d-panel">
+    <summary>
+        <span class="panel-icon">🧾</span>
+        FASE D. Validación de entidades del Excel ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-de-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Archivo normalizado</h4>
+                        <p>Esta fase analiza el Excel ASTER después de la normalización de encabezados.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <button type="button" onclick="analizarEntidadesAster(this)">
-                        Analizar entidades ASTER
-                    </button>
+                <div class="aster-checklist">
+                    <div>✅ Usa el archivo copiado en Fase B</div>
+                    <div>✅ Requiere encabezados normalizados en Fase C</div>
+                    <div>✅ Lee la columna Entidad</div>
+                    <div>✅ Cuenta entidades únicas y registros por entidad</div>
+                </div>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Analizar entidades Excel</h4>
+                        <p>Obtiene los valores únicos de la columna Entidad y prepara la validación contra SQL.</p>
+                    </div>
                 </div>
 
-                <div id="aster-entidades-resultado" class="ui-result-block">
+                <button type="button" class="ui-btn-success aster-main-action" onclick="analizarEntidadesAster(this)">
+                    Analizar entidades ASTER
+                </button>
+
+                <div class="aster-help-text">
+                    Revise las entidades detectadas antes de ejecutar la consulta SQL ASTER.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de entidades Excel</h4>
+                        <p>Listado de entidades únicas, conteos y advertencias encontradas.</p>
+                    </div>
+                </div>
+
+                <div id="aster-entidades-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Entidades ASTER pendientes de análisis.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 
-                <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">🗄️</span>
-                FASE E. Conexión y consulta SQL ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Conecte al servidor ASTER y ejecute la consulta SQL de entidades por fecha.
+                <details class="panel-monitor aster-fase-e-panel">
+    <summary>
+        <span class="panel-icon">🗄️</span>
+        FASE E. Conexión y consulta SQL ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-de-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Parámetros de consulta SQL</h4>
+                        <p>Consulta las entidades ASTER en MySQL para la fecha del proceso.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <label for="asterFechaConsultaSql" class="ui-label">
-                        Fecha consulta:
+                <div class="aster-field-stack">
+                    <label for="asterFechaConsultaSql" class="ui-mini-label">
+                        Fecha consulta
                     </label>
+
                     <input
                         id="asterFechaConsultaSql"
                         type="text"
                         placeholder="Ejemplo: 20260513"
-                        value=""
+                        class="ui-input ui-input-md"
                         oninput="sincronizarFechaAster(this.value)"
                         onchange="sincronizarFechaAster(this.value)"
-                        class="ui-input"
                     >
-
-                    <button type="button" onclick="ejecutarConsultaSqlAster(this)">
-                        Ejecutar consulta SQL ASTER
-                    </button>
                 </div>
 
-                <div class="log-line warning" class="ui-warning-block">
-                    Servidor ASTER: 10.24.90.101 | Base: gestioncomercial | Tabla: comentarios
+                <div class="aster-sql-info-card">
+                    <div>
+                        <b>Servidor ASTER</b>
+                        <span>10.24.90.101</span>
+                    </div>
+                    <div>
+                        <b>Base</b>
+                        <span>gestioncomercial</span>
+                    </div>
+                    <div>
+                        <b>Tabla</b>
+                        <span>comentarios</span>
+                    </div>
+                    <div>
+                        <b>Modo</b>
+                        <span>Consulta por fecha + columna SSS</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar consulta ASTER</h4>
+                        <p>Conecta a MySQL ASTER y obtiene el resumen de entidades por fecha.</p>
+                    </div>
                 </div>
 
-                <div id="aster-sql-resultado" class="ui-result-block">
+                <button type="button" class="ui-btn-success aster-main-action" onclick="ejecutarConsultaSqlAster(this)">
+                    Ejecutar consulta SQL ASTER
+                </button>
+
+                <div class="aster-help-text">
+                    Esta información se usará en Fase F para depurar y clasificar entidades.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de consulta SQL</h4>
+                        <p>Entidades obtenidas desde ASTER, conteos y diagnóstico de conexión.</p>
+                    </div>
+                </div>
+
+                <div id="aster-sql-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Consulta SQL ASTER pendiente de ejecución.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 
 
                 <details class="panel-monitor" open>

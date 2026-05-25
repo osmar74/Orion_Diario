@@ -1689,3 +1689,60 @@ a {
         grid-column: auto;
     }
 }
+
+/* ============================================================
+   UI REFACTOR ASTER FASE D/E - ENTIDADES Y SQL
+   ============================================================ */
+
+.aster-fase-de-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.aster-fase-de-grid .aster-result-card {
+    grid-column: 1 / -1;
+}
+
+.aster-sql-info-card {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(15, 118, 110, 0.10);
+    border: 1px solid rgba(45, 212, 191, 0.18);
+}
+
+.aster-sql-info-card div {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.74rem;
+}
+
+.aster-sql-info-card b {
+    color: #ccfbf1;
+}
+
+.aster-sql-info-card span {
+    color: #cbd5e1;
+    word-break: break-word;
+}
+
+@media (max-width: 1000px) {
+    .aster-fase-de-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aster-fase-de-grid .aster-result-card {
+        grid-column: auto;
+    }
+
+    .aster-sql-info-card div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+}
