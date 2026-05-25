@@ -687,143 +687,6 @@ function verificarCarga(tipo) {
         });
 }
 
-/* ---------- CONSOLIDADO ---------- */
-
-function abrirConsolidado() {
-    const panel = getById("panel-consolidado");
-
-    if (panel) {
-        panel.open = true;
-    }
-}
-
-function seleccionarConexionConsolidado(tipo) {
-    conexionConsolidado = tipo === "remoto" ? "remoto" : "local";
-
-    const btnLocal = getById("btnConsLocal");
-    const btnRemoto = getById("btnConsRemoto");
-
-    if (btnLocal) {
-        btnLocal.classList.toggle("active", conexionConsolidado === "local");
-    }
-
-    if (btnRemoto) {
-        btnRemoto.classList.toggle("active", conexionConsolidado === "remoto");
-    }
-
-    const indicador = getById("cons-conexion-indicador");
-
-    if (indicador) {
-        indicador.textContent =
-            conexionConsolidado === "local"
-                ? "Local activo"
-                : "Remoto activo";
-    }
-
-    fetchTexto(
-        `/accion/probar-conexion-consolidado?conexion=${encodeURIComponent(
-            conexionConsolidado
-        )}`
-    )
-        .then((html) => {
-            const badge = getById("badge-consolidado");
-            const exito = esRespuestaExitosa(html);
-
-            if (badge) {
-                badge.className = exito
-                    ? "badge-conexion badge-verde"
-                    : "badge-conexion badge-rojo";
-
-                badge.textContent = `${exito ? "✅" : "❌"} ${conexionConsolidado === "local" ? "Local" : "Remoto"
-                    }`;
-            }
-        })
-        .catch(() => {
-            const badge = getById("badge-consolidado");
-
-            if (badge) {
-                badge.className = "badge-conexion badge-rojo";
-                badge.textContent = `❌ ${conexionConsolidado === "local" ? "Local" : "Remoto"
-                    }`;
-            }
-        });
-}
-
-function ejecutarConsultaConsolidado() {
-    const resultado = getById("cons-resultado");
-
-    if (!resultado) {
-        alert("No se encontró el panel de resultado del consolidado.");
-        return;
-    }
-
-    const fecha = getInputValue("consFecha");
-    const meses = getInputValue("consMeses");
-
-    if (!fecha || !meses) {
-        alert("Debe ingresar fecha y mes de gestión.");
-        return;
-    }
-
-    resultado.innerHTML = htmlLoading("Ejecutando consulta...");
-
-    const formData = new FormData();
-    formData.append("fecha", fecha);
-    formData.append("meses", meses);
-    formData.append("conexion", conexionConsolidado);
-
-    postFormTexto("/accion/consolidar-consulta", formData)
-        .then((html) => {
-            resultado.innerHTML = html;
-        })
-        .catch((err) => {
-            resultado.innerHTML = htmlError(`Error: ${err}`);
-        });
-}
-
-function aplicarFiltroYExportar() {
-    const resultado = getById("cons-resultado");
-
-    if (!resultado) {
-        alert("No se encontró el panel de resultado del consolidado.");
-        return;
-    }
-
-    const checkboxes = resultado.querySelectorAll(
-        'input[name="descripcion"]:checked'
-    );
-
-    const seleccionados = Array.from(checkboxes).map((checkbox) => {
-        return checkbox.value || "";
-    });
-
-    const fecha = getInputValue("consFecha");
-    const meses = getInputValue("consMeses");
-    const tempId = getInputValue("cons-temp-id");
-
-    if (!fecha || !tempId) {
-        alert("Falta fecha o identificador temporal del consolidado.");
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("fecha", fecha);
-    formData.append("meses", meses);
-    formData.append("conexion", conexionConsolidado);
-    formData.append("seleccionados", JSON.stringify(seleccionados));
-    formData.append("temp_id", tempId);
-
-    resultado.innerHTML = htmlLoading("Aplicando filtros y generando Excel...");
-
-    postFormTexto("/accion/consolidar-aplicar", formData)
-        .then((html) => {
-            resultado.innerHTML = html;
-        })
-        .catch((err) => {
-            resultado.innerHTML = htmlError(`Error: ${err}`);
-        });
-}
-
 /* ---------- RESET ---------- */
 
 function resetTodo() {
@@ -910,6 +773,8 @@ const MODULOS_UI = {
 let sidebarOrionOriginal = null;
 let monitorOrionOriginal = null;
 let tituloMonitorOrionOriginal = null;
+let moduloActivoActual = "orion";
+const vistasModuloCache = {};
 
 function obtenerSidebarPrincipal() {
     return document.getElementById("sidebar");
@@ -1127,6 +992,200 @@ function construirMonitorTemporal(config) {
     `;
 }
 
+function idsEstadoFormularioPersistente() {
+    return [
+        "fechaInput",
+        "manualOrion",
+        "manualAister",
+        "manualTotalAster",
+        "asterFechaProceso",
+        "asterRutaBase",
+        "asterFechaConsultaSql",
+        "asterConexionInsercion",
+        "asterHistorialLimite",
+        "asterFaseIConexion",
+        "asterFaseIFecha",
+        "consFecha",
+        "consMeses",
+        "cons-temp-id",
+    ];
+}
+
+function claveEstadoInput(id) {
+    return `orionDiario.ui.${id}`;
+}
+
+function persistirEstadoInputsVisibles() {
+    idsEstadoFormularioPersistente().forEach((id) => {
+        const elemento = document.getElementById(id);
+
+        if (!elemento || !("value" in elemento)) {
+            return;
+        }
+
+        localStorage.setItem(claveEstadoInput(id), elemento.value || "");
+    });
+}
+
+function restaurarEstadoInputsVisibles() {
+    idsEstadoFormularioPersistente().forEach((id) => {
+        const elemento = document.getElementById(id);
+
+        if (!elemento || !("value" in elemento)) {
+            return;
+        }
+
+        const valor = localStorage.getItem(claveEstadoInput(id));
+
+        if (valor !== null) {
+            elemento.value = valor;
+        }
+    });
+}
+
+function serializarValoresDeFormulario(contenedor) {
+    if (!contenedor) {
+        return;
+    }
+
+    contenedor.querySelectorAll("input, textarea, select").forEach((elemento) => {
+        if (elemento.tagName === "SELECT") {
+            Array.from(elemento.options).forEach((option) => {
+                option.removeAttribute("selected");
+
+                if (option.value === elemento.value) {
+                    option.setAttribute("selected", "selected");
+                }
+            });
+
+            return;
+        }
+
+        if (elemento.type === "checkbox" || elemento.type === "radio") {
+            if (elemento.checked) {
+                elemento.setAttribute("checked", "checked");
+            } else {
+                elemento.removeAttribute("checked");
+            }
+
+            return;
+        }
+
+        if (elemento.tagName === "TEXTAREA") {
+            elemento.textContent = elemento.value || "";
+            return;
+        }
+
+        if ("value" in elemento) {
+            elemento.setAttribute("value", elemento.value || "");
+        }
+    });
+}
+
+function guardarVistaModuloActual() {
+    if (!estaEnPaginaPrincipal()) {
+        return;
+    }
+
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+    const titulo = obtenerTituloMonitor();
+
+    if (!sidebar || !monitor) {
+        return;
+    }
+
+    persistirEstadoInputsVisibles();
+
+    serializarValoresDeFormulario(sidebar);
+    serializarValoresDeFormulario(monitor);
+
+    vistasModuloCache[moduloActivoActual] = {
+        sidebarHtml: sidebar.innerHTML,
+        monitorHtml: monitor.innerHTML,
+        titulo: titulo ? titulo.textContent : "",
+    };
+}
+
+function restaurarVistaModuloCache(modulo) {
+    const vista = vistasModuloCache[modulo];
+
+    if (!vista) {
+        return false;
+    }
+
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+    const titulo = obtenerTituloMonitor();
+
+    if (sidebar) {
+        sidebar.innerHTML = vista.sidebarHtml;
+    }
+
+    if (monitor) {
+        monitor.innerHTML = vista.monitorHtml;
+    }
+
+    if (titulo && vista.titulo) {
+        titulo.textContent = vista.titulo;
+    }
+
+    restaurarEstadoInputsVisibles();
+
+    if (
+        modulo === "aister" &&
+        typeof window.obtenerFechaProcesoAster === "function" &&
+        typeof window.sincronizarFechaAster === "function"
+    ) {
+        window.sincronizarFechaAster(window.obtenerFechaProcesoAster());
+    }
+
+    return true;
+}
+
+function registrarPersistenciaInputsDinamicos() {
+    if (window.__orionPersistenciaInputsActiva) {
+        return;
+    }
+
+    window.__orionPersistenciaInputsActiva = true;
+
+    const guardar = (event) => {
+        const target = event.target;
+
+        if (!target || !target.id) {
+            return;
+        }
+
+        if (!idsEstadoFormularioPersistente().includes(target.id)) {
+            return;
+        }
+
+        if ("value" in target) {
+            localStorage.setItem(claveEstadoInput(target.id), target.value || "");
+        }
+
+        const idsFechaAster = [
+            "fechaInput",
+            "asterFechaProceso",
+            "asterFechaConsultaSql",
+            "asterFaseIFecha",
+        ];
+
+        if (
+            idsFechaAster.includes(target.id) &&
+            typeof window.sincronizarFechaAster === "function"
+        ) {
+            window.sincronizarFechaAster(target.value || "");
+            persistirEstadoInputsVisibles();
+        }
+    };
+
+    document.addEventListener("input", guardar);
+    document.addEventListener("change", guardar);
+}
+
+
 function restaurarModuloOrion() {
     const sidebar = obtenerSidebarPrincipal();
     const monitor = obtenerMonitorCentral();
@@ -1205,17 +1264,36 @@ function seleccionarModulo(modulo) {
 
     actualizarLayoutPorPagina();
     guardarVistaOrionOriginal();
+    guardarVistaModuloActual();
 
     if (moduloNormalizado === "orion") {
-        restaurarModuloOrion();
+        if (!restaurarVistaModuloCache("orion")) {
+            restaurarModuloOrion();
+            restaurarEstadoInputsVisibles();
+        }
     } else {
-        mostrarModuloTemporal(moduloNormalizado);
+        if (!restaurarVistaModuloCache(moduloNormalizado)) {
+            mostrarModuloTemporal(moduloNormalizado);
+            restaurarEstadoInputsVisibles();
+        }
+    }
+
+    moduloActivoActual = moduloNormalizado;
+
+    if (
+        moduloNormalizado === "aister" &&
+        typeof window.obtenerFechaProcesoAster === "function" &&
+        typeof window.sincronizarFechaAster === "function"
+    ) {
+        window.sincronizarFechaAster(window.obtenerFechaProcesoAster());
+        persistirEstadoInputsVisibles();
     }
 
     activarBotonModulo(moduloNormalizado);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    registrarPersistenciaInputsDinamicos();
     actualizarLayoutPorPagina();
     guardarVistaOrionOriginal();
 
@@ -1245,13 +1323,11 @@ window.consolidarTotales = consolidarTotales;
 window.probarConexion = probarConexion;
 window.seleccionarConexion = seleccionarConexion;
 window.actualizarBadgesConexion = actualizarBadgesConexion;
+window.guardarVistaModuloActual = guardarVistaModuloActual;
+window.restaurarVistaModuloCache = restaurarVistaModuloCache;
 window.resetTodo = resetTodo;
 window.insertarDatos = insertarDatos;
 window.verificarCarga = verificarCarga;
-window.abrirConsolidado = abrirConsolidado;
-window.seleccionarConexionConsolidado = seleccionarConexionConsolidado;
-window.ejecutarConsultaConsolidado = ejecutarConsultaConsolidado;
-window.aplicarFiltroYExportar = aplicarFiltroYExportar;
 window.normalizarFechaAster = normalizarFechaAster;
 window.obtenerFechaProcesoAster = obtenerFechaProcesoAster;
 window.sincronizarFechaAster = sincronizarFechaAster;
