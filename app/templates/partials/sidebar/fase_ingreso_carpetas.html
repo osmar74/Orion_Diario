@@ -3,7 +3,7 @@
     <div class="fase-actions">
         <label>Fecha (YYYYMM_DD):</label>
         <input type="text" id="fechaInput" placeholder="202605_12" value="{{ ultima_fecha }}" class="ui-input-date">
-        <button onclick="ejecutarAccion('/accion/crear-carpetas', this)" id="btn-crear">Crear Carpetas <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/verificar-red', this)" id="btn-verred">Verificar Red <span class="status-icon">⚪</span></button>
+        <button onclick="abrirPanelCentralOrionDirecto('crear-carpetas'); return false;" id="btn-crear">Ir a Crear Carpetas <span class="status-icon">⚪</span></button>
+        <button onclick="abrirPanelCentralOrionDirecto('verificar-red'); return false;" id="btn-verred">Ir a Verificar Red <span class="status-icon">⚪</span></button>
     </div>
 </details>
