@@ -3,6 +3,8 @@ Blueprint para la Fase G: Carga de datos a SQL Server.
 """
 
 import json
+import os
+from html import escape
 
 from flask import Blueprint, request, session
 
@@ -35,6 +37,115 @@ from app.services.orion_connection_service import (
 )
 
 carga_bp = Blueprint("carga", __name__)
+
+def _obtener_fecha_fase_g_orion() -> str:
+    """
+    Obtiene la fecha activa para Fase G.
+
+    Prioridad:
+    1. request.form["fecha"]
+    2. session["ultima_fecha"]
+    3. valor fallback
+
+    Se normaliza a YYYYMMDD para usar la estructura nueva:
+    data\\YYYYMMDD\\Orion\\Consolidados
+    """
+    fecha_raw = (
+        request.form.get("fecha")
+        or session.get("ultima_fecha")
+        or "20260512"
+    )
+
+    try:
+        fecha = normalizar_fecha_yyyymmdd(fecha_raw)
+    except Exception:
+        fecha = str(fecha_raw or "").strip()
+
+    session["ultima_fecha"] = fecha
+
+    return fecha
+
+
+def _patron_consolidado_orion(tipo: str) -> str:
+    tipo_limpio = str(tipo or "").strip().lower()
+
+    patrones = {
+        "causales": "Causales_Consolidado*.xlsx",
+        "lote": "Lote_Consolidado*.xlsx",
+        "discador": "*Discador*Consolidado.xlsx",
+    }
+
+    return patrones.get(tipo_limpio, "*.xlsx")
+
+
+def _render_info_busqueda_consolidado_orion(
+    fecha: str,
+    tipo: str,
+    resultado: dict | None = None,
+) -> str:
+    """
+    Muestra en el panel de Fase G dónde se está buscando el consolidado.
+    """
+    resultado = resultado or {}
+
+    carpeta_orion = os.path.join(str(DATA_DIR), str(fecha), "Orion")
+    carpeta_consolidados = os.path.join(carpeta_orion, "Consolidados")
+
+    ruta_archivo = (
+        resultado.get("ruta_archivo")
+        or resultado.get("ruta_consolidado")
+        or resultado.get("archivo")
+        or ""
+    )
+    nombre_archivo = (
+        resultado.get("nombre_archivo")
+        or resultado.get("nombre_consolidado")
+        or (os.path.basename(str(ruta_archivo)) if ruta_archivo else "")
+        or ""
+    )
+
+    if ruta_archivo:
+        estado = "✅ Archivo encontrado"
+        estado_clase = "success"
+    else:
+        estado = "⚠️ Archivo no encontrado"
+        estado_clase = "warning"
+
+    return f"""
+    <div class="orion-lookup-card">
+        <div class="log-line {estado_clase}">
+            {estado}: {escape(str(nombre_archivo or 'Sin archivo'))}
+        </div>
+
+        <table class="dataframe ui-table-compact">
+            <tr>
+                <th colspan="2">Diagnóstico de búsqueda Fase G - {escape(str(tipo).upper())}</th>
+            </tr>
+            <tr>
+                <td><b>Fecha usada</b></td>
+                <td>{escape(str(fecha))}</td>
+            </tr>
+            <tr>
+                <td><b>Carpeta ORION</b></td>
+                <td>{escape(str(carpeta_orion))}</td>
+            </tr>
+            <tr>
+                <td><b>Carpeta Consolidados</b></td>
+                <td>{escape(str(carpeta_consolidados))}</td>
+            </tr>
+            <tr>
+                <td><b>Patrón esperado</b></td>
+                <td>{escape(_patron_consolidado_orion(tipo))}</td>
+            </tr>
+            <tr>
+                <td><b>Ruta archivo</b></td>
+                <td>{escape(str(ruta_archivo or 'No encontrado'))}</td>
+            </tr>
+        </table>
+    </div>
+    """
+
+
 
 
 @carga_bp.route("/accion/probar-conexion", methods=["POST"])
@@ -95,7 +206,7 @@ def accion_verificar_carga():
 
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
 
-    fecha = session.get("ultima_fecha", "202605_12")
+    fecha = _obtener_fecha_fase_g_orion()
 
     resultado = verificar_carga_orion(
         data_dir=DATA_DIR,
@@ -105,7 +216,7 @@ def accion_verificar_carga():
         cfg_sql=cfg,
     )
 
-    return render_verificacion_carga_orion(resultado)
+    return _render_info_busqueda_consolidado_orion(fecha, tipo, resultado) + render_verificacion_carga_orion(resultado)
 
 
 
@@ -120,7 +231,7 @@ def accion_insertar_datos():
     """
     tipo = request.form.get("tipo", "")
     conexion = request.form.get("conexion", "local")
-    fecha = session.get("ultima_fecha", "202605_12")
+    fecha = _obtener_fecha_fase_g_orion()
 
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
 
@@ -132,7 +243,7 @@ def accion_insertar_datos():
         cfg_sql=cfg,
     )
 
-    return render_insercion_orion_resultado(resultado)
+    return _render_info_busqueda_consolidado_orion(fecha, tipo, resultado) + render_insercion_orion_resultado(resultado)
 
 
 @carga_bp.route("/accion/probar-conexion-consolidado")
