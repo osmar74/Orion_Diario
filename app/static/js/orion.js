@@ -721,3 +721,526 @@ window.actualizarNombreArchivosOcr = actualizarNombreArchivosOcr;
 window.obtenerFechaProcesoOrion = obtenerFechaProcesoOrion;
 window.obtenerCuerpoPanelMonitor = obtenerCuerpoPanelMonitor;
 window.insertarResultadoEnPanelMonitor = insertarResultadoEnPanelMonitor;
+
+/* ============================================================
+   ORION - TRACKER VISUAL DE FASES A-G
+   ============================================================ */
+
+const ORION_PHASE_STATUS_KEY = "orionDiario.ui.orion.phaseStatus";
+
+const ORION_PHASES = {
+    A: "Crear carpetas",
+    B: "Verificar red",
+    C: "OCR y Totales",
+    D: "Distribuir archivos",
+    E: "Procesamiento",
+    F: "Comparación",
+    G: "Carga consolidados",
+};
+
+const ORION_ACTION_PHASES = {
+    subirOCR: "C",
+    consolidarTotales: "C",
+
+    copiarDistribucionSeleccionada: "D",
+
+    actualizarEstadoDiscador: "E",
+    actualizarCuadre: "E",
+
+    probarConexion: "G",
+    seleccionarConexion: "G",
+    verificarCarga: "G",
+    insertarDatos: "G",
+};
+
+function estadoFaseOrionDefault() {
+    const estado = {};
+
+    Object.keys(ORION_PHASES).forEach((fase) => {
+        estado[fase] = {
+            status: "pending",
+            detail: "Pendiente",
+            updatedAt: "",
+        };
+    });
+
+    return estado;
+}
+
+function leerEstadoFasesOrion() {
+    try {
+        const raw = localStorage.getItem(ORION_PHASE_STATUS_KEY);
+
+        if (!raw) {
+            return estadoFaseOrionDefault();
+        }
+
+        return {
+            ...estadoFaseOrionDefault(),
+            ...JSON.parse(raw),
+        };
+    } catch {
+        return estadoFaseOrionDefault();
+    }
+}
+
+function guardarEstadoFasesOrion(estado) {
+    localStorage.setItem(ORION_PHASE_STATUS_KEY, JSON.stringify(estado));
+}
+
+function metaEstadoFaseOrion(status) {
+    const meta = {
+        pending: {
+            icon: "⚪",
+            label: "Pendiente",
+            cls: "pending",
+        },
+        running: {
+            icon: "⚙️",
+            label: "Ejecutando",
+            cls: "running",
+        },
+        done: {
+            icon: "✅",
+            label: "Completado",
+            cls: "done",
+        },
+        error: {
+            icon: "❌",
+            label: "Error",
+            cls: "error",
+        },
+        info: {
+            icon: "ℹ️",
+            label: "Revisar",
+            cls: "info",
+        },
+    };
+
+    return meta[status] || meta.pending;
+}
+
+function actualizarEstadoFaseOrion(fase, status, detail = "") {
+    if (!ORION_PHASES[fase]) {
+        return;
+    }
+
+    const estado = leerEstadoFasesOrion();
+    const meta = metaEstadoFaseOrion(status);
+
+    estado[fase] = {
+        status,
+        detail: detail || meta.label,
+        updatedAt: new Date().toLocaleTimeString(),
+    };
+
+    guardarEstadoFasesOrion(estado);
+    renderizarEstadoFasesOrion();
+}
+
+function evaluarEstadoDesdeHtmlOrion(html) {
+    const texto = String(html || "").toLowerCase();
+
+    if (
+        texto.includes("traceback") ||
+        texto.includes("error") ||
+        texto.includes("❌") ||
+        texto.includes("no encontrado")
+    ) {
+        return "error";
+    }
+
+    if (
+        texto.includes("procesando") ||
+        texto.includes("cargando") ||
+        texto.includes("ejecutando") ||
+        texto.includes("verificando") ||
+        texto.includes("insertando")
+    ) {
+        return "running";
+    }
+
+    if (
+        texto.includes("pendiente") ||
+        texto.includes("sin ejecutar") ||
+        texto.includes("no ejecutado")
+    ) {
+        return "pending";
+    }
+
+    if (
+        texto.includes("correctamente") ||
+        texto.includes("completado") ||
+        texto.includes("insertado") ||
+        texto.includes("insertados") ||
+        texto.includes("validado") ||
+        texto.includes("ok") ||
+        texto.includes("✅")
+    ) {
+        return "done";
+    }
+
+    if (texto.trim()) {
+        return "info";
+    }
+
+    return "pending";
+}
+
+function obtenerContenedorSidebarOrion() {
+    if (typeof obtenerSidebarPrincipal === "function") {
+        return obtenerSidebarPrincipal();
+    }
+
+    return (
+        document.querySelector(".sidebar") ||
+        document.querySelector("#sidebar") ||
+        document.querySelector("aside")
+    );
+}
+
+function obtenerContenedorMonitorOrion() {
+    if (typeof obtenerMonitorCentral === "function") {
+        return obtenerMonitorCentral();
+    }
+
+    return (
+        document.querySelector(".monitor") ||
+        document.querySelector("#monitor")
+    );
+}
+
+function construirHtmlEstadoFasesOrion() {
+    const estado = leerEstadoFasesOrion();
+
+    const items = Object.entries(ORION_PHASES)
+        .map(([fase, titulo]) => {
+            const item = estado[fase] || {};
+            const meta = metaEstadoFaseOrion(item.status);
+
+            return `
+                <div class="orion-phase-status-item ${meta.cls}" data-orion-phase="${fase}">
+                    <span class="orion-phase-letter">${fase}</span>
+                    <span class="orion-phase-name">${titulo}</span>
+                    <span class="orion-phase-state">${meta.icon} ${meta.label}</span>
+                </div>
+            `;
+        })
+        .join("");
+
+    return `
+        <div id="orion-phase-sidebar-status" class="orion-phase-status-card">
+            <div class="orion-phase-status-title">
+                🧭 Estado de fases ORION
+            </div>
+            <div class="orion-phase-status-list">
+                ${items}
+            </div>
+        </div>
+    `;
+}
+
+function esVistaOrionActiva() {
+    const modulo = localStorage.getItem("moduloActivoOrionDiario") || "orion";
+    return modulo === "orion";
+}
+
+function asegurarPanelEstadoSidebarOrion() {
+    if (!esVistaOrionActiva()) {
+        return;
+    }
+
+    const sidebar = obtenerContenedorSidebarOrion();
+
+    if (!sidebar) {
+        return;
+    }
+
+    const existe = document.getElementById("orion-phase-sidebar-status");
+
+    if (existe) {
+        return;
+    }
+
+    sidebar.insertAdjacentHTML("afterbegin", construirHtmlEstadoFasesOrion());
+}
+
+function actualizarPanelEstadoSidebarOrion() {
+    const actual = document.getElementById("orion-phase-sidebar-status");
+
+    if (!actual) {
+        asegurarPanelEstadoSidebarOrion();
+        return;
+    }
+
+    actual.outerHTML = construirHtmlEstadoFasesOrion();
+}
+
+function faseOrionDesdeSummary(summary) {
+    const texto = String(summary?.textContent || "").toLowerCase();
+
+    if (texto.includes("crear") || texto.includes("carpeta")) {
+        return "A";
+    }
+
+    if (texto.includes("red")) {
+        return "B";
+    }
+
+    if (texto.includes("ocr") || texto.includes("totales")) {
+        return "C";
+    }
+
+    if (texto.includes("distribuir") || texto.includes("distribución")) {
+        return "D";
+    }
+
+    if (
+        texto.includes("discador") ||
+        texto.includes("causales") ||
+        texto.includes("lotes") ||
+        texto.includes("proces")
+    ) {
+        return "E";
+    }
+
+    if (texto.includes("compar")) {
+        return "F";
+    }
+
+    if (
+        texto.includes("carga") ||
+        texto.includes("consolidado") ||
+        texto.includes("insert")
+    ) {
+        return "G";
+    }
+
+    return "";
+}
+
+function decorarHeadersMonitorOrion() {
+    if (!esVistaOrionActiva()) {
+        return;
+    }
+
+    const monitor = obtenerContenedorMonitorOrion();
+
+    if (!monitor) {
+        return;
+    }
+
+    const estado = leerEstadoFasesOrion();
+
+    monitor.querySelectorAll(".panel-monitor > summary").forEach((summary) => {
+        const fase = faseOrionDesdeSummary(summary);
+
+        if (!fase || !ORION_PHASES[fase]) {
+            return;
+        }
+
+        let chip = summary.querySelector(".orion-phase-header-chip");
+
+        if (!chip) {
+            chip = document.createElement("span");
+            chip.className = "orion-phase-header-chip";
+            summary.appendChild(chip);
+        }
+
+        const item = estado[fase] || {};
+        const meta = metaEstadoFaseOrion(item.status);
+
+        chip.className = `orion-phase-header-chip ${meta.cls}`;
+        chip.textContent = `${meta.icon} ${meta.label}`;
+        chip.title = item.updatedAt
+            ? `${item.detail || meta.label} - ${item.updatedAt}`
+            : item.detail || meta.label;
+    });
+}
+
+function renderizarEstadoFasesOrion() {
+    actualizarPanelEstadoSidebarOrion();
+    decorarHeadersMonitorOrion();
+}
+
+function faseOrionDesdeArgumentos(args) {
+    const texto = args.map((item) => String(item || "")).join(" ").toLowerCase();
+
+    if (texto.includes("crear") || texto.includes("carpeta")) {
+        return "A";
+    }
+
+    if (texto.includes("red")) {
+        return "B";
+    }
+
+    if (texto.includes("ocr") || texto.includes("total")) {
+        return "C";
+    }
+
+    if (texto.includes("distrib")) {
+        return "D";
+    }
+
+    if (
+        texto.includes("discador") ||
+        texto.includes("causales") ||
+        texto.includes("lote") ||
+        texto.includes("proces")
+    ) {
+        return "E";
+    }
+
+    if (texto.includes("compar")) {
+        return "F";
+    }
+
+    if (
+        texto.includes("carga") ||
+        texto.includes("insert") ||
+        texto.includes("verificar")
+    ) {
+        return "G";
+    }
+
+    return "";
+}
+
+function envolverAccionOrion(nombreFuncion, faseFija = "") {
+    const original = window[nombreFuncion];
+
+    if (typeof original !== "function") {
+        return;
+    }
+
+    if (original.__orionPhaseWrapped) {
+        return;
+    }
+
+    const envuelta = function (...args) {
+        const fase = faseFija || faseOrionDesdeArgumentos(args);
+
+        if (fase) {
+            actualizarEstadoFaseOrion(fase, "running", "Ejecutando acción...");
+        }
+
+        try {
+            const resultado = original.apply(this, args);
+            return resultado;
+        } catch (error) {
+            if (fase) {
+                actualizarEstadoFaseOrion(
+                    fase,
+                    "error",
+                    error?.message || "Error en acción"
+                );
+            }
+
+            throw error;
+        }
+    };
+
+    envuelta.__orionPhaseWrapped = true;
+    window[nombreFuncion] = envuelta;
+}
+
+function envolverAccionesFasesOrion() {
+    Object.entries(ORION_ACTION_PHASES).forEach(([nombreFuncion, fase]) => {
+        envolverAccionOrion(nombreFuncion, fase);
+    });
+
+    envolverAccionOrion("ejecutarAccion", "");
+}
+
+function observarPanelesOrion() {
+    const monitor = obtenerContenedorMonitorOrion();
+
+    if (!monitor || !esVistaOrionActiva()) {
+        return;
+    }
+
+    monitor.querySelectorAll(".panel-monitor").forEach((panel) => {
+        if (panel.dataset.orionObserver === "1") {
+            return;
+        }
+
+        panel.dataset.orionObserver = "1";
+
+        const summary = panel.querySelector(":scope > summary");
+        const fase = faseOrionDesdeSummary(summary);
+
+        if (!fase) {
+            return;
+        }
+
+        const body =
+            panel.querySelector(":scope > .panel-body") ||
+            panel.querySelector(".panel-body");
+
+        if (!body) {
+            return;
+        }
+
+        const aplicar = () => {
+            const estado = evaluarEstadoDesdeHtmlOrion(body.innerHTML);
+            const meta = metaEstadoFaseOrion(estado);
+
+            if (estado !== "pending") {
+                actualizarEstadoFaseOrion(fase, estado, meta.label);
+            }
+        };
+
+        const observer = new MutationObserver(() => {
+            aplicar();
+        });
+
+        observer.observe(body, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+        });
+    });
+}
+
+function inicializarEstadoFasesOrion() {
+    if (!esVistaOrionActiva()) {
+        return;
+    }
+
+    envolverAccionesFasesOrion();
+    asegurarPanelEstadoSidebarOrion();
+    observarPanelesOrion();
+    renderizarEstadoFasesOrion();
+}
+
+function programarInicializacionEstadoFasesOrion() {
+    setTimeout(inicializarEstadoFasesOrion, 50);
+    setTimeout(inicializarEstadoFasesOrion, 350);
+    setTimeout(inicializarEstadoFasesOrion, 900);
+}
+
+if (!window.__orionSeleccionarModuloWrapped) {
+    window.__orionSeleccionarModuloWrapped = true;
+
+    const seleccionarModuloOriginalOrionStatus = window.seleccionarModulo;
+
+    if (typeof seleccionarModuloOriginalOrionStatus === "function") {
+        window.seleccionarModulo = function (modulo) {
+            const resultado = seleccionarModuloOriginalOrionStatus.apply(this, arguments);
+
+            if (!modulo || modulo === "orion") {
+                programarInicializacionEstadoFasesOrion();
+            }
+
+            return resultado;
+        };
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    programarInicializacionEstadoFasesOrion();
+});
+
+window.actualizarEstadoFaseOrion = actualizarEstadoFaseOrion;
+window.renderizarEstadoFasesOrion = renderizarEstadoFasesOrion;
+window.inicializarEstadoFasesOrion = inicializarEstadoFasesOrion;
