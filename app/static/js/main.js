@@ -1091,66 +1091,13 @@ function sincronizarFechaAster(valor) {
 
 
 function construirSidebarAster(config) {
-    const fechaActual = obtenerFechaProcesoAster();
+    const template = document.getElementById("tpl-sidebar-aster");
 
-    return `
-        <div class="sidebar-columns modulo-placeholder-sidebar">
-            <div class="sidebar-fases-col" style="width:100%; padding-left:0;">
-                <div class="log-line info" style="margin-bottom:10px;">
-                    🧩 ${config.tituloSidebar}
-                </div>
+    if (!template) {
+        return htmlError("No se encontró el template HTML del sidebar ASTER.");
+    }
 
-                <details open>
-                    <summary>📅 Fecha proceso ASTER</summary>
-                    <div class="fase-actions">
-                        <label style="font-size:0.65rem; color:#888; margin:0;">
-                            Fecha proceso:
-                        </label>
-                        <input
-                            type="text"
-                            id="fechaInput"
-                            placeholder="Ejemplo: 202605_21 o 20260521"
-                            value="${fechaActual}"
-                            oninput="sincronizarFechaAster(this.value)"
-                            onchange="sincronizarFechaAster(this.value)"
-                            style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;"
-                        >
-                        <div class="log-line warning" style="margin-top:8px;">
-                            Use esta fecha para búsqueda de archivo, consulta SQL, conciliación y Fase I.
-                        </div>
-                    </div>
-                </details>
-
-                <details>
-                    <summary>📱 Fase A-C: Total, archivo y normalización</summary>
-                    <div class="fase-actions">
-                        <button type="button" onclick="document.getElementById('aster-total-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Total diario</button>
-                        <button type="button" onclick="document.getElementById('aster-archivo-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Archivo ASTER</button>
-                        <button type="button" onclick="document.getElementById('aster-normalizacion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Normalización</button>
-                    </div>
-                </details>
-
-                <details>
-                    <summary>🧾 Fase D-G: Entidades y conciliación</summary>
-                    <div class="fase-actions">
-                        <button type="button" onclick="document.getElementById('aster-entidades-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Entidades Excel</button>
-                        <button type="button" onclick="document.getElementById('aster-sql-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Consulta SQL</button>
-                        <button type="button" onclick="document.getElementById('aster-depuracion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Depuración</button>
-                        <button type="button" onclick="document.getElementById('aster-conciliacion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Conciliación</button>
-                    </div>
-                </details>
-
-                <details>
-                    <summary>⬆️ Fase H-I: Inserción y gestiones</summary>
-                    <div class="fase-actions">
-                        <button type="button" onclick="document.getElementById('aster-insercion-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Inserción ASTER</button>
-                        <button type="button" onclick="document.getElementById('aster-historial-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Historial</button>
-                        <button type="button" onclick="document.getElementById('aster-fase-i-resultado')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">Fase I</button>
-                    </div>
-                </details>
-            </div>
-        </div>
-    `;
+    return template.innerHTML;
 }
 
 function construirMonitorAster(config) {
