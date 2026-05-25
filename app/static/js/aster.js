@@ -848,3 +848,433 @@ window.prepararFaseIAster = prepararFaseIAster;
 window.ejecutarFaseIAster = ejecutarFaseIAster;
 window.marcarBotonAsterExito = marcarBotonAsterExito;
 window.marcarBotonAsterError = marcarBotonAsterError;
+
+/* ============================================================
+   ASTER - TRACKER VISUAL DE FASES A-I
+   ============================================================ */
+
+const ASTER_PHASE_STATUS_KEY = "orionDiario.ui.aster.phaseStatus";
+
+const ASTER_PHASES = {
+    A: "Captura total",
+    B: "Archivo After",
+    C: "Normalización",
+    D: "Entidades Excel",
+    E: "Consulta SQL",
+    F: "Depuración",
+    G: "Conciliación",
+    H: "Inserción",
+    I: "Usuarios/Gestiones",
+};
+
+const ASTER_PHASE_RESULT_IDS = {
+    A: "aster-total-resultado",
+    B: "aster-archivo-resultado",
+    C: "aster-normalizacion-resultado",
+    D: "aster-entidades-resultado",
+    E: "aster-sql-resultado",
+    F: "aster-depuracion-resultado",
+    G: "aster-conciliacion-resultado",
+    H: "aster-insercion-resultado",
+    I: "aster-fase-i-resultado",
+};
+
+const ASTER_ACTION_PHASES = {
+    subirOCRAster: "A",
+    consolidarTotalAster: "A",
+
+    buscarYCopiarArchivoAster: "B",
+
+    normalizarEncabezadosAster: "C",
+
+    analizarEntidadesAster: "D",
+
+    ejecutarConsultaSqlAster: "E",
+
+    prepararDepuracionAster: "F",
+    aplicarExclusionesAster: "F",
+    guardarClasificacionAster: "F",
+
+    conciliarEntidadesAster: "G",
+    ajustarConciliacionAster: "G",
+
+    probarConexionInsercionAster: "H",
+    prepararInsercionAster: "H",
+    insertarDatosAster: "H",
+
+    probarConexionesFaseIAster: "I",
+    prepararFaseIAster: "I",
+    ejecutarFaseIAster: "I",
+};
+
+function estadoFaseAsterDefault() {
+    const estado = {};
+
+    Object.keys(ASTER_PHASES).forEach((fase) => {
+        estado[fase] = {
+            status: "pending",
+            detail: "Pendiente",
+            updatedAt: "",
+        };
+    });
+
+    return estado;
+}
+
+function leerEstadoFasesAster() {
+    try {
+        const raw = localStorage.getItem(ASTER_PHASE_STATUS_KEY);
+
+        if (!raw) {
+            return estadoFaseAsterDefault();
+        }
+
+        return {
+            ...estadoFaseAsterDefault(),
+            ...JSON.parse(raw),
+        };
+    } catch {
+        return estadoFaseAsterDefault();
+    }
+}
+
+function guardarEstadoFasesAster(estado) {
+    localStorage.setItem(ASTER_PHASE_STATUS_KEY, JSON.stringify(estado));
+}
+
+function metaEstadoFaseAster(status) {
+    const meta = {
+        pending: {
+            icon: "⚪",
+            label: "Pendiente",
+            cls: "pending",
+        },
+        running: {
+            icon: "⚙️",
+            label: "Ejecutando",
+            cls: "running",
+        },
+        done: {
+            icon: "✅",
+            label: "Completado",
+            cls: "done",
+        },
+        error: {
+            icon: "❌",
+            label: "Error",
+            cls: "error",
+        },
+        info: {
+            icon: "ℹ️",
+            label: "Revisar",
+            cls: "info",
+        },
+    };
+
+    return meta[status] || meta.pending;
+}
+
+function actualizarEstadoFaseAster(fase, status, detail = "") {
+    if (!ASTER_PHASES[fase]) {
+        return;
+    }
+
+    const estado = leerEstadoFasesAster();
+    const meta = metaEstadoFaseAster(status);
+
+    estado[fase] = {
+        status,
+        detail: detail || meta.label,
+        updatedAt: new Date().toLocaleTimeString(),
+    };
+
+    guardarEstadoFasesAster(estado);
+    renderizarEstadoFasesAster();
+}
+
+function evaluarEstadoDesdeHtmlAster(html) {
+    const texto = String(html || "").toLowerCase();
+
+    if (
+        texto.includes("traceback") ||
+        texto.includes("error") ||
+        texto.includes("❌")
+    ) {
+        return "error";
+    }
+
+    if (
+        texto.includes("procesando") ||
+        texto.includes("cargando") ||
+        texto.includes("ejecutando") ||
+        texto.includes("preparando")
+    ) {
+        return "running";
+    }
+
+    if (
+        texto.includes("pendiente") ||
+        texto.includes("sin ejecutar") ||
+        texto.includes("no ejecutado")
+    ) {
+        return "pending";
+    }
+
+    if (
+        texto.includes("correctamente") ||
+        texto.includes("completado") ||
+        texto.includes("validada") ||
+        texto.includes("verificada") ||
+        texto.includes("insertado") ||
+        texto.includes("insertados") ||
+        texto.includes("ok") ||
+        texto.includes("✅")
+    ) {
+        return "done";
+    }
+
+    if (texto.trim()) {
+        return "info";
+    }
+
+    return "pending";
+}
+
+function obtenerContenedorSidebarAster() {
+    if (typeof obtenerSidebarPrincipal === "function") {
+        return obtenerSidebarPrincipal();
+    }
+
+    return (
+        document.querySelector(".sidebar") ||
+        document.querySelector("#sidebar") ||
+        document.querySelector("aside")
+    );
+}
+
+function obtenerContenedorMonitorAster() {
+    if (typeof obtenerMonitorCentral === "function") {
+        return obtenerMonitorCentral();
+    }
+
+    return (
+        document.querySelector(".monitor") ||
+        document.querySelector("#monitor")
+    );
+}
+
+function construirHtmlEstadoFasesAster() {
+    const estado = leerEstadoFasesAster();
+
+    const items = Object.entries(ASTER_PHASES)
+        .map(([fase, titulo]) => {
+            const item = estado[fase] || {};
+            const meta = metaEstadoFaseAster(item.status);
+
+            return `
+                <div class="aster-phase-status-item ${meta.cls}" data-aster-phase="${fase}">
+                    <span class="aster-phase-letter">${fase}</span>
+                    <span class="aster-phase-name">${titulo}</span>
+                    <span class="aster-phase-state">${meta.icon} ${meta.label}</span>
+                </div>
+            `;
+        })
+        .join("");
+
+    return `
+        <div id="aster-phase-sidebar-status" class="aster-phase-status-card">
+            <div class="aster-phase-status-title">
+                🧭 Estado de fases ASTER
+            </div>
+            <div class="aster-phase-status-list">
+                ${items}
+            </div>
+        </div>
+    `;
+}
+
+function asegurarPanelEstadoSidebarAster() {
+    const sidebar = obtenerContenedorSidebarAster();
+
+    if (!sidebar) {
+        return;
+    }
+
+    const existe = document.getElementById("aster-phase-sidebar-status");
+
+    if (existe) {
+        return;
+    }
+
+    if (!document.getElementById("aster-total-resultado")) {
+        return;
+    }
+
+    sidebar.insertAdjacentHTML("afterbegin", construirHtmlEstadoFasesAster());
+}
+
+function actualizarPanelEstadoSidebarAster() {
+    const actual = document.getElementById("aster-phase-sidebar-status");
+
+    if (!actual) {
+        asegurarPanelEstadoSidebarAster();
+        return;
+    }
+
+    actual.outerHTML = construirHtmlEstadoFasesAster();
+}
+
+function faseDesdeTextoSummaryAster(texto) {
+    const match = String(texto || "").match(/FASE\s+([A-I])/i);
+
+    if (!match) {
+        return "";
+    }
+
+    return match[1].toUpperCase();
+}
+
+function decorarHeadersMonitorAster() {
+    const monitor = obtenerContenedorMonitorAster();
+
+    if (!monitor) {
+        return;
+    }
+
+    const estado = leerEstadoFasesAster();
+
+    monitor.querySelectorAll(".panel-monitor > summary").forEach((summary) => {
+        const fase = faseDesdeTextoSummaryAster(summary.textContent);
+
+        if (!fase || !ASTER_PHASES[fase]) {
+            return;
+        }
+
+        let chip = summary.querySelector(".aster-phase-header-chip");
+
+        if (!chip) {
+            chip = document.createElement("span");
+            chip.className = "aster-phase-header-chip";
+            summary.appendChild(chip);
+        }
+
+        const item = estado[fase] || {};
+        const meta = metaEstadoFaseAster(item.status);
+
+        chip.className = `aster-phase-header-chip ${meta.cls}`;
+        chip.textContent = `${meta.icon} ${meta.label}`;
+        chip.title = item.updatedAt
+            ? `${item.detail || meta.label} - ${item.updatedAt}`
+            : item.detail || meta.label;
+    });
+}
+
+function renderizarEstadoFasesAster() {
+    actualizarPanelEstadoSidebarAster();
+    decorarHeadersMonitorAster();
+}
+
+function observarResultadoFaseAster(fase, id) {
+    const nodo = document.getElementById(id);
+
+    if (!nodo || nodo.dataset.asterObserver === "1") {
+        return;
+    }
+
+    nodo.dataset.asterObserver = "1";
+
+    const aplicar = () => {
+        const estado = evaluarEstadoDesdeHtmlAster(nodo.innerHTML);
+        const meta = metaEstadoFaseAster(estado);
+
+        actualizarEstadoFaseAster(fase, estado, meta.label);
+    };
+
+    aplicar();
+
+    const observer = new MutationObserver(() => {
+        aplicar();
+    });
+
+    observer.observe(nodo, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+    });
+}
+
+function observarResultadosFasesAster() {
+    Object.entries(ASTER_PHASE_RESULT_IDS).forEach(([fase, id]) => {
+        observarResultadoFaseAster(fase, id);
+    });
+}
+
+function envolverAccionesFasesAster() {
+    if (window.__asterPhaseActionsWrapped) {
+        return;
+    }
+
+    window.__asterPhaseActionsWrapped = true;
+
+    Object.entries(ASTER_ACTION_PHASES).forEach(([nombreFuncion, fase]) => {
+        const original = window[nombreFuncion];
+
+        if (typeof original !== "function") {
+            return;
+        }
+
+        window[nombreFuncion] = function (...args) {
+            actualizarEstadoFaseAster(fase, "running", "Ejecutando acción...");
+
+            try {
+                return original.apply(this, args);
+            } catch (error) {
+                actualizarEstadoFaseAster(
+                    fase,
+                    "error",
+                    error?.message || "Error en acción"
+                );
+                throw error;
+            }
+        };
+    });
+}
+
+function inicializarEstadoFasesAster() {
+    envolverAccionesFasesAster();
+    asegurarPanelEstadoSidebarAster();
+    observarResultadosFasesAster();
+    renderizarEstadoFasesAster();
+}
+
+function programarInicializacionEstadoFasesAster() {
+    setTimeout(inicializarEstadoFasesAster, 50);
+    setTimeout(inicializarEstadoFasesAster, 350);
+    setTimeout(inicializarEstadoFasesAster, 900);
+}
+
+if (!window.__asterSeleccionarModuloWrapped) {
+    window.__asterSeleccionarModuloWrapped = true;
+
+    const seleccionarModuloOriginalAsterStatus = window.seleccionarModulo;
+
+    if (typeof seleccionarModuloOriginalAsterStatus === "function") {
+        window.seleccionarModulo = function (modulo) {
+            const resultado = seleccionarModuloOriginalAsterStatus.apply(this, arguments);
+
+            if (modulo === "aister") {
+                programarInicializacionEstadoFasesAster();
+            }
+
+            return resultado;
+        };
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    programarInicializacionEstadoFasesAster();
+});
+
+window.actualizarEstadoFaseAster = actualizarEstadoFaseAster;
+window.renderizarEstadoFasesAster = renderizarEstadoFasesAster;
+window.inicializarEstadoFasesAster = inicializarEstadoFasesAster;
