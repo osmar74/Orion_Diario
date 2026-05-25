@@ -30,7 +30,10 @@ const ORION_DISTRIBUIR_COPIA_FIELD_NAMES = ["seleccionados", "seleccionados[]", 
 
 
 function normalizarAccionOrion(accion) {
-    const valor = String(accion || "").trim();
+    let valor = String(accion || "").trim();
+
+    valor = valor.replace(/^\/?accion\//i, "");
+    valor = valor.replace(/^\/+/, "");
 
     const mapa = {
         "crear_carpetas": "crear-carpetas",
@@ -40,10 +43,45 @@ function normalizarAccionOrion(accion) {
         "verificar_red": "verificar-red",
         "verificarRed": "verificar-red",
         "verificar-red": "verificar-red",
+
+        "ocr": "ocr-totales",
+        "ocr-subir": "ocr-totales",
+        "ocr_totales": "ocr-totales",
+        "ocr-totales": "ocr-totales",
+
+        "distribuir": "distribuir",
+
+        "discador": "procesar-discador",
+        "procesar_discador": "procesar-discador",
+        "procesarDiscador": "procesar-discador",
+        "procesar-discador": "procesar-discador",
+
+        "causales": "procesar-causales",
+        "procesar_causales": "procesar-causales",
+        "procesarCausales": "procesar-causales",
+        "procesar-causales": "procesar-causales",
+
+        "lotes": "procesar-lotes",
+        "procesar_lotes": "procesar-lotes",
+        "procesarLotes": "procesar-lotes",
+        "procesar-lotes": "procesar-lotes",
+
+        "comparar_lotes": "comparar-lotes",
+        "compararLotes": "comparar-lotes",
+        "comparar-lotes": "comparar-lotes",
+
+        "carga-causales": "carga-causales",
+        "carga-lotes": "carga-lotes",
+        "carga-discador": "carga-discador",
+        "consolidado-gestion": "consolidado-gestion",
     };
 
     return mapa[valor] || valor;
 }
+
+
+
+
 
 function resultadoPanelAccionOrion(accionRaw) {
     const accion = normalizarAccionOrion(accionRaw);
@@ -61,38 +99,45 @@ function resultadoPanelAccionOrion(accionRaw) {
     return getById(paneles[accion] || "");
 }
 
+
+
 function wrapperPanelAccionOrion(accionRaw) {
     const accion = normalizarAccionOrion(accionRaw);
 
     const wrappers = {
         "crear-carpetas": "panel-crear-carpetas-wrapper",
         "verificar-red": "panel-verificar-red-wrapper",
-        "distribuir": "panel-distribuir",
-        "procesar-discador": "panel-discador",
-        "procesar-causales": "panel-causales",
-        "procesar-lotes": "panel-lotes",
-        "comparar-lotes": "panel-comparar",
+        "distribuir": "panel-distribuir-wrapper",
+        "procesar-discador": "panel-discador-wrapper",
+        "procesar-causales": "panel-causales-wrapper",
+        "procesar-lotes": "panel-lotes-wrapper",
+        "comparar-lotes": "panel-comparar-wrapper",
     };
 
     return getById(wrappers[accion] || "");
 }
 
+
+
 function fasePorAccionOrion(accionRaw) {
     const accion = normalizarAccionOrion(accionRaw);
 
+    if (ORION_ACTION_TO_PHASE && ORION_ACTION_TO_PHASE[accion]) {
+        return ORION_ACTION_TO_PHASE[accion];
+    }
+
     const fases = {
-        "crear-carpetas": "A",
-        "verificar-red": "B",
-        "ocr-subir": "C",
-        "distribuir": "D",
-        "procesar-discador": "E",
-        "procesar-causales": "E",
-        "procesar-lotes": "E",
-        "comparar-lotes": "F",
+        "probar-conexion": "G",
+        "verificar-carga": "G",
+        "insertar-datos": "G",
     };
 
     return fases[accion] || "";
 }
+
+
+
+
 
 
 function contenedorScrollMonitorOrion() {
@@ -299,10 +344,11 @@ function prepararYEjecutarAccionOrion(accionRaw, boton = null) {
 
 function ejecutarAccion(accionRaw, boton = null) {
     const accion = normalizarAccionOrion(accionRaw);
+    const accionEndpoint = accion === "ocr-totales" ? "ocr-subir" : accion;
 
-    abrirPanelAccionOrion(accion);
+    abrirPanelAccionOrion(accionEndpoint);
 
-    const panel = resultadoPanelAccionOrion(accion);
+    const panel = resultadoPanelAccionOrion(accionEndpoint);
     const fase = fasePorAccionOrion(accion);
 
     const fechaRaw =
@@ -313,7 +359,7 @@ function ejecutarAccion(accionRaw, boton = null) {
 
     if (!fecha) {
         alert("Ingrese una fecha válida antes de ejecutar la acción.");
-        actualizarBotonesAccionOrion(accion, false, boton);
+        actualizarBotonesAccionOrion(accionEndpoint, false, boton);
         return;
     }
 
@@ -323,15 +369,18 @@ function ejecutarAccion(accionRaw, boton = null) {
         setValue("fechaInput", fecha);
     }
 
-    if (fase && typeof actualizarEstadoFaseOrion === "function") {
-        actualizarEstadoFaseOrion(fase, "running", "Ejecutando acción...");
-    }
+    actualizarEstadoOperacionOrion(
+        accion,
+        fase,
+        "running",
+        "Ejecutando acción..."
+    );
 
     if (panel) {
-        panel.innerHTML = htmlLoading(`Ejecutando ${accion}...`);
+        panel.innerHTML = htmlLoading(`Ejecutando ${accionEndpoint}...`);
     }
 
-    const url = `/accion/${encodeURIComponent(accion)}?fecha=${encodeURIComponent(fecha)}&_=${Date.now()}`;
+    const url = `/accion/${encodeURIComponent(accionEndpoint)}?fecha=${encodeURIComponent(fecha)}&_=${Date.now()}`;
 
     return fetchTexto(url, {
         cache: "no-store",
@@ -347,15 +396,14 @@ function ejecutarAccion(accionRaw, boton = null) {
                 panel.innerHTML = html;
             }
 
-            actualizarBotonesAccionOrion(accion, exito, boton);
+            actualizarBotonesAccionOrion(accionEndpoint, exito, boton);
 
-            if (fase && typeof actualizarEstadoFaseOrion === "function") {
-                actualizarEstadoFaseOrion(
-                    fase,
-                    exito ? "done" : "error",
-                    exito ? "Completado" : "Error"
-                );
-            }
+            actualizarEstadoOperacionOrion(
+                accion,
+                fase,
+                exito ? "done" : "error",
+                exito ? "Completado" : "Error"
+            );
 
             if (typeof programarActualizacionEstadoOrionDesdePaneles === "function") {
                 programarActualizacionEstadoOrionDesdePaneles();
@@ -368,15 +416,20 @@ function ejecutarAccion(accionRaw, boton = null) {
                 panel.innerHTML = htmlError(`Error: ${err}`);
             }
 
-            actualizarBotonesAccionOrion(accion, false, boton);
+            actualizarBotonesAccionOrion(accionEndpoint, false, boton);
 
-            if (fase && typeof actualizarEstadoFaseOrion === "function") {
-                actualizarEstadoFaseOrion(fase, "error", String(err));
-            }
+            actualizarEstadoOperacionOrion(
+                accion,
+                fase,
+                "error",
+                String(err)
+            );
 
             return "";
         });
 }
+
+
 
 
 
@@ -1120,8 +1173,7 @@ const ORION_PHASES = {
     B: "Verificar red",
     C: "OCR y Totales",
     D: "Distribuir archivos",
-    E: "Procesamiento",
-    F: "Comparación",
+    F: "Procesamiento",
     G: "Carga consolidados",
 };
 
@@ -1130,9 +1182,6 @@ const ORION_ACTION_PHASES = {
     consolidarTotales: "C",
 
     copiarDistribucionSeleccionada: "D",
-
-    actualizarEstadoDiscador: "E",
-    actualizarCuadre: "E",
 
     probarConexion: "G",
     seleccionarConexion: "G",
@@ -1364,36 +1413,13 @@ function actualizarPanelEstadoSidebarOrion() {
 }
 
 function faseOrionDesdeSummary(summary) {
+    const accion = accionOrionDesdeSummary(summary);
+
+    if (accion) {
+        return faseOrionDesdeAccion(accion);
+    }
+
     const texto = String(summary?.textContent || "").toLowerCase();
-
-    if (texto.includes("crear") || texto.includes("carpeta")) {
-        return "A";
-    }
-
-    if (texto.includes("red")) {
-        return "B";
-    }
-
-    if (texto.includes("ocr") || texto.includes("totales")) {
-        return "C";
-    }
-
-    if (texto.includes("distribuir") || texto.includes("distribución")) {
-        return "D";
-    }
-
-    if (
-        texto.includes("discador") ||
-        texto.includes("causales") ||
-        texto.includes("lotes") ||
-        texto.includes("proces")
-    ) {
-        return "E";
-    }
-
-    if (texto.includes("compar")) {
-        return "F";
-    }
 
     if (
         texto.includes("carga") ||
@@ -1403,8 +1429,257 @@ function faseOrionDesdeSummary(summary) {
         return "G";
     }
 
+    if (
+        texto.includes("discador") ||
+        texto.includes("causales") ||
+        texto.includes("lotes") ||
+        texto.includes("comparar") ||
+        texto.includes("proces")
+    ) {
+        return "F";
+    }
+
     return "";
 }
+
+
+
+
+
+
+/* ============================================================
+   ORION - ESTADO INDIVIDUAL POR PANEL
+   ============================================================ */
+
+const ORION_ACTION_STATUS_KEY = "orionDiario.ui.orion.actionStatus";
+
+const ORION_ACTION_LABELS = {
+    "crear-carpetas": "Crear Carpetas",
+    "verificar-red": "Verificar Red",
+    "ocr-totales": "OCR y Totales",
+    "distribuir": "Distribuir Archivos",
+
+    "procesar-discador": "Procesar Discador",
+    "procesar-causales": "Procesar Causales",
+    "procesar-lotes": "Procesar Lotes",
+    "comparar-lotes": "Comparar Lotes",
+
+    "carga-causales": "Carga Causales",
+    "carga-lotes": "Carga Lotes",
+    "carga-discador": "Carga Discador",
+    "consolidado-gestion": "Consolidado Gestión Orion",
+};
+
+const ORION_ACTION_TO_PHASE = {
+    "crear-carpetas": "A",
+    "verificar-red": "B",
+    "ocr-totales": "C",
+    "distribuir": "D",
+
+    "procesar-discador": "F",
+    "procesar-causales": "F",
+    "procesar-lotes": "F",
+    "comparar-lotes": "F",
+
+    "carga-causales": "G",
+    "carga-lotes": "G",
+    "carga-discador": "G",
+    "consolidado-gestion": "G",
+};
+
+const ORION_PHASE_ACTIONS = {
+    A: ["crear-carpetas"],
+    B: ["verificar-red"],
+    C: ["ocr-totales"],
+    D: ["distribuir"],
+    F: [
+        "procesar-discador",
+        "procesar-causales",
+        "procesar-lotes",
+        "comparar-lotes",
+    ],
+    G: [
+        "carga-causales",
+        "carga-lotes",
+        "carga-discador",
+        "consolidado-gestion",
+    ],
+};
+
+function estadoAccionesOrionDefault() {
+    const estado = {};
+
+    Object.keys(ORION_ACTION_LABELS).forEach((accion) => {
+        estado[accion] = {
+            status: "pending",
+            detail: "Pendiente",
+            updatedAt: "",
+        };
+    });
+
+    return estado;
+}
+
+function leerEstadoAccionesOrion() {
+    try {
+        const raw = localStorage.getItem(ORION_ACTION_STATUS_KEY);
+
+        if (!raw) {
+            return estadoAccionesOrionDefault();
+        }
+
+        return {
+            ...estadoAccionesOrionDefault(),
+            ...JSON.parse(raw),
+        };
+    } catch {
+        return estadoAccionesOrionDefault();
+    }
+}
+
+function guardarEstadoAccionesOrion(estado) {
+    localStorage.setItem(ORION_ACTION_STATUS_KEY, JSON.stringify(estado));
+}
+
+function accionOrionDesdeSummary(summary) {
+    const texto = String(summary?.textContent || "").toLowerCase();
+
+    if (texto.includes("carga causales")) {
+        return "carga-causales";
+    }
+
+    if (texto.includes("carga lotes")) {
+        return "carga-lotes";
+    }
+
+    if (texto.includes("carga discador")) {
+        return "carga-discador";
+    }
+
+    if (texto.includes("consolidado gestión") || texto.includes("consolidado gestion")) {
+        return "consolidado-gestion";
+    }
+
+    if (texto.includes("crear carpetas")) {
+        return "crear-carpetas";
+    }
+
+    if (texto.includes("verificar red")) {
+        return "verificar-red";
+    }
+
+    if (texto.includes("ocr") || texto.includes("totales")) {
+        return "ocr-totales";
+    }
+
+    if (texto.includes("distribuir")) {
+        return "distribuir";
+    }
+
+    if (texto.includes("procesar discador")) {
+        return "procesar-discador";
+    }
+
+    if (texto.includes("procesar causales")) {
+        return "procesar-causales";
+    }
+
+    if (texto.includes("procesar lotes")) {
+        return "procesar-lotes";
+    }
+
+    if (texto.includes("comparar lotes")) {
+        return "comparar-lotes";
+    }
+
+    return "";
+}
+
+function faseOrionDesdeAccion(accion) {
+    return ORION_ACTION_TO_PHASE[accion] || "";
+}
+
+function recalcularEstadoFaseOrionDesdeAcciones(fase) {
+    const acciones = ORION_PHASE_ACTIONS[fase] || [];
+
+    if (!acciones.length) {
+        return;
+    }
+
+    const estadoAcciones = leerEstadoAccionesOrion();
+    const estados = acciones.map((accion) => {
+        return estadoAcciones[accion]?.status || "pending";
+    });
+
+    let status = "pending";
+    let detail = "Pendiente";
+
+    if (estados.includes("running")) {
+        status = "running";
+        detail = "Ejecutando";
+    } else if (estados.includes("error")) {
+        status = "error";
+        detail = "Error";
+    } else if (estados.every((item) => item === "done")) {
+        status = "done";
+        detail = "Completado";
+    } else if (estados.some((item) => item === "done" || item === "info")) {
+        status = "info";
+        detail = "Parcial";
+    }
+
+    const estadoFases = leerEstadoFasesOrion();
+
+    estadoFases[fase] = {
+        status,
+        detail,
+        updatedAt: new Date().toLocaleTimeString(),
+    };
+
+    guardarEstadoFasesOrion(estadoFases);
+}
+
+function actualizarEstadoAccionOrion(accionRaw, status, detail = "") {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    if (!ORION_ACTION_LABELS[accion]) {
+        return false;
+    }
+
+    const estado = leerEstadoAccionesOrion();
+    const meta = metaEstadoFaseOrion(status);
+
+    estado[accion] = {
+        status,
+        detail: detail || meta.label,
+        updatedAt: new Date().toLocaleTimeString(),
+    };
+
+    guardarEstadoAccionesOrion(estado);
+
+    const fase = faseOrionDesdeAccion(accion);
+
+    if (fase) {
+        recalcularEstadoFaseOrionDesdeAcciones(fase);
+    }
+
+    renderizarEstadoFasesOrion();
+
+    return true;
+}
+
+function actualizarEstadoOperacionOrion(accionRaw, fase, status, detail = "") {
+    const accion = normalizarAccionOrion(accionRaw);
+
+    if (actualizarEstadoAccionOrion(accion, status, detail)) {
+        return;
+    }
+
+    if (fase && typeof actualizarEstadoFaseOrion === "function") {
+        actualizarEstadoFaseOrion(fase, status, detail);
+    }
+}
+
 
 function decorarHeadersMonitorOrion() {
     if (!esVistaOrionActiva()) {
@@ -1417,12 +1692,20 @@ function decorarHeadersMonitorOrion() {
         return;
     }
 
-    const estado = leerEstadoFasesOrion();
+    const estadoFases = leerEstadoFasesOrion();
+    const estadoAcciones = leerEstadoAccionesOrion();
 
     monitor.querySelectorAll(".panel-monitor > summary").forEach((summary) => {
+        const accion = accionOrionDesdeSummary(summary);
         const fase = faseOrionDesdeSummary(summary);
 
-        if (!fase || !ORION_PHASES[fase]) {
+        let item = null;
+
+        if (accion && ORION_ACTION_LABELS[accion]) {
+            item = estadoAcciones[accion] || {};
+        } else if (fase && ORION_PHASES[fase]) {
+            item = estadoFases[fase] || {};
+        } else {
             return;
         }
 
@@ -1434,7 +1717,6 @@ function decorarHeadersMonitorOrion() {
             summary.appendChild(chip);
         }
 
-        const item = estado[fase] || {};
         const meta = metaEstadoFaseOrion(item.status);
 
         chip.className = `orion-phase-header-chip ${meta.cls}`;
@@ -1444,6 +1726,8 @@ function decorarHeadersMonitorOrion() {
             : item.detail || meta.label;
     });
 }
+
+
 
 function renderizarEstadoFasesOrion() {
     actualizarPanelEstadoSidebarOrion();
@@ -1473,12 +1757,9 @@ function faseOrionDesdeArgumentos(args) {
         texto.includes("discador") ||
         texto.includes("causales") ||
         texto.includes("lote") ||
+        texto.includes("compar") ||
         texto.includes("proces")
     ) {
-        return "E";
-    }
-
-    if (texto.includes("compar")) {
         return "F";
     }
 
@@ -1492,6 +1773,10 @@ function faseOrionDesdeArgumentos(args) {
 
     return "";
 }
+
+
+
+
 
 function envolverAccionOrion(nombreFuncion, faseFija = "") {
     const original = window[nombreFuncion];
@@ -1554,9 +1839,10 @@ function observarPanelesOrion() {
         panel.dataset.orionObserver = "1";
 
         const summary = panel.querySelector(":scope > summary");
+        const accion = accionOrionDesdeSummary(summary);
         const fase = faseOrionDesdeSummary(summary);
 
-        if (!fase) {
+        if (!accion && !fase) {
             return;
         }
 
@@ -1572,7 +1858,12 @@ function observarPanelesOrion() {
             const estado = evaluarEstadoDesdeHtmlOrion(body.innerHTML);
             const meta = metaEstadoFaseOrion(estado);
 
-            if (estado !== "pending") {
+            if (accion && ORION_ACTION_LABELS[accion]) {
+                actualizarEstadoAccionOrion(accion, estado, meta.label);
+                return;
+            }
+
+            if (fase && estado !== "pending") {
                 actualizarEstadoFaseOrion(fase, estado, meta.label);
             }
         };
@@ -1586,8 +1877,12 @@ function observarPanelesOrion() {
             subtree: true,
             characterData: true,
         });
+
+        aplicar();
     });
 }
+
+
 
 function inicializarEstadoFasesOrion() {
     if (!esVistaOrionActiva()) {
@@ -1699,19 +1994,25 @@ function buscarPanelCentralOrionPorTexto(textoBuscado) {
     return null;
 }
 
-function abrirPanelCentralOrionDirecto(accion) {
+function abrirPanelCentralOrionDirecto(accionRaw) {
+    const accion = normalizarAccionOrion(accionRaw);
+
     const mapaTexto = {
         "crear-carpetas": "crear carpetas",
         "verificar-red": "verificar red",
         "distribuir": "distribuir archivos",
         "ocr-subir": "ocr y totales",
+        "procesar-discador": "procesar discador",
+        "procesar-causales": "procesar causales",
+        "procesar-lotes": "procesar lotes",
+        "comparar-lotes": "comparar lotes",
     };
 
     const texto = mapaTexto[accion] || accion;
     const panel = buscarPanelCentralOrionPorTexto(texto);
 
     if (!panel) {
-        console.warn("No se encontró panel central ORION para:", accion);
+        console.warn("No se encontró panel central ORION para:", accionRaw);
         return null;
     }
 
@@ -1739,6 +2040,8 @@ function abrirPanelCentralOrionDirecto(accion) {
 
     return panel;
 }
+
+
 
 function abrirYEjecutarOrionSidebar(accion, boton = null) {
     abrirPanelCentralOrionDirecto(accion);
@@ -1817,3 +2120,10 @@ window.actualizarEstadoDistribucionOrionDesdeHtml = actualizarEstadoDistribucion
 window.htmlEsNotFoundOrion = htmlEsNotFoundOrion;
 window.valorCheckboxDistribucionOrion = valorCheckboxDistribucionOrion;
 window.obtenerSeleccionadosDistribucionOrion = obtenerSeleccionadosDistribucionOrion;
+window.accionOrionDesdeSummary = accionOrionDesdeSummary;
+window.faseOrionDesdeAccion = faseOrionDesdeAccion;
+window.leerEstadoAccionesOrion = leerEstadoAccionesOrion;
+window.guardarEstadoAccionesOrion = guardarEstadoAccionesOrion;
+window.actualizarEstadoAccionOrion = actualizarEstadoAccionOrion;
+window.actualizarEstadoOperacionOrion = actualizarEstadoOperacionOrion;
+window.recalcularEstadoFaseOrionDesdeAcciones = recalcularEstadoFaseOrionDesdeAcciones;
