@@ -835,6 +835,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ---------- EXPOSICIÓN GLOBAL PARA ONCLICK EN TEMPLATES ---------- */
+window.getById = getById;
+window.htmlLoading = htmlLoading;
+window.htmlError = htmlError;
+window.esRespuestaExitosa = esRespuestaExitosa;
+window.getInputValue = getInputValue;
+window.fetchTexto = fetchTexto;
+window.postFormTexto = postFormTexto;
+window.normalizarFechaOrion = normalizarFechaOrion;
 window.seleccionarModulo = seleccionarModulo;
 window.normalizar = normalizar;
 window.insertarEnPanel = insertarEnPanel;
