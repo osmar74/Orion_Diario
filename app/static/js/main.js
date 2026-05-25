@@ -1051,7 +1051,48 @@ function activarBotonModulo(moduloActivo) {
     });
 }
 
+function normalizarFechaAster(valor) {
+    const limpio = String(valor || "").replace(/[^0-9]/g, "");
+
+    if (limpio.length === 8) {
+        return limpio;
+    }
+
+    return String(valor || "").trim();
+}
+
+function obtenerFechaProcesoAster() {
+    return normalizarFechaAster(
+        getInputValue("fechaInput") ||
+        getInputValue("asterFechaProceso") ||
+        getInputValue("asterFechaConsultaSql") ||
+        getInputValue("asterFaseIFecha")
+    );
+}
+
+function sincronizarFechaAster(valor) {
+    const fecha = normalizarFechaAster(valor);
+
+    [
+        "fechaInput",
+        "asterFechaProceso",
+        "asterFechaConsultaSql",
+        "asterFaseIFecha",
+    ].forEach((id) => {
+        const input = document.getElementById(id);
+
+        if (input && "value" in input) {
+            input.value = fecha;
+        }
+    });
+
+    return fecha;
+}
+
+
 function construirSidebarAster(config) {
+    const fechaActual = obtenerFechaProcesoAster();
+
     return `
         <div class="sidebar-columns modulo-placeholder-sidebar">
             <div class="sidebar-fases-col" style="width:100%; padding-left:0;">
@@ -1069,7 +1110,9 @@ function construirSidebarAster(config) {
                             type="text"
                             id="fechaInput"
                             placeholder="Ejemplo: 202605_21 o 20260521"
-                            value=""
+                            value="${fechaActual}"
+                            oninput="sincronizarFechaAster(this.value)"
+                            onchange="sincronizarFechaAster(this.value)"
                             style="padding:5px; background:#222; color:#fff; border:1px solid #444; border-radius:3px;"
                         >
                         <div class="log-line warning" style="margin-top:8px;">
@@ -1111,6 +1154,8 @@ function construirSidebarAster(config) {
 }
 
 function construirMonitorAster(config) {
+    const fechaActual = obtenerFechaProcesoAster();
+
     return `
         <div class="log-line info" style="margin-bottom:12px;">
             ${config.descripcion}
@@ -1181,6 +1226,9 @@ function construirMonitorAster(config) {
                         id="asterFechaProceso"
                         type="text"
                         placeholder="Ejemplo: 20260429"
+                        value="${fechaActual}"
+                        oninput="sincronizarFechaAster(this.value)"
+                        onchange="sincronizarFechaAster(this.value)"
                         style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
                     >
 
@@ -1276,6 +1324,9 @@ function construirMonitorAster(config) {
                         id="asterFechaConsultaSql"
                         type="text"
                         placeholder="Ejemplo: 20260513"
+                        value="${fechaActual}"
+                        oninput="sincronizarFechaAster(this.value)"
+                        onchange="sincronizarFechaAster(this.value)"
                         style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
                     >
 
@@ -1465,6 +1516,9 @@ function construirMonitorAster(config) {
                         id="asterFaseIFecha"
                         type="text"
                         placeholder="Ejemplo: 20260429"
+                        value="${fechaActual}"
+                        oninput="sincronizarFechaAster(this.value)"
+                        onchange="sincronizarFechaAster(this.value)"
                         style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
                     >
 
@@ -1747,10 +1801,10 @@ function subirOCRAster(boton) {
         return;
     }
 
-    const fecha = getInputValue("fechaInput");
+    const fecha = obtenerFechaProcesoAster();
 
     const formData = new FormData();
-    formData.append("fecha", fecha || "202605_12");
+    formData.append("fecha", fecha || "");
 
     for (let i = 0; i < inputFiles.files.length; i++) {
         formData.append("imagenes", inputFiles.files[i]);
@@ -1814,8 +1868,12 @@ function buscarYCopiarArchivoAster(boton) {
         return;
     }
 
-    const fechaProceso = fechaInput?.value || getInputValue("fechaInput");
+    const fechaProceso = normalizarFechaAster(
+        fechaInput?.value || obtenerFechaProcesoAster()
+    );
     const rutaBase = rutaInput?.value || "";
+
+    sincronizarFechaAster(fechaProceso);
 
     if (!fechaProceso) {
         alert("Ingrese la fecha del proceso ASTER. Ejemplo: 20260429.");
@@ -1910,10 +1968,11 @@ function ejecutarConsultaSqlAster(boton) {
         return;
     }
 
-    const fechaConsulta =
-        fechaInput?.value ||
-        document.getElementById("asterFechaProceso")?.value ||
-        getInputValue("fechaInput");
+    const fechaConsulta = normalizarFechaAster(
+        fechaInput?.value || obtenerFechaProcesoAster()
+    );
+
+    sincronizarFechaAster(fechaConsulta);
 
     if (!fechaConsulta) {
         alert("Ingrese la fecha de consulta ASTER. Ejemplo: 20260513.");
@@ -2260,10 +2319,11 @@ function obtenerDatosFaseIAster() {
     const fechaInput = document.getElementById("asterFaseIFecha");
 
     const conexion = conexionSelect?.value || "local";
-    const fechaProceso =
-        fechaInput?.value ||
-        document.getElementById("asterFechaProceso")?.value ||
-        getInputValue("fechaInput");
+    const fechaProceso = normalizarFechaAster(
+        fechaInput?.value || obtenerFechaProcesoAster()
+    );
+
+    sincronizarFechaAster(fechaProceso);
 
     return {
         conexion,
@@ -2463,6 +2523,9 @@ window.consultarHistorialAster = consultarHistorialAster;
 window.probarConexionesFaseIAster = probarConexionesFaseIAster;
 window.prepararFaseIAster = prepararFaseIAster;
 window.ejecutarFaseIAster = ejecutarFaseIAster;
+window.normalizarFechaAster = normalizarFechaAster;
+window.obtenerFechaProcesoAster = obtenerFechaProcesoAster;
+window.sincronizarFechaAster = sincronizarFechaAster;
 
 
 window.marcarBotonAsterExito = marcarBotonAsterExito;
