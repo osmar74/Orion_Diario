@@ -397,53 +397,145 @@
 </details>
 
 
-                <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">🔎</span>
-                FASE F. Depuración y clasificación ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Depure las entidades SQL: primero excluya las que no corresponden a cobranzas %, luego clasifique las restantes como Cobranza % o Integral.
+                <details class="panel-monitor aster-fase-f-panel">
+    <summary>
+        <span class="panel-icon">🔎</span>
+        FASE F. Depuración y clasificación ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-fg-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Preparar depuración</h4>
+                        <p>Parte de las entidades SQL obtenidas en Fase E para separar registros válidos y no válidos.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <button type="button" onclick="prepararDepuracionAster(this)">
-                        Preparar depuración ASTER
+                <div class="aster-checklist">
+                    <div>✅ Requiere consulta SQL ASTER ejecutada</div>
+                    <div>✅ Usa entidades SQL por fecha</div>
+                    <div>✅ Identifica entidades que no corresponden a cobranzas %</div>
+                    <div>✅ Prepara tablas para clasificación</div>
+                </div>
+
+                <button type="button" class="ui-btn-success aster-main-action" onclick="prepararDepuracionAster(this)">
+                    Preparar depuración ASTER
+                </button>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Exclusiones y clasificación</h4>
+                        <p>Aplica exclusiones y guarda la clasificación final entre Cobranza %, Integral y no seleccionadas.</p>
+                    </div>
+                </div>
+
+                <div class="aster-action-stack">
+                    <button type="button" class="ui-btn-blue-sm" onclick="aplicarExclusionesAster(this)">
+                        Aplicar exclusiones
+                    </button>
+
+                    <button type="button" class="ui-btn-blue-sm" onclick="guardarClasificacionAster(this)">
+                        Guardar clasificación
                     </button>
                 </div>
 
-                <div id="aster-depuracion-resultado" class="ui-result-block">
+                <div class="aster-help-text">
+                    Revise las tablas generadas antes de guardar la clasificación definitiva.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de depuración y clasificación</h4>
+                        <p>Registros removidos, seleccionados como Cobranza %, Integral y no seleccionados.</p>
+                    </div>
+                </div>
+
+                <div id="aster-depuracion-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Depuración ASTER pendiente de ejecución.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 
-        <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">⚖️</span>
-                FASE G. Conciliación y validación ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Compare las entidades únicas del Excel contra las entidades SQL depuradas y clasificadas.
+        <details class="panel-monitor aster-fase-g-panel">
+    <summary>
+        <span class="panel-icon">⚖️</span>
+        FASE G. Conciliación y validación ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-fg-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Datos requeridos</h4>
+                        <p>Compara entidades únicas del Excel contra entidades SQL depuradas y clasificadas.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <button type="button" onclick="conciliarEntidadesAster(this)">
+                <div class="aster-checklist">
+                    <div>✅ Requiere entidades Excel de Fase D</div>
+                    <div>✅ Requiere consulta SQL de Fase E</div>
+                    <div>✅ Requiere clasificación guardada de Fase F</div>
+                    <div>✅ Detecta faltantes, sobrantes y diferencias</div>
+                </div>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar conciliación</h4>
+                        <p>Valida cantidad, coincidencias y estado final de la información antes de permitir inserción.</p>
+                    </div>
+                </div>
+
+                <div class="aster-action-stack">
+                    <button type="button" class="ui-btn-success" onclick="conciliarEntidadesAster(this)">
                         Conciliar entidades ASTER
+                    </button>
+
+                    <button type="button" class="ui-btn-blue-sm" onclick="ajustarConciliacionAster(this)">
+                        Ajustar conciliación
                     </button>
                 </div>
 
-                <div id="aster-conciliacion-resultado" class="ui-result-block">
+                <div class="aster-help-text">
+                    La Fase H solo debe continuar cuando la conciliación esté como Información Verificada.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de conciliación</h4>
+                        <p>Resumen de match, entidades faltantes/sobrantes y confirmación final.</p>
+                    </div>
+                </div>
+
+                <div id="aster-conciliacion-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Conciliación ASTER pendiente de validación.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 
         <details class="panel-monitor" open>
             <summary>

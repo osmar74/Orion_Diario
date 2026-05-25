@@ -1746,3 +1746,61 @@ a {
         gap: 2px;
     }
 }
+
+/* ============================================================
+   UI REFACTOR ASTER FASE F/G - DEPURACIÓN Y CONCILIACIÓN
+   ============================================================ */
+
+.aster-fase-fg-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.aster-fase-fg-grid .aster-result-card {
+    grid-column: 1 / -1;
+}
+
+.aster-action-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.aster-fase-f-panel .aster-step-number {
+    background: linear-gradient(135deg, #f97316, #c2410c);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.aster-fase-g-panel .aster-step-number {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.aster-fase-f-panel .aster-step-number.result,
+.aster-fase-g-panel .aster-step-number.result {
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.aster-fase-f-panel .aster-step-card,
+.aster-fase-f-panel .aster-result-card {
+    border-color: rgba(249, 115, 22, 0.18);
+}
+
+.aster-fase-g-panel .aster-step-card,
+.aster-fase-g-panel .aster-result-card {
+    border-color: rgba(139, 92, 246, 0.20);
+}
+
+@media (max-width: 1000px) {
+    .aster-fase-fg-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aster-fase-fg-grid .aster-result-card {
+        grid-column: auto;
+    }
+}
