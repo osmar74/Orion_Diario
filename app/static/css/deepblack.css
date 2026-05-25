@@ -1065,3 +1065,92 @@ a {
     color: #aaa;
     margin-left: auto;
 }
+
+/* ============================================================
+   UI REFACTOR 3E - INLINE STYLES FINALES
+   ============================================================ */
+
+.ui-reset-link {
+    color: #dc3545;
+    text-decoration: none;
+}
+
+.ui-panel-description {
+    font-size: 0.75rem;
+    color: #ccc;
+}
+
+.ui-mini-label {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.ui-form-row-compact {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.ui-form-row-tight {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ui-input-80 {
+    width: 80px;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.ui-input-120 {
+    width: 120px;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.ui-btn-blue {
+    background: #1e90ff;
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.ui-btn-blue-sm {
+    background: #1e90ff;
+    color: #fff;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+}
+
+.ui-mb-10 {
+    margin-bottom: 10px;
+}
+
+.ui-manual-totales {
+    display: none;
+    margin-top: 12px;
+    border-top: 1px solid #333;
+    padding-top: 10px;
+}
+
+.ui-file-muted {
+    color: #aaa;
+    margin-bottom: 8px;
+}

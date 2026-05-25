@@ -4,20 +4,20 @@
         <span id="badge-consolidado" class="badge-conexion badge-rojo">⚫ Desconectado</span>
     </summary>
     <div class="panel-body">
-        <p style="font-size:0.75rem; color:#ccc;">Parámetros del proceso</p>
-        <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-            <label style="font-size:0.7rem; color:#888;">Fecha (YYYY-MM-DD):</label>
-            <input type="text" id="consFecha" placeholder="2026-05-05" value="2026-05-05" style="width:120px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
-            <label style="font-size:0.7rem; color:#888;">Meses Gestión (YYYYMM):</label>
-            <input type="text" id="consMeses" placeholder="202605" value="202605" style="width:120px; background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+        <p class="ui-panel-description">Parámetros del proceso</p>
+        <div class="ui-form-row-compact">
+            <label class="ui-mini-label">Fecha (YYYY-MM-DD):</label>
+            <input type="text" id="consFecha" placeholder="2026-05-05" value="2026-05-05" class="ui-input-120">
+            <label class="ui-mini-label">Meses Gestión (YYYYMM):</label>
+            <input type="text" id="consMeses" placeholder="202605" value="202605" class="ui-input-120">
         </div>
         <p class="ui-label-muted">Conexión para consolidado:</p>
-        <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <div class="ui-form-row-tight">
             <button id="btnConsLocal" onclick="seleccionarConexionConsolidado('local')" class="conexion-btn active">Local</button>
             <button id="btnConsRemoto" onclick="seleccionarConexionConsolidado('remoto')" class="conexion-btn">Remoto</button>
             <span id="cons-conexion-indicador" class="ui-sidebar-indicator">Local activo</span>
         </div>
-        <button onclick="ejecutarConsultaConsolidado()" style="background:#1e90ff; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-bottom:10px;">Ejecutar Consulta</button>
+        <button onclick="ejecutarConsultaConsolidado()" class="ui-btn-blue ui-mb-10">Ejecutar Consulta</button>
         <div id="cons-resultado"></div>
     </div>
 </details>
