@@ -234,18 +234,126 @@ function actualizarCuadre(procTotal) {
 }
 
 
-function subirOCR() {
-    const inputFiles = getById("ocrFiles");
 
-    if (!inputFiles || !inputFiles.files || inputFiles.files.length === 0) {
-        alert("Seleccione al menos una imagen.");
+
+
+
+
+
+
+
+
+
+function setTotalesMonitorOrion(orion, aister) {
+    const valorOrion = String(orion ?? "").trim();
+    const valorAister = String(aister ?? "").trim();
+
+    if (valorOrion !== "") {
+        localStorage.setItem("orionDiario.ui.totalOrion", valorOrion);
+        setValue("manualOrion", valorOrion);
+        setText("totalOrion", valorOrion);
+        setText("ocrOrion", valorOrion);
+    }
+
+    if (valorAister !== "") {
+        localStorage.setItem("orionDiario.ui.totalAister", valorAister);
+        setValue("manualAister", valorAister);
+        setText("totalAister", valorAister);
+        setText("ocrAister", valorAister);
+    }
+
+    actualizarTotalesHeader();
+}
+
+
+
+function actualizarNombreArchivosOcr() {
+    const inputFiles = getById("ocrFiles");
+    const resumen = getById("ocrFilesResumen");
+
+    if (!resumen) {
         return;
     }
 
-    const monitor = getById("monitor-content");
+    if (!inputFiles || !inputFiles.files || inputFiles.files.length === 0) {
+        resumen.textContent = "Ningún archivo seleccionado";
+        return;
+    }
 
-    if (!monitor) {
-        alert("Acción no disponible en esta página.");
+    if (inputFiles.files.length === 1) {
+        resumen.textContent = inputFiles.files[0].name;
+        return;
+    }
+
+    resumen.textContent = `${inputFiles.files.length} archivos seleccionados`;
+}
+
+function setModoOcrOrion(modo) {
+    const panel = getById("panel-ocr");
+    const seccionOcr = getById("orion-ocr-mode");
+    const seccionManual = getById("orion-manual-mode");
+    const btnOcr = getById("btnModoOcrOrion");
+    const btnManual = getById("btnModoManualOrion");
+    const tituloManual = getById("manual-totales-titulo");
+
+    if (panel) {
+        panel.open = true;
+    }
+
+    const modoOcr = modo === "ocr";
+
+    if (seccionOcr) {
+        seccionOcr.classList.toggle("active", modoOcr);
+    }
+
+    if (seccionManual) {
+        seccionManual.classList.toggle("active", !modoOcr);
+    }
+
+    if (btnOcr) {
+        btnOcr.classList.toggle("active", modoOcr);
+    }
+
+    if (btnManual) {
+        btnManual.classList.toggle("active", !modoOcr);
+    }
+
+    if (tituloManual) {
+        tituloManual.textContent = modoOcr
+            ? "📝 Corregir o confirmar totales reconocidos antes de consolidar:"
+            : "📝 Ingresar totales manualmente:";
+    }
+}
+
+function mostrarModoOcrOrion() {
+    setModoOcrOrion("ocr");
+}
+
+function mostrarModoManualOrion() {
+    setModoOcrOrion("manual");
+}
+
+function mostrarIngresoManualOrion() {
+    mostrarModoManualOrion();
+}
+
+function activarOProcesarOcrOrion() {
+    mostrarModoOcrOrion();
+}
+
+function subirOCR() {
+    mostrarModoOcrOrion();
+
+    const inputFiles = getById("ocrFiles");
+    const resultado = getById("ocr-result-content");
+
+    if (!resultado) {
+        alert("No se encontró el panel de resultado OCR.");
+        return;
+    }
+
+    if (!inputFiles || !inputFiles.files || inputFiles.files.length === 0) {
+        alert("Seleccione al menos una imagen.");
         return;
     }
 
@@ -267,32 +375,19 @@ function subirOCR() {
     }
 
     const boton = getById("btn-ocr");
-    cerrarOtrosDetails(boton);
-
     const icono = boton?.querySelector(".status-icon");
 
     if (icono) {
         icono.textContent = "";
     }
 
-    insertarEnPanel(
-        "panel-ocr",
-        htmlLoading("Subiendo y procesando imágenes..."),
-        false,
-        "#ocr-result-content"
-    );
+    resultado.innerHTML = htmlLoading("Subiendo y procesando imágenes...");
 
     postFormTexto("/accion/ocr-subir", formData)
         .then((html) => {
             const exito = esRespuestaExitosa(html);
 
-            insertarEnPanel("panel-ocr", html, exito, "#ocr-result-content");
-
-            const manualDiv = getById("manual-totales");
-
-            if (manualDiv) {
-                manualDiv.style.display = "block";
-            }
+            resultado.innerHTML = html;
 
             const ocrData = getById("ocr-data");
 
@@ -302,28 +397,21 @@ function subirOCR() {
 
                 if (orion && orion !== "None") {
                     setValue("manualOrion", orion);
-                    setText("totalOrion", orion);
                 }
 
                 if (aister && aister !== "None") {
                     setValue("manualAister", aister);
-                    setText("totalAister", aister);
                 }
-            }
 
-            actualizarTotalesHeader();
+                setTotalesMonitorOrion(orion, aister);
+            }
 
             if (icono) {
                 icono.textContent = exito ? "✅" : "❌";
             }
         })
         .catch((err) => {
-            insertarEnPanel(
-                "panel-ocr",
-                htmlError(`Error: ${err}`),
-                false,
-                "#ocr-result-content"
-            );
+            resultado.innerHTML = htmlError(`Error: ${err}`);
 
             if (icono) {
                 icono.textContent = "❌";
@@ -332,31 +420,68 @@ function subirOCR() {
 }
 
 
+
+
+
+
+function mostrarIngresoManualOrion() {
+    const manualDiv = getById("manual-totales");
+    const panel = getById("panel-ocr");
+
+    if (panel) {
+        panel.open = true;
+    }
+
+    if (manualDiv) {
+        manualDiv.style.display = "block";
+        manualDiv.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+        });
+    }
+}
+
 function consolidarTotales() {
     const orion = getInputValue("manualOrion");
     const aister = getInputValue("manualAister");
+
+    const resultado =
+        getById("ocr-consolidado-resultado") ||
+        getById("ocr-result-content");
+
+    if (!orion && !aister) {
+        alert("Ingrese los totales manualmente o procese OCR antes de consolidar.");
+        return;
+    }
 
     const formData = new FormData();
     formData.append("orion", orion);
     formData.append("aister", aister);
 
+    if (resultado) {
+        resultado.innerHTML = htmlLoading("Consolidando totales...");
+    }
+
     postFormTexto("/accion/consolidar-totales", formData)
         .then((html) => {
-            if (orion) setText("totalOrion", orion);
-            if (aister) setText("totalAister", aister);
+            setTotalesMonitorOrion(orion, aister);
 
-            actualizarTotalesHeader();
-
-            const panelBody = document.querySelector("#panel-ocr .panel-body");
-
-            if (panelBody) {
-                const confirmacion = document.createElement("div");
-                confirmacion.innerHTML = html;
-                panelBody.appendChild(confirmacion);
+            if (resultado) {
+                resultado.innerHTML = html;
             }
         })
-        .catch((err) => alert(`Error: ${err}`));
+        .catch((err) => {
+            if (resultado) {
+                resultado.innerHTML = htmlError(`Error: ${err}`);
+            } else {
+                alert(`Error: ${err}`);
+            }
+        });
 }
+
+
+
+
 
 
 function probarConexion(tipo) {
@@ -496,8 +621,15 @@ window.actualizarEstadoDiscador = actualizarEstadoDiscador;
 window.actualizarCuadre = actualizarCuadre;
 window.subirOCR = subirOCR;
 window.consolidarTotales = consolidarTotales;
+window.mostrarIngresoManualOrion = mostrarIngresoManualOrion;
 window.probarConexion = probarConexion;
 window.seleccionarConexion = seleccionarConexion;
 window.actualizarBadgesConexion = actualizarBadgesConexion;
 window.insertarDatos = insertarDatos;
 window.verificarCarga = verificarCarga;
+window.setModoOcrOrion = setModoOcrOrion;
+window.mostrarModoOcrOrion = mostrarModoOcrOrion;
+window.mostrarModoManualOrion = mostrarModoManualOrion;
+window.activarOProcesarOcrOrion = activarOProcesarOcrOrion;
+window.setTotalesMonitorOrion = setTotalesMonitorOrion;
+window.actualizarNombreArchivosOcr = actualizarNombreArchivosOcr;

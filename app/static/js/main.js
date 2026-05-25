@@ -141,12 +141,92 @@ function insertarEnPanel(panelId, html, exito, subSelector = ".panel-body") {
 }
 
 function actualizarTotalesHeader() {
-    const orion = getById("totalOrion")?.textContent || "--";
-    const aister = getById("totalAister")?.textContent || "--";
+    const leerValor = (ids, storageKey) => {
+        for (const id of ids) {
+            const elemento = getById(id);
 
-    setText("ocrOrion", orion);
-    setText("ocrAister", aister);
+            if (elemento) {
+                const valor =
+                    "value" in elemento
+                        ? String(elemento.value || "").trim()
+                        : String(elemento.textContent || "").trim();
+
+                if (valor && valor !== "--") {
+                    return valor;
+                }
+            }
+        }
+
+        const storage = localStorage.getItem(storageKey);
+
+        if (storage && storage !== "--") {
+            return storage;
+        }
+
+        return "--";
+    };
+
+    const orion = leerValor(
+        ["totalOrion", "ocrOrion", "manualOrion"],
+        "orionDiario.ui.totalOrion"
+    );
+
+    const aister = leerValor(
+        ["totalAister", "ocrAister", "manualAister"],
+        "orionDiario.ui.totalAister"
+    );
+
+    const actualizarIds = (ids, valor) => {
+        ids.forEach((id) => {
+            const elemento = getById(id);
+
+            if (elemento) {
+                elemento.textContent = valor;
+            }
+        });
+    };
+
+    const actualizarBadgePorTexto = (etiqueta, valor) => {
+        const header =
+            document.querySelector(".monitor-header") ||
+            document.querySelector(".monitor h2")?.parentElement ||
+            document.querySelector(".monitor");
+
+        if (!header) {
+            return;
+        }
+
+        const candidatos = header.querySelectorAll("span, div, strong, b");
+
+        candidatos.forEach((elemento) => {
+            const texto = String(elemento.textContent || "");
+
+            if (!texto.toLowerCase().includes(etiqueta.toLowerCase())) {
+                return;
+            }
+
+            if (elemento.children.length > 0) {
+                return;
+            }
+
+            if (etiqueta.toLowerCase() === "orion") {
+                elemento.textContent = `🔹 Orion ${valor}`;
+            }
+
+            if (etiqueta.toLowerCase() === "aister") {
+                elemento.textContent = `🔹 Aister ${valor}`;
+            }
+        });
+    };
+
+    actualizarIds(["totalOrion", "ocrOrion"], orion);
+    actualizarIds(["totalAister", "ocrAister"], aister);
+
+    actualizarBadgePorTexto("Orion", orion);
+    actualizarBadgePorTexto("Aister", aister);
 }
+
+
 
 function cerrarOtrosDetails(boton) {
     if (!boton) return;
@@ -568,7 +648,7 @@ function construirMonitorTemporal(config) {
     `;
 }
 
-const UI_VIEW_CACHE_VERSION = "v3";
+const UI_VIEW_CACHE_VERSION = "v4";
 const UI_VIEW_CACHE_PREFIX = `orionDiario.view.${UI_VIEW_CACHE_VERSION}.`;
 
 function claveVistaModulo(modulo) {
