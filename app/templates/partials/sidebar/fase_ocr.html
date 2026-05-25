@@ -1,8 +1,12 @@
 <details>
-    <summary>📊 Fase C: OCR y Totales</summary>
+    <summary>📱 FASE C. OCR y Totales</summary>
     <div class="fase-actions">
-        <input type="file" id="ocrFiles" accept="image/*" multiple class="ui-file-muted">
-        <button onclick="subirOCR()" id="btn-ocr">Subir y Procesar OCR <span class="status-icon">⚪</span></button>
-        <span class="ui-inline-total">Totales: Orion: <span id="totalOrion">{{ totales_orion }}</span> | Aister: <span id="totalAister">{{ totales_aister }}</span></span>
+        <div class="log-line info">
+            En el panel central <b>OCR y Totales</b> puede alternar entre OCR e Ingreso Manual.
+        </div>
+
+        <button type="button" onclick="document.getElementById('panel-ocr')?.scrollIntoView({ behavior: 'smooth', block: 'center' })">
+            Ir a OCR y Totales
+        </button>
     </div>
 </details>
