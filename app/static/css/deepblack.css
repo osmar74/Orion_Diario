@@ -1202,3 +1202,44 @@ a {
         max-height: 50vh;
     }
 }
+
+/* ============================================================
+   UI REFACTOR 4F - HEADERS DISTINTIVOS EN MONITOR
+   ============================================================ */
+
+.monitor .panel-monitor > summary {
+    background: linear-gradient(90deg, #12395f, #0f6f8f);
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.monitor .panel-monitor > summary:hover {
+    background: linear-gradient(90deg, #174a7c, #1282a6);
+}
+
+.monitor .panel-monitor[open] > summary {
+    background: linear-gradient(90deg, #145c43, #0f7f8f);
+}
+
+.monitor .panel-monitor > summary .panel-icon {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.35));
+}
+
+/* ============================================================
+   UI REFACTOR 4G - HEADERS MONITOR REDONDEADOS
+   ============================================================ */
+
+.monitor .panel-monitor {
+    border-radius: 10px 10px 6px 6px;
+}
+
+.monitor .panel-monitor > summary {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.monitor .panel-monitor[open] > summary {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}

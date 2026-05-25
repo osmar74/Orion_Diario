@@ -216,40 +216,88 @@ function toggleSidebar() {
 
 /* ---------- RESET ---------- */
 
-function resetTodo() {
-    if (!confirm("¿Está seguro de reiniciar todo el proceso?")) {
-        return;
+function resetVisualEnCurso() {
+    return (
+        window.__orionResetVisualEnCurso === true ||
+        localStorage.getItem("orionDiario.reset.enCurso") === "1"
+    );
+}
+
+function marcarResetVisualEnCurso() {
+    window.__orionResetVisualEnCurso = true;
+    localStorage.setItem("orionDiario.reset.enCurso", "1");
+}
+
+function finalizarResetVisualInicial() {
+    const habiaReset = localStorage.getItem("orionDiario.reset.enCurso") === "1";
+
+    if (!habiaReset) {
+        return false;
     }
 
-    fetchTexto("/reset")
-        .then(() => {
-            document
-                .querySelectorAll(".paso")
-                .forEach((paso) =>
-                    paso.classList.remove("completado", "activo")
-                );
+    limpiarEstadoVisualCompleto();
+    localStorage.removeItem("orionDiario.reset.enCurso");
+    window.__orionResetVisualEnCurso = false;
 
-            document
-                .querySelectorAll(".panel-icon")
-                .forEach((icono) => {
-                    icono.textContent = "⚪";
-                });
+    return true;
+}
 
-            document
-                .querySelectorAll(".panel-body")
-                .forEach((body) => {
-                    body.innerHTML = "Pendiente...";
-                });
 
-            document
-                .querySelectorAll(".panel-monitor")
-                .forEach((panel) => {
-                    panel.open = false;
-                });
+function limpiarEstadoVisualCompleto() {
+    Object.keys(localStorage).forEach((key) => {
+        const debeBorrarse =
+            key === "moduloActivoOrionDiario" ||
+            key.startsWith("orionDiario.view.") ||
+            key.startsWith("orionDiario.ui.");
 
-            location.reload();
-        })
-        .catch(() => location.reload());
+        if (debeBorrarse) {
+            localStorage.removeItem(key);
+        }
+    });
+
+    if (typeof sessionStorage !== "undefined") {
+        Object.keys(sessionStorage).forEach((key) => {
+            const debeBorrarse =
+                key.startsWith("orionDiario.view.") ||
+                key.startsWith("orionDiario.ui.");
+
+            if (debeBorrarse) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    }
+
+    if (typeof vistasModuloCache === "object") {
+        Object.keys(vistasModuloCache).forEach((key) => {
+            delete vistasModuloCache[key];
+        });
+    }
+
+    moduloActivoActual = "orion";
+    moduloInicializado = false;
+}
+
+
+function resetTodo() {
+    if (!confirm("¿Está seguro de reiniciar todo el proceso?")) {
+        return false;
+    }
+
+    marcarResetVisualEnCurso();
+    limpiarEstadoVisualCompleto();
+
+    fetchTexto(`/reset?_=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+    })
+        .finally(() => {
+            window.location.replace("/");
+        });
+
+    return false;
 }
 
 /* ---------- INICIALIZACIÓN ---------- */
@@ -686,6 +734,10 @@ function serializarValoresDeFormulario(contenedor) {
 }
 
 function guardarVistaModuloActual() {
+    if (resetVisualEnCurso()) {
+        return;
+    }
+
     if (!estaEnPaginaPrincipal()) {
         return;
     }
@@ -771,6 +823,10 @@ function limpiarCachesVisualesAntiguas() {
 
 
 function guardarEstadoVisualActualParaNavegacion() {
+    if (resetVisualEnCurso()) {
+        return;
+    }
+
     if (!estaEnPaginaPrincipal()) {
         return;
     }
@@ -822,6 +878,10 @@ function registrarPersistenciaAntesDeSalir() {
     window.__orionPersistenciaSalidaActiva = true;
 
     const guardar = () => {
+        if (resetVisualEnCurso()) {
+            return;
+        }
+
         if (!estaEnPaginaPrincipal()) {
             return;
         }
@@ -849,6 +909,10 @@ function registrarPersistenciaInputsDinamicos() {
     window.__orionPersistenciaInputsActiva = true;
 
     const guardar = (event) => {
+        if (resetVisualEnCurso()) {
+            return;
+        }
+
         const target = event.target;
 
         if (!target || !target.id) {
@@ -995,6 +1059,8 @@ function seleccionarModulo(modulo) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    const resetInicial = finalizarResetVisualInicial();
+
     limpiarCachesVisualesAntiguas();
     registrarPersistenciaInputsDinamicos();
     registrarPersistenciaAntesDeSalir();
@@ -1002,8 +1068,9 @@ document.addEventListener("DOMContentLoaded", () => {
     actualizarLayoutPorPagina();
     guardarVistaOrionOriginal();
 
-    const moduloGuardado =
-        localStorage.getItem("moduloActivoOrionDiario") || "orion";
+    const moduloGuardado = resetInicial
+        ? "orion"
+        : localStorage.getItem("moduloActivoOrionDiario") || "orion";
 
     if (estaEnPaginaPrincipal()) {
         seleccionarModulo(moduloGuardado);
@@ -1035,6 +1102,10 @@ window.cargarVistaModuloDesdeStorage = cargarVistaModuloDesdeStorage;
 window.guardarEstadoVisualActualParaNavegacion = guardarEstadoVisualActualParaNavegacion;
 window.limpiarCachesVisualesAntiguas = limpiarCachesVisualesAntiguas;
 window.resetTodo = resetTodo;
+window.limpiarEstadoVisualCompleto = limpiarEstadoVisualCompleto;
+window.resetVisualEnCurso = resetVisualEnCurso;
+window.marcarResetVisualEnCurso = marcarResetVisualEnCurso;
+window.finalizarResetVisualInicial = finalizarResetVisualInicial;
 window.normalizarFechaAster = normalizarFechaAster;
 window.obtenerFechaProcesoAster = obtenerFechaProcesoAster;
 window.sincronizarFechaAster = sincronizarFechaAster;
