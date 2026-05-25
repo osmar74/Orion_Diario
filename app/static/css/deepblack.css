@@ -1243,3 +1243,145 @@ a {
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
 }
+
+/* ============================================================
+   UI REFACTOR ORION OCR - ACCIONES EN HEADER
+   ============================================================ */
+
+.monitor .panel-summary-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.panel-summary-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.panel-header-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.ui-ocr-file {
+    max-width: 230px;
+    font-size: 0.70rem;
+}
+
+@media (max-width: 900px) {
+    .monitor .panel-summary-actions {
+        align-items: flex-start;
+    }
+
+    .panel-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+    }
+
+    .ui-ocr-file {
+        max-width: 100%;
+    }
+}
+
+/* ============================================================
+   UI REFACTOR ORION OCR - MODOS OCR / MANUAL
+   ============================================================ */
+
+.ui-mode-section {
+    display: none;
+}
+
+.ui-mode-section.active {
+    display: block;
+}
+
+.ui-mode-button.active {
+    background: #22c55e;
+    color: #06130a;
+    font-weight: 700;
+}
+
+.ui-mode-button:not(.active) {
+    opacity: 0.85;
+}
+
+.ui-mode-button:not(.active):hover {
+    opacity: 1;
+}
+
+/* ============================================================
+   UI REFACTOR ORION OCR - OCR / MANUAL V2
+   ============================================================ */
+
+.ui-mode-section {
+    display: none;
+}
+
+.ui-mode-section.active {
+    display: block;
+}
+
+.ui-mode-button.active {
+    background: #22c55e;
+    color: #06130a;
+    font-weight: 700;
+}
+
+.ui-mode-button:not(.active) {
+    opacity: 0.85;
+}
+
+.ui-mode-button:not(.active):hover {
+    opacity: 1;
+}
+
+.ui-totales-editor {
+    margin-top: 12px;
+    border-top: 1px solid #333;
+    padding-top: 10px;
+}
+
+.ui-file-native {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.ui-file-browse {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #243b53;
+    color: #ffffff;
+    border: 1px solid #3b82f6;
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.ui-file-browse:hover {
+    background: #1d4ed8;
+}
+
+.ui-file-name {
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
