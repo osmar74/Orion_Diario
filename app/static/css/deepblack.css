@@ -994,3 +994,74 @@ a {
 .ui-muted-note {
     color: #aaa;
 }
+
+/* ============================================================
+   UI REFACTOR 3B/3C - ORION, CONSOLIDADO Y LOGS
+   ============================================================ */
+
+.ui-filter-form {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ui-connection-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.ui-ml-auto {
+    margin-left: auto;
+}
+
+.ui-btn-primary {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 6px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.ui-btn-danger {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    padding: 6px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.ui-table-compact {
+    font-size: 0.70rem;
+}
+
+.ui-inline-total {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.ui-input-date {
+    padding: 5px;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 3px;
+}
+
+.ui-select-dark {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 5px;
+}
+
+.ui-sidebar-indicator {
+    font-size: 0.65rem;
+    color: #aaa;
+    margin-left: auto;
+}
