@@ -1,5 +1,5 @@
 <template id="tpl-monitor-aster">
-<div class="log-line info" style="margin-bottom:12px;">
+<div class="log-line info" class="ui-section-info">
             Módulo para gestionar el proceso diario ASTER: captura del total, búsqueda del archivo After, normalización, conciliación de entidades e inserción final.
         </div>
 
@@ -13,21 +13,21 @@
                     Verifique en WhatsApp cuántos registros se realizaron. Puede usar OCR o ingresar el total manualmente.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div class="ui-form-row">
                     <input
                         id="asterOcrFiles"
                         type="file"
                         accept="image/*"
                         multiple
-                        style="font-size:0.75rem;"
+                        class="ui-file-input"
                     >
                     <button type="button" onclick="subirOCRAster(this)">
                         Reconocer OCR ASTER
                     </button>
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <label for="manualTotalAster" style="font-size:0.8rem;">
+                <div class="ui-form-row">
+                    <label for="manualTotalAster" class="ui-label">
                         Total general ASTER:
                     </label>
                     <input
@@ -35,14 +35,14 @@
                         type="number"
                         min="0"
                         placeholder="Ingrese total"
-                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input"
                     >
                     <button type="button" onclick="consolidarTotalAster(this)">
                         Guardar total ASTER
                     </button>
                 </div>
 
-                <div id="aster-total-resultado" style="margin-top:10px;">
+                <div id="aster-total-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Total ASTER pendiente de captura.
                     </div>
@@ -60,8 +60,8 @@
                     Busque el archivo Excel del día con formato AfterYYYYMMDD.xlsx y cópielo a la carpeta local del proceso.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <label for="asterFechaProceso" style="font-size:0.8rem;">
+                <div class="ui-form-row">
+                    <label for="asterFechaProceso" class="ui-label">
                         Fecha proceso:
                     </label>
                     <input
@@ -71,17 +71,17 @@
                         value=""
                         oninput="sincronizarFechaAster(this.value)"
                         onchange="sincronizarFechaAster(this.value)"
-                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input"
                     >
 
-                    <label for="asterRutaBase" style="font-size:0.8rem;">
+                    <label for="asterRutaBase" class="ui-label">
                         Ruta base opcional:
                     </label>
                     <input
                         id="asterRutaBase"
                         type="text"
                         placeholder="Opcional: ruta local o red"
-                        style="min-width:320px; padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input ui-input-lg"
                     >
 
                     <button type="button" onclick="buscarYCopiarArchivoAster(this)">
@@ -89,11 +89,11 @@
                     </button>
                 </div>
 
-                <div class="log-line warning" style="margin-top:8px;">
+                <div class="log-line warning" class="ui-warning-block">
                     Rutas por defecto: Z:\\COBRANZA %\\... o \\\\10.24.90.118\\COBRANZA %\\...
                 </div>
 
-                <div id="aster-archivo-resultado" style="margin-top:10px;">
+                <div id="aster-archivo-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Archivo ASTER pendiente de búsqueda.
                     </div>
@@ -111,13 +111,13 @@
                     Normalice los encabezados del archivo ASTER copiado: se quitarán acentos y se reemplazarán espacios, /, *, - por guion bajo.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div class="ui-form-row">
                     <button type="button" onclick="normalizarEncabezadosAster(this)">
                         Normalizar encabezados ASTER
                     </button>
                 </div>
 
-                <div id="aster-normalizacion-resultado" style="margin-top:10px;">
+                <div id="aster-normalizacion-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Encabezados ASTER pendientes de normalización.
                     </div>
@@ -134,13 +134,13 @@
                     Obtenga las entidades únicas de la columna Entidad y revise cuántos registros tiene cada una.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div class="ui-form-row">
                     <button type="button" onclick="analizarEntidadesAster(this)">
                         Analizar entidades ASTER
                     </button>
                 </div>
 
-                <div id="aster-entidades-resultado" style="margin-top:10px;">
+                <div id="aster-entidades-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Entidades ASTER pendientes de análisis.
                     </div>
@@ -158,8 +158,8 @@
                     Conecte al servidor ASTER y ejecute la consulta SQL de entidades por fecha.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <label for="asterFechaConsultaSql" style="font-size:0.8rem;">
+                <div class="ui-form-row">
+                    <label for="asterFechaConsultaSql" class="ui-label">
                         Fecha consulta:
                     </label>
                     <input
@@ -169,7 +169,7 @@
                         value=""
                         oninput="sincronizarFechaAster(this.value)"
                         onchange="sincronizarFechaAster(this.value)"
-                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input"
                     >
 
                     <button type="button" onclick="ejecutarConsultaSqlAster(this)">
@@ -177,11 +177,11 @@
                     </button>
                 </div>
 
-                <div class="log-line warning" style="margin-top:8px;">
+                <div class="log-line warning" class="ui-warning-block">
                     Servidor ASTER: 10.24.90.101 | Base: gestioncomercial | Tabla: comentarios
                 </div>
 
-                <div id="aster-sql-resultado" style="margin-top:10px;">
+                <div id="aster-sql-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Consulta SQL ASTER pendiente de ejecución.
                     </div>
@@ -200,13 +200,13 @@
                     Depure las entidades SQL: primero excluya las que no corresponden a cobranzas %, luego clasifique las restantes como Cobranza % o Integral.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div class="ui-form-row">
                     <button type="button" onclick="prepararDepuracionAster(this)">
                         Preparar depuración ASTER
                     </button>
                 </div>
 
-                <div id="aster-depuracion-resultado" style="margin-top:10px;">
+                <div id="aster-depuracion-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Depuración ASTER pendiente de ejecución.
                     </div>
@@ -224,13 +224,13 @@
                     Compare las entidades únicas del Excel contra las entidades SQL depuradas y clasificadas.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <div class="ui-form-row">
                     <button type="button" onclick="conciliarEntidadesAster(this)">
                         Conciliar entidades ASTER
                     </button>
                 </div>
 
-                <div id="aster-conciliacion-resultado" style="margin-top:10px;">
+                <div id="aster-conciliacion-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Conciliación ASTER pendiente de validación.
                     </div>
@@ -248,18 +248,18 @@
                     Prepare la inserción comparando el archivo Excel ASTER contra la tabla SQL Server Aster_Api.dbo.aster_dia_nc.
                 </div>
 
-                <div class="log-line warning" style="margin-top:8px;">
+                <div class="log-line warning" class="ui-warning-block">
                     Las pruebas deben realizarse en LOCAL. REMOTO es producción.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <label for="asterConexionInsercion" style="font-size:0.8rem;">
+                <div class="ui-form-row">
+                    <label for="asterConexionInsercion" class="ui-label">
                         Conexión:
                     </label>
 
                     <select
                         id="asterConexionInsercion"
-                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input"
                     >
                         <option value="local" selected>Local - pruebas</option>
                         <option value="remoto">Remoto - producción</option>
@@ -273,16 +273,16 @@
                     <button type="button" onclick="insertarDatosAster(this)">
                         Insertar datos ASTER
                     </button>
-                    <div class="log-line warning" style="margin-top:8px;">
+                    <div class="log-line warning" class="ui-warning-block">
                         La inserción requiere que la Fase G esté validada como Información Verificada.
                     </div>
                 </div>
-                <div id="aster-conexion-insercion-resultado" style="margin-top:10px;">
+                <div id="aster-conexion-insercion-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Conexión ASTER pendiente de verificación.
                     </div>
                 </div>
-                <div id="aster-insercion-resultado" style="margin-top:10px;">
+                <div id="aster-insercion-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Inserción ASTER pendiente de preparación.
                     </div>
@@ -299,8 +299,8 @@
                     Consulte las últimas cargas ASTER registradas localmente.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <label for="asterHistorialLimite" style="font-size:0.8rem;">
+                <div class="ui-form-row">
+                    <label for="asterHistorialLimite" class="ui-label">
                         Últimos registros:
                     </label>
                     <input
@@ -308,7 +308,7 @@
                         type="number"
                         min="1"
                         value="30"
-                        style="width:90px; padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input ui-input-sm"
                     >
 
                     <button type="button" onclick="consultarHistorialAster(this)">
@@ -316,7 +316,7 @@
                     </button>
                 </div>
 
-                <div id="aster-historial-resultado" style="margin-top:10px;">
+                <div id="aster-historial-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Historial ASTER pendiente de consulta.
                     </div>
@@ -333,24 +333,24 @@
                     Replica el flujo SSIS: DELETE usuarios, carga usuarios desde MySQL y carga comentarios filtrados por entidades ASTER.
                 </div>
 
-                <div class="log-line warning" style="margin-top:8px;">
+                <div class="log-line warning" class="ui-warning-block">
                     MySQL es solo lectura. SQL Server permite local/remoto, pero por ahora se trabaja LOCAL en desarrollo.
                 </div>
 
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <label for="asterFaseIConexion" style="font-size:0.8rem;">
+                <div class="ui-form-row">
+                    <label for="asterFaseIConexion" class="ui-label">
                         Conexión SQL Server:
                     </label>
 
                     <select
                         id="asterFaseIConexion"
-                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input"
                     >
                         <option value="local" selected>Local - desarrollo</option>
                         <option value="remoto">Remoto - producción</option>
                     </select>
 
-                    <label for="asterFaseIFecha" style="font-size:0.8rem;">
+                    <label for="asterFaseIFecha" class="ui-label">
                         Fecha proceso:
                     </label>
 
@@ -361,7 +361,7 @@
                         value=""
                         oninput="sincronizarFechaAster(this.value)"
                         onchange="sincronizarFechaAster(this.value)"
-                        style="padding:4px 8px; background:#222; color:#fff; border:1px solid #444; border-radius:4px;"
+                        class="ui-input"
                     >
 
                     <button type="button" onclick="probarConexionesFaseIAster(this)">
@@ -378,7 +378,7 @@
 
                 </div>
 
-                <div id="aster-fase-i-resultado" style="margin-top:10px;">
+                <div id="aster-fase-i-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Fase I ASTER pendiente de preparación.
                     </div>
