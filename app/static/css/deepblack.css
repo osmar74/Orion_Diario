@@ -1154,3 +1154,51 @@ a {
     color: #aaa;
     margin-bottom: 8px;
 }
+
+/* ============================================================
+   UI REFACTOR 4E - PANELES CENTRALES CON HEADER FIJO
+   ============================================================ */
+
+/*
+   Aplica a paneles del monitor central ORION / ASTER / Consolidado.
+
+   Objetivo:
+   - El summary/header del panel queda visible.
+   - El contenido interno .panel-body hace scroll vertical.
+   - Evita que tablas grandes o reportes extensos estiren demasiado la pantalla.
+*/
+
+.monitor .panel-monitor {
+    overflow: hidden;
+}
+
+.monitor .panel-monitor > summary {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.monitor .panel-monitor > .panel-body {
+    max-height: 62vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+/* Cuando hay varios paneles abiertos, se reduce un poco la altura para mejor navegación. */
+.monitor .panel-monitor + .panel-monitor > .panel-body {
+    max-height: 52vh;
+}
+
+/* Tablas grandes dentro del panel: permiten scroll horizontal sin romper layout. */
+.monitor .panel-monitor > .panel-body table {
+    max-width: 100%;
+}
+
+/* Ajuste para pantallas pequeñas. */
+@media (max-width: 900px) {
+    .monitor .panel-monitor > .panel-body {
+        max-height: 50vh;
+    }
+}
