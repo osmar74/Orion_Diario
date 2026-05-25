@@ -301,6 +301,7 @@ let sidebarOrionOriginal = null;
 let monitorOrionOriginal = null;
 let tituloMonitorOrionOriginal = null;
 let moduloActivoActual = "orion";
+let moduloInicializado = false;
 const vistasModuloCache = {};
 
 function obtenerSidebarPrincipal() {
@@ -519,6 +520,81 @@ function construirMonitorTemporal(config) {
     `;
 }
 
+const UI_VIEW_CACHE_VERSION = "v3";
+const UI_VIEW_CACHE_PREFIX = `orionDiario.view.${UI_VIEW_CACHE_VERSION}.`;
+
+function claveVistaModulo(modulo) {
+    return `${UI_VIEW_CACHE_PREFIX}${modulo}`;
+}
+
+function vistaModuloCacheValida(modulo, vista) {
+    if (!vista || !vista.sidebarHtml || !vista.monitorHtml) {
+        return false;
+    }
+
+    if (modulo === "aister") {
+        const idsObligatorios = [
+            "aster-total-resultado",
+            "aster-archivo-resultado",
+            "aster-normalizacion-resultado",
+            "aster-entidades-resultado",
+            "aster-sql-resultado",
+            "aster-depuracion-resultado",
+            "aster-conciliacion-resultado",
+            "aster-insercion-resultado",
+            "aster-historial-resultado",
+            "aster-fase-i-resultado",
+        ];
+
+        return idsObligatorios.every((id) => vista.monitorHtml.includes(id));
+    }
+
+    return true;
+}
+
+
+function guardarVistaModuloEnStorage(modulo, vista) {
+    if (!modulo || !vista || !vistaModuloCacheValida(modulo, vista)) {
+        return;
+    }
+
+    try {
+        localStorage.setItem(
+            claveVistaModulo(modulo),
+            JSON.stringify(vista)
+        );
+    } catch (error) {
+        console.warn("No se pudo guardar cache visual del módulo:", modulo, error);
+    }
+}
+
+function cargarVistaModuloDesdeStorage(modulo) {
+    if (!modulo) {
+        return null;
+    }
+
+    try {
+        const raw = localStorage.getItem(claveVistaModulo(modulo));
+
+        if (!raw) {
+            return null;
+        }
+
+        const vista = JSON.parse(raw);
+
+        if (!vistaModuloCacheValida(modulo, vista)) {
+            localStorage.removeItem(claveVistaModulo(modulo));
+            return null;
+        }
+
+        return vista;
+    } catch (error) {
+        console.warn("No se pudo cargar cache visual del módulo:", modulo, error);
+        return null;
+    }
+}
+
+
 function idsEstadoFormularioPersistente() {
     return [
         "fechaInput",
@@ -627,19 +703,29 @@ function guardarVistaModuloActual() {
     serializarValoresDeFormulario(sidebar);
     serializarValoresDeFormulario(monitor);
 
-    vistasModuloCache[moduloActivoActual] = {
+    const vista = {
         sidebarHtml: sidebar.innerHTML,
         monitorHtml: monitor.innerHTML,
         titulo: titulo ? titulo.textContent : "",
     };
+
+    vistasModuloCache[moduloActivoActual] = vista;
+    guardarVistaModuloEnStorage(moduloActivoActual, vista);
 }
 
 function restaurarVistaModuloCache(modulo) {
-    const vista = vistasModuloCache[modulo];
+    let vista = vistasModuloCache[modulo];
 
-    if (!vista) {
+    if (!vistaModuloCacheValida(modulo, vista)) {
+        vista = cargarVistaModuloDesdeStorage(modulo);
+    }
+
+    if (!vistaModuloCacheValida(modulo, vista)) {
+        delete vistasModuloCache[modulo];
         return false;
     }
+
+    vistasModuloCache[modulo] = vista;
 
     const sidebar = obtenerSidebarPrincipal();
     const monitor = obtenerMonitorCentral();
@@ -669,6 +755,91 @@ function restaurarVistaModuloCache(modulo) {
 
     return true;
 }
+
+function limpiarCachesVisualesAntiguas() {
+    const prefijoAntiguo = "orionDiario.view.";
+
+    Object.keys(localStorage).forEach((key) => {
+        const esCacheVisual = key.startsWith(prefijoAntiguo);
+        const esVersionActual = key.startsWith(UI_VIEW_CACHE_PREFIX);
+
+        if (esCacheVisual && !esVersionActual) {
+            localStorage.removeItem(key);
+        }
+    });
+}
+
+
+function guardarEstadoVisualActualParaNavegacion() {
+    if (!estaEnPaginaPrincipal()) {
+        return;
+    }
+
+    guardarVistaModuloActual();
+    persistirEstadoInputsVisibles();
+}
+
+function registrarPersistenciaNavegacion() {
+    if (window.__orionPersistenciaNavegacionActiva) {
+        return;
+    }
+
+    window.__orionPersistenciaNavegacionActiva = true;
+
+    document.addEventListener(
+        "click",
+        (event) => {
+            const target = event.target;
+
+            if (!target || typeof target.closest !== "function") {
+                return;
+            }
+
+            const link = target.closest("a");
+
+            if (!link) {
+                return;
+            }
+
+            const href = link.getAttribute("href") || "";
+
+            if (!href || href.startsWith("#") || href.toLowerCase().startsWith("javascript:")) {
+                return;
+            }
+
+            guardarEstadoVisualActualParaNavegacion();
+        },
+        true
+    );
+}
+
+
+function registrarPersistenciaAntesDeSalir() {
+    if (window.__orionPersistenciaSalidaActiva) {
+        return;
+    }
+
+    window.__orionPersistenciaSalidaActiva = true;
+
+    const guardar = () => {
+        if (!estaEnPaginaPrincipal()) {
+            return;
+        }
+
+        guardarVistaModuloActual();
+        persistirEstadoInputsVisibles();
+    };
+
+    window.addEventListener("pagehide", guardar);
+    window.addEventListener("beforeunload", guardar);
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+            guardar();
+        }
+    });
+}
+
 
 function registrarPersistenciaInputsDinamicos() {
     if (window.__orionPersistenciaInputsActiva) {
@@ -791,7 +962,10 @@ function seleccionarModulo(modulo) {
 
     actualizarLayoutPorPagina();
     guardarVistaOrionOriginal();
-    guardarVistaModuloActual();
+
+    if (moduloInicializado) {
+        guardarVistaModuloActual();
+    }
 
     if (moduloNormalizado === "orion") {
         if (!restaurarVistaModuloCache("orion")) {
@@ -806,6 +980,7 @@ function seleccionarModulo(modulo) {
     }
 
     moduloActivoActual = moduloNormalizado;
+    moduloInicializado = true;
 
     if (
         moduloNormalizado === "aister" &&
@@ -820,7 +995,10 @@ function seleccionarModulo(modulo) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    limpiarCachesVisualesAntiguas();
     registrarPersistenciaInputsDinamicos();
+    registrarPersistenciaAntesDeSalir();
+    registrarPersistenciaNavegacion();
     actualizarLayoutPorPagina();
     guardarVistaOrionOriginal();
 
@@ -852,6 +1030,10 @@ window.marcarPasoCompletado = marcarPasoCompletado;
 window.toggleSidebar = toggleSidebar;
 window.guardarVistaModuloActual = guardarVistaModuloActual;
 window.restaurarVistaModuloCache = restaurarVistaModuloCache;
+window.guardarVistaModuloEnStorage = guardarVistaModuloEnStorage;
+window.cargarVistaModuloDesdeStorage = cargarVistaModuloDesdeStorage;
+window.guardarEstadoVisualActualParaNavegacion = guardarEstadoVisualActualParaNavegacion;
+window.limpiarCachesVisualesAntiguas = limpiarCachesVisualesAntiguas;
 window.resetTodo = resetTodo;
 window.normalizarFechaAster = normalizarFechaAster;
 window.obtenerFechaProcesoAster = obtenerFechaProcesoAster;
