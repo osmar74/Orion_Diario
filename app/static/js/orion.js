@@ -544,75 +544,160 @@ function actualizarBadgesConexion(exito) {
 }
 
 
-function insertarDatos(tipo, conexion = conexionActiva) {
-    const resultadoDiv =
-        getById(`resultado-insercion-${tipo}`) ||
-        getById("resultado-insercion");
+function insertarDatos(tipo) {
+    const panelId = `panel-carga-${tipo === "lote" ? "lote" : tipo}`;
+    const panel = getById(panelId);
+    const boton = getById(`btn-insertar-${tipo === "lote" ? "lotes" : tipo}`);
+    const fecha = obtenerFechaProcesoOrion();
 
-    if (resultadoDiv) {
-        resultadoDiv.innerHTML = htmlLoading("Insertando datos...");
+    if (!fecha) {
+        alert("Ingrese una fecha válida antes de insertar datos.");
+        return;
     }
 
-    const boton = getById(`btn-carga-${tipo}`);
-    const icono = boton?.querySelector(".status-icon");
+    if (conexionActiva === "remoto") {
+        const confirmar = confirm(
+            "Está a punto de insertar en REMOTO/Producción. ¿Desea continuar?"
+        );
 
-    if (icono) {
-        icono.textContent = "";
+        if (!confirmar) {
+            return;
+        }
     }
 
-    const formData = new FormData();
-    formData.append("tipo", tipo);
-    formData.append("conexion", conexion);
-
-    postFormTexto("/accion/insertar-datos", formData)
-        .then((html) => {
-            if (resultadoDiv) {
-                resultadoDiv.innerHTML = html;
-            }
-
-            const exito = esRespuestaExitosa(html);
-
-            if (icono) {
-                icono.textContent = exito ? "✅" : "❌";
-            }
-        })
-        .catch((err) => {
-            if (resultadoDiv) {
-                resultadoDiv.innerHTML = htmlError(`Error: ${err}`);
-            }
-
-            if (icono) {
-                icono.textContent = "❌";
-            }
-        });
-}
-
-
-function verificarCarga(tipo) {
-    const panel = getById(`panel-carga-${tipo}`);
-
-    if (!panel) return;
-
-    panel.open = true;
-
-    const body = panel.querySelector(".panel-body");
-
-    if (!body) return;
-
-    body.innerHTML = htmlLoading("Verificando columnas...");
+    if (panel) {
+        panel.open = true;
+        insertarResultadoEnPanelMonitor(
+            panel,
+            htmlLoading(`Insertando consolidado ${tipo}...`)
+        );
+    }
 
     const formData = new FormData();
     formData.append("tipo", tipo);
     formData.append("conexion", conexionActiva);
+    formData.append("fecha", fecha);
+
+    postFormTexto("/accion/insertar-datos", formData)
+        .then((html) => {
+            const exito = esRespuestaExitosa(html);
+
+            if (panel) {
+                insertarResultadoEnPanelMonitor(panel, html);
+            }
+
+            actualizarIconoBoton(boton, exito);
+        })
+        .catch((err) => {
+            if (panel) {
+                insertarResultadoEnPanelMonitor(
+                    panel,
+                    htmlError(`Error: ${err}`)
+                );
+            }
+
+            actualizarIconoBoton(boton, false);
+        });
+}
+
+
+
+
+
+
+function obtenerFechaProcesoOrion() {
+    const fecha = normalizarFechaOrion(getInputValue("fechaInput"));
+
+    if (fecha) {
+        setValue("fechaInput", fecha);
+    }
+
+    return fecha;
+}
+
+function obtenerCuerpoPanelMonitor(panel) {
+    if (!panel) {
+        return null;
+    }
+
+    if (panel.classList && panel.classList.contains("panel-body")) {
+        return panel;
+    }
+
+    const cuerpoDirecto = panel.querySelector(":scope > .panel-body");
+
+    if (cuerpoDirecto) {
+        return cuerpoDirecto;
+    }
+
+    const cuerpo = panel.querySelector(".panel-body");
+
+    if (cuerpo) {
+        return cuerpo;
+    }
+
+    return panel;
+}
+
+function insertarResultadoEnPanelMonitor(panel, html) {
+    const cuerpo = obtenerCuerpoPanelMonitor(panel);
+
+    if (!cuerpo) {
+        return;
+    }
+
+    cuerpo.innerHTML = html;
+}
+
+function verificarCarga(tipo) {
+    const panelId = `panel-carga-${tipo === "lote" ? "lote" : tipo}`;
+    const panel = getById(panelId);
+    const boton = getById(`btn-carga-${tipo === "lote" ? "lotes" : tipo}`);
+    const fecha = obtenerFechaProcesoOrion();
+
+    if (!fecha) {
+        alert("Ingrese una fecha válida antes de verificar la carga.");
+        return;
+    }
+
+    if (panel) {
+        panel.open = true;
+        insertarResultadoEnPanelMonitor(
+            panel,
+            htmlLoading(`Verificando consolidado ${tipo}...`)
+        );
+    }
+
+    const formData = new FormData();
+    formData.append("tipo", tipo);
+    formData.append("conexion", conexionActiva);
+    formData.append("fecha", fecha);
 
     postFormTexto("/accion/verificar-carga", formData)
         .then((html) => {
-            body.innerHTML = html;
+            const exito = esRespuestaExitosa(html);
+
+            if (panel) {
+                insertarResultadoEnPanelMonitor(panel, html);
+            }
+
+            actualizarIconoBoton(boton, exito);
         })
         .catch((err) => {
-            body.innerHTML = htmlError(`Error: ${err}`);
+            if (panel) {
+                insertarResultadoEnPanelMonitor(
+                    panel,
+                    htmlError(`Error: ${err}`)
+                );
+            }
+
+            actualizarIconoBoton(boton, false);
         });
 }
+
+
+
+
 
 /* ---------- EXPOSICIÓN GLOBAL ORION ---------- */
 window.ejecutarAccion = ejecutarAccion;
@@ -633,3 +718,6 @@ window.mostrarModoManualOrion = mostrarModoManualOrion;
 window.activarOProcesarOcrOrion = activarOProcesarOcrOrion;
 window.setTotalesMonitorOrion = setTotalesMonitorOrion;
 window.actualizarNombreArchivosOcr = actualizarNombreArchivosOcr;
+window.obtenerFechaProcesoOrion = obtenerFechaProcesoOrion;
+window.obtenerCuerpoPanelMonitor = obtenerCuerpoPanelMonitor;
+window.insertarResultadoEnPanelMonitor = insertarResultadoEnPanelMonitor;
