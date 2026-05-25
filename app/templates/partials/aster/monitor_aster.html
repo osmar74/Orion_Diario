@@ -3,52 +3,97 @@
             Módulo para gestionar el proceso diario ASTER: captura del total, búsqueda del archivo After, normalización, conciliación de entidades e inserción final.
         </div>
 
-        <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">📱</span>
-                FASE A. Captura del total diario ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Verifique en WhatsApp cuántos registros se realizaron. Puede usar OCR o ingresar el total manualmente.
+        <details class="panel-monitor aster-fase-a-panel" open>
+    <summary>
+        <span class="panel-icon">📱</span>
+        FASE A. Captura del total diario ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-a-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Captura por OCR WhatsApp</h4>
+                        <p>Seleccione una imagen del reporte y reconozca el total.</p>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
+                <div class="aster-file-picker-row">
                     <input
                         id="asterOcrFiles"
                         type="file"
                         accept="image/*"
                         multiple
-                        class="ui-file-input"
+                        class="ui-file-native"
+                        onchange="actualizarNombreArchivosAsterOcr()"
                     >
-                    <button type="button" onclick="subirOCRAster(this)">
-                        Reconocer OCR ASTER
-                    </button>
+
+                    <label for="asterOcrFiles" class="ui-file-browse">
+                        📁 Seleccionar imagen
+                    </label>
+
+                    <span id="asterOcrFilesResumen" class="ui-file-name">
+                        Ningún archivo seleccionado
+                    </span>
                 </div>
 
-                <div class="ui-form-row">
-                    <label for="manualTotalAster" class="ui-label">
-                        Total general ASTER:
+                <button type="button" class="ui-btn-success aster-main-action" onclick="subirOCRAster(this)">
+                    Reconocer OCR ASTER
+                </button>
+
+                <div class="aster-help-text">
+                    Si el OCR no reconoce bien, corrija el total manualmente en el paso 2.
+                </div>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Confirmar total general</h4>
+                        <p>Ingrese o corrija el total antes de continuar.</p>
+                    </div>
+                </div>
+
+                <div class="aster-total-confirm-row">
+                    <label for="manualTotalAster" class="ui-mini-label">
+                        Total general ASTER
                     </label>
+
                     <input
                         id="manualTotalAster"
                         type="number"
                         min="0"
-                        placeholder="Ingrese total"
-                        class="ui-input"
+                        placeholder="Ejemplo: 3266"
+                        class="ui-input-120 aster-total-input"
                     >
-                    <button type="button" onclick="consolidarTotalAster(this)">
+
+                    <button type="button" class="ui-btn-blue-sm" onclick="consolidarTotalAster(this)">
                         Guardar total ASTER
                     </button>
                 </div>
+            </section>
 
-                <div id="aster-total-resultado" class="ui-result-block">
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de captura</h4>
+                        <p>Estado del total ASTER capturado para el proceso diario.</p>
+                    </div>
+                </div>
+
+                <div id="aster-total-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Total ASTER pendiente de captura.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 
         <details class="panel-monitor" open>
             <summary>

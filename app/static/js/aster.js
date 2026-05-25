@@ -132,6 +132,27 @@ function actualizarTotalAsterDesdeRespuesta() {
     }
 }
 
+function actualizarNombreArchivosAsterOcr() {
+    const inputFiles = document.getElementById("asterOcrFiles");
+    const resumen = document.getElementById("asterOcrFilesResumen");
+
+    if (!resumen) {
+        return;
+    }
+
+    if (!inputFiles || !inputFiles.files || inputFiles.files.length === 0) {
+        resumen.textContent = "Ningún archivo seleccionado";
+        return;
+    }
+
+    if (inputFiles.files.length === 1) {
+        resumen.textContent = inputFiles.files[0].name;
+        return;
+    }
+
+    resumen.textContent = `${inputFiles.files.length} archivos seleccionados`;
+}
+
 function subirOCRAster(boton) {
     const inputFiles = document.getElementById("asterOcrFiles");
     const resultado = document.getElementById("aster-total-resultado");
@@ -1278,3 +1299,4 @@ document.addEventListener("DOMContentLoaded", () => {
 window.actualizarEstadoFaseAster = actualizarEstadoFaseAster;
 window.renderizarEstadoFasesAster = renderizarEstadoFasesAster;
 window.inicializarEstadoFasesAster = inicializarEstadoFasesAster;
+window.actualizarNombreArchivosAsterOcr = actualizarNombreArchivosAsterOcr;
