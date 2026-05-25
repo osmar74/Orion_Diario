@@ -537,57 +537,92 @@
     </div>
 </details>
 
-        <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">⬆️</span>
-                FASE H. Inserción de datos ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Prepare la inserción comparando el archivo Excel ASTER contra la tabla SQL Server Aster_Api.dbo.aster_dia_nc.
-                </div>
+        <details class="panel-monitor aster-fase-h-panel">
+    <summary>
+        <span class="panel-icon">⬆️</span>
+        FASE H. Inserción de datos ASTER
+    </summary>
 
-                <div class="log-line warning" class="ui-warning-block">
-                    Las pruebas deben realizarse en LOCAL. REMOTO es producción.
-                </div>
-
-                <div class="ui-form-row">
-                    <label for="asterConexionInsercion" class="ui-label">
-                        Conexión:
-                    </label>
-
-                    <select
-                        id="asterConexionInsercion"
-                        class="ui-input"
-                    >
-                        <option value="local" selected>Local - pruebas</option>
-                        <option value="remoto">Remoto - producción</option>
-                    </select>
-                    <button type="button" onclick="probarConexionInsercionAster(this)">
-                        Probar conexión ASTER
-                    </button>
-                    <button type="button" onclick="prepararInsercionAster(this)">
-                        Preparar inserción ASTER
-                    </button>
-                    <button type="button" onclick="insertarDatosAster(this)">
-                        Insertar datos ASTER
-                    </button>
-                    <div class="log-line warning" class="ui-warning-block">
-                        La inserción requiere que la Fase G esté validada como Información Verificada.
+    <div class="panel-body">
+        <div class="aster-fase-hi-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Conexión SQL Server</h4>
+                        <p>Prepare la inserción comparando el Excel ASTER contra la tabla destino SQL Server.</p>
                     </div>
                 </div>
-                <div id="aster-conexion-insercion-resultado" class="ui-result-block">
+
+                <div class="aster-warning-card">
+                    <strong>Regla de seguridad</strong>
+                    <span>Las pruebas deben realizarse en LOCAL. REMOTO es producción.</span>
+                </div>
+
+                <div class="aster-field-stack">
+                    <label for="asterConexionInsercion" class="ui-mini-label">
+                        Conexión
+                    </label>
+
+                    <select id="asterConexionInsercion" class="ui-select-dark">
+                        <option value="local" selected>LOCAL - Pruebas</option>
+                        <option value="remoto">REMOTO - Producción</option>
+                    </select>
+                </div>
+
+                <button type="button" class="ui-btn-blue-sm" onclick="probarConexionInsercionAster(this)">
+                    Probar conexión ASTER
+                </button>
+            </section>
+
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Preparar e insertar</h4>
+                        <p>Valida estructura, encabezados, tipos de datos, duplicados y ejecuta la inserción final.</p>
+                    </div>
+                </div>
+
+                <div class="aster-checklist">
+                    <div>✅ Requiere Fase G validada como Información Verificada</div>
+                    <div>✅ Compara encabezados Excel vs tabla aster_dia_nc</div>
+                    <div>✅ Convierte columnas y tipos de datos</div>
+                    <div>✅ Valida duplicados antes de insertar</div>
+                </div>
+
+                <div class="aster-action-stack">
+                    <button type="button" class="ui-btn-blue-sm" onclick="prepararInsercionAster(this)">
+                        Preparar inserción
+                    </button>
+
+                    <button type="button" class="ui-btn-success" onclick="insertarDatosAster(this)">
+                        Insertar datos ASTER
+                    </button>
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de inserción</h4>
+                        <p>Estado de conexión, preparación, validaciones e inserción final.</p>
+                    </div>
+                </div>
+
+                <div id="aster-insercion-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Conexión ASTER pendiente de verificación.
                     </div>
-                </div>
-                <div id="aster-insercion-resultado" class="ui-result-block">
                     <div class="log-line warning">
                         ⚠️ Inserción ASTER pendiente de preparación.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
         <details class="panel-monitor" open>
             <summary>
                 <span class="panel-icon">📜</span>
@@ -622,66 +657,109 @@
                 </div>
             </div>
         </details>
-        <details class="panel-monitor" open>
-            <summary>
-                <span class="panel-icon">🔁</span>
-                FASE I. Traer usuarios y gestiones ASTER
-            </summary>
-            <div class="panel-body">
-                <div class="log-line info">
-                    Replica el flujo SSIS: DELETE usuarios, carga usuarios desde MySQL y carga comentarios filtrados por entidades ASTER.
+        <details class="panel-monitor aster-fase-i-panel">
+    <summary>
+        <span class="panel-icon">🔁</span>
+        FASE I. Traer usuarios y gestiones ASTER
+    </summary>
+
+    <div class="panel-body">
+        <div class="aster-fase-hi-grid">
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">1</span>
+                    <div>
+                        <h4>Parámetros Fase I</h4>
+                        <p>Replica el flujo SSIS: usuarios desde MySQL y comentarios filtrados por entidades ASTER.</p>
+                    </div>
                 </div>
 
-                <div class="log-line warning" class="ui-warning-block">
-                    MySQL es solo lectura. SQL Server permite local/remoto, pero por ahora se trabaja LOCAL en desarrollo.
+                <div class="aster-info-card">
+                    <div>
+                        <b>MySQL ASTER</b>
+                        <span>Solo lectura</span>
+                    </div>
+                    <div>
+                        <b>SQL Server</b>
+                        <span>Local/remoto, usando LOCAL en desarrollo</span>
+                    </div>
+                    <div>
+                        <b>Flujo</b>
+                        <span>DELETE usuarios + carga usuarios + carga comentarios</span>
+                    </div>
                 </div>
 
-                <div class="ui-form-row">
-                    <label for="asterFaseIConexion" class="ui-label">
-                        Conexión SQL Server:
+                <div class="aster-field-stack">
+                    <label for="asterFaseIConexion" class="ui-mini-label">
+                        Conexión SQL Server
                     </label>
 
-                    <select
-                        id="asterFaseIConexion"
-                        class="ui-input"
-                    >
-                        <option value="local" selected>Local - desarrollo</option>
-                        <option value="remoto">Remoto - producción</option>
+                    <select id="asterFaseIConexion" class="ui-select-dark">
+                        <option value="local" selected>LOCAL - Desarrollo</option>
+                        <option value="remoto">REMOTO - Producción</option>
                     </select>
+                </div>
 
-                    <label for="asterFaseIFecha" class="ui-label">
-                        Fecha proceso:
+                <div class="aster-field-stack">
+                    <label for="asterFaseIFecha" class="ui-mini-label">
+                        Fecha proceso
                     </label>
 
                     <input
                         id="asterFaseIFecha"
                         type="text"
-                        placeholder="Ejemplo: 20260429"
-                        value=""
+                        placeholder="Ejemplo: 20260513"
+                        class="ui-input ui-input-md"
                         oninput="sincronizarFechaAster(this.value)"
                         onchange="sincronizarFechaAster(this.value)"
-                        class="ui-input"
                     >
+                </div>
+            </section>
 
-                    <button type="button" onclick="probarConexionesFaseIAster(this)">
-                        Probar conexiones Fase I
-                    </button>
-                    <button type="button" onclick="prepararFaseIAster(this)">
-                        Preparar Fase I
-                    </button>
-                    
-                    <button type="button" onclick="ejecutarFaseIAster(this)">
-                        Ejecutar Fase I completa
-                    </button>
-
-
+            <section class="aster-step-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar flujo Fase I</h4>
+                        <p>Pruebe conexiones, prepare el pipeline y ejecute la carga completa cuando corresponda.</p>
+                    </div>
                 </div>
 
-                <div id="aster-fase-i-resultado" class="ui-result-block">
+                <div class="aster-action-stack vertical">
+                    <button type="button" class="ui-btn-blue-sm" onclick="probarConexionesFaseIAster(this)">
+                        Probar conexiones Fase I
+                    </button>
+
+                    <button type="button" class="ui-btn-blue-sm" onclick="prepararFaseIAster(this)">
+                        Preparar Fase I
+                    </button>
+
+                    <button type="button" class="ui-btn-success" onclick="ejecutarFaseIAster(this)">
+                        Ejecutar Fase I completa
+                    </button>
+                </div>
+
+                <div class="aster-help-text">
+                    Ejecute primero la preparación para revisar el plan antes de cargar usuarios y gestiones.
+                </div>
+            </section>
+
+            <section class="aster-result-card">
+                <div class="aster-step-header">
+                    <span class="aster-step-number result">3</span>
+                    <div>
+                        <h4>Resultado Fase I</h4>
+                        <p>Estado de conexiones, pipeline, usuarios, comentarios y carga final.</p>
+                    </div>
+                </div>
+
+                <div id="aster-fase-i-resultado" class="ui-result-block aster-result-content">
                     <div class="log-line warning">
                         ⚠️ Fase I ASTER pendiente de preparación.
                     </div>
                 </div>
-            </div>
-        </details>
+            </section>
+        </div>
+    </div>
+</details>
 </template>

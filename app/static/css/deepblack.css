@@ -1804,3 +1804,110 @@ a {
         grid-column: auto;
     }
 }
+
+/* ============================================================
+   UI REFACTOR ASTER FASE H/I - INSERCIÓN Y FASE I
+   ============================================================ */
+
+.aster-fase-hi-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.aster-fase-hi-grid .aster-result-card {
+    grid-column: 1 / -1;
+}
+
+.aster-warning-card,
+.aster-info-card {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.aster-warning-card {
+    background: rgba(239, 68, 68, 0.10);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    color: #fecaca;
+}
+
+.aster-warning-card strong {
+    color: #fee2e2;
+}
+
+.aster-info-card {
+    background: rgba(59, 130, 246, 0.10);
+    border: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.aster-info-card div {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.74rem;
+}
+
+.aster-info-card b {
+    color: #dbeafe;
+}
+
+.aster-info-card span {
+    color: #cbd5e1;
+    word-break: break-word;
+}
+
+.aster-action-stack.vertical {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.aster-action-stack.vertical button {
+    width: 100%;
+    justify-content: center;
+}
+
+.aster-fase-h-panel .aster-step-number {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.aster-fase-i-panel .aster-step-number {
+    background: linear-gradient(135deg, #06b6d4, #0e7490);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.aster-fase-h-panel .aster-step-number.result,
+.aster-fase-i-panel .aster-step-number.result {
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.aster-fase-h-panel .aster-step-card,
+.aster-fase-h-panel .aster-result-card {
+    border-color: rgba(239, 68, 68, 0.20);
+}
+
+.aster-fase-i-panel .aster-step-card,
+.aster-fase-i-panel .aster-result-card {
+    border-color: rgba(6, 182, 212, 0.22);
+}
+
+@media (max-width: 1000px) {
+    .aster-fase-hi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aster-fase-hi-grid .aster-result-card {
+        grid-column: auto;
+    }
+
+    .aster-info-card div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+}
