@@ -1,7 +1,7 @@
-<details id="panel-ocr" class="panel-monitor">
+<details id="panel-ocr" class="panel-monitor orion-fase-c-panel">
     <summary class="panel-summary-actions">
         <span class="panel-summary-title">
-            <span class="panel-icon">⚪</span>
+            <span class="panel-icon">📱</span>
             OCR y Totales
         </span>
 
@@ -27,91 +27,119 @@
     </summary>
 
     <div class="panel-body">
-        <div id="orion-ocr-mode" class="ui-mode-section active">
-            <p class="ui-panel-description">
-                📷 Seleccione las imágenes y procese OCR. Luego puede corregir los valores reconocidos antes de consolidar.
-            </p>
+        <div class="orion-fase-c-grid">
+            <section id="orion-ocr-mode" class="orion-step-card ui-mode-section active">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Captura por OCR</h4>
+                        <p>Seleccione imágenes del reporte y procese OCR. Luego puede corregir los valores antes de consolidar.</p>
+                    </div>
+                </div>
 
-            <div class="ui-form-row-compact">
-                <input
-                    type="file"
-                    id="ocrFiles"
-                    accept="image/*"
-                    multiple
-                    class="ui-file-native"
-                    onchange="actualizarNombreArchivosOcr()"
-                >
+                <div class="orion-file-picker-row">
+                    <input
+                        type="file"
+                        id="ocrFiles"
+                        accept="image/*"
+                        multiple
+                        class="ui-file-native"
+                        onchange="actualizarNombreArchivosOcr()"
+                    >
 
-                <label for="ocrFiles" class="ui-file-browse">
-                    📁 Browse
-                </label>
+                    <label for="ocrFiles" class="ui-file-browse">
+                        📁 Seleccionar imagen
+                    </label>
 
-                <span id="ocrFilesResumen" class="ui-file-name">
-                    Ningún archivo seleccionado
-                </span>
+                    <span id="ocrFilesResumen" class="ui-file-name">
+                        Ningún archivo seleccionado
+                    </span>
+                </div>
 
                 <button
                     type="button"
                     id="btn-ocr"
-                    class="ui-btn-blue-sm"
+                    class="ui-btn-success orion-main-action"
                     onclick="subirOCR()"
                 >
                     Procesar OCR
                     <span class="status-icon"></span>
                 </button>
-            </div>
 
-            <div id="ocr-result-content" class="ui-result-block">
-                Pendiente...
-            </div>
-        </div>
-
-        <div id="orion-manual-mode" class="ui-mode-section">
-            <p class="ui-panel-description">
-                📝 Ingrese los totales manualmente sin necesidad de procesar OCR.
-            </p>
-        </div>
-
-        <div id="manual-totales" class="ui-totales-editor">
-            <p id="manual-totales-titulo" class="ui-panel-description">
-                📝 Corregir o confirmar totales antes de consolidar:
-            </p>
-
-            <div class="ui-form-row-compact">
-                <label class="ui-mini-label" for="manualOrion">
-                    Orion
-                </label>
-                <input
-                    type="number"
-                    id="manualOrion"
-                    placeholder="0"
-                    class="ui-input-80"
-                >
-
-                <label class="ui-mini-label" for="manualAister">
-                    Aister
-                </label>
-                <input
-                    type="number"
-                    id="manualAister"
-                    placeholder="0"
-                    class="ui-input-80"
-                >
-
-                <button
-                    type="button"
-                    class="ui-btn-blue-sm"
-                    onclick="consolidarTotales()"
-                >
-                    Consolidar totales
-                </button>
-            </div>
-
-            <div id="ocr-consolidado-resultado" class="ui-result-block">
-                <div class="log-line warning">
-                    ⚠️ Totales pendientes de consolidación.
+                <div id="ocr-result-content" class="ui-result-block orion-result-content compact">
+                    Pendiente...
                 </div>
-            </div>
+            </section>
+
+            <section id="orion-manual-mode" class="orion-step-card ui-mode-section">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Ingreso manual</h4>
+                        <p>Use esta opción si no desea procesar OCR o si necesita ingresar los totales directamente.</p>
+                    </div>
+                </div>
+
+                <div class="orion-help-text">
+                    Ingrese Orion y Aister manualmente y consolide los valores.
+                </div>
+            </section>
+
+            <section id="manual-totales" class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4 id="manual-totales-titulo">Corregir o confirmar totales</h4>
+                        <p>Estos valores actualizarán los badges superiores del Monitor de Ejecución.</p>
+                    </div>
+                </div>
+
+                <div class="orion-total-row">
+                    <label class="ui-mini-label" for="manualOrion">
+                        Orion
+                    </label>
+                    <input
+                        type="number"
+                        id="manualOrion"
+                        placeholder="0"
+                        class="ui-input-80"
+                    >
+
+                    <label class="ui-mini-label" for="manualAister">
+                        Aister
+                    </label>
+                    <input
+                        type="number"
+                        id="manualAister"
+                        placeholder="0"
+                        class="ui-input-80"
+                    >
+
+                    <button
+                        type="button"
+                        class="ui-btn-blue-sm"
+                        onclick="consolidarTotales()"
+                    >
+                        Consolidar totales
+                    </button>
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de totales</h4>
+                        <p>Resultado de OCR, ingreso manual o consolidación de totales diarios.</p>
+                    </div>
+                </div>
+
+                <div id="ocr-consolidado-resultado" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Totales pendientes de consolidación.
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 </details>

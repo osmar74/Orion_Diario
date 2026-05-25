@@ -1,4 +1,83 @@
-<details class="panel-monitor" id="panel-crear">
-    <summary><span class="panel-icon">⚪</span> 📁 Crear Carpetas</summary>
-    <div class="panel-body">Pendiente...</div>
+<details id="panel-crear-carpetas-wrapper" class="panel-monitor orion-fase-ab-panel" open>
+    <summary>
+        <span class="panel-icon">📁</span>
+        Crear Carpetas
+    </summary>
+
+    <div class="panel-body">
+        <div class="orion-fase-abc-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Fecha del proceso</h4>
+                        <p>Define la fecha diaria que se usará para crear la estructura local ORION.</p>
+                    </div>
+                </div>
+
+                <div class="orion-field-stack">
+                    <label for="fechaInputPanelCrear" class="ui-mini-label">
+                        Fecha YYYYMM_DD / YYYYMMDD
+                    </label>
+
+                    <input
+                        id="fechaInputPanelCrear"
+                        type="text"
+                        placeholder="Ejemplo: 202605_21"
+                        class="ui-input ui-input-md"
+                        oninput="sincronizarFechaOrionPanel(this.value)"
+                        onchange="sincronizarFechaOrionPanel(this.value)"
+                    >
+                </div>
+
+                <div class="orion-help-text">
+                    La fecha se sincroniza con el panel izquierdo.
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Crear estructura diaria</h4>
+                        <p>Crea las carpetas locales necesarias para Causales, Lotes, Discador, Reporte de Imagen y Consolidados.</p>
+                    </div>
+                </div>
+
+                <div class="orion-checklist">
+                    <div>✅ data\YYYYMMDD\Orion</div>
+                    <div>✅ Causales</div>
+                    <div>✅ Lotes</div>
+                    <div>✅ Discador</div>
+                    <div>✅ Reporte_Imagen</div>
+                    <div>✅ Consolidados</div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-panel-crear-carpetas"
+                    class="ui-btn-success orion-main-action"
+                    onclick="prepararYEjecutarAccionOrion('crear-carpetas', this)"
+                >
+                    Crear carpetas
+                </button>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de creación</h4>
+                        <p>Rutas creadas, carpeta activa y diagnóstico de estructura diaria.</p>
+                    </div>
+                </div>
+
+                <div id="panel-crear-carpetas" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Estructura diaria pendiente de creación.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

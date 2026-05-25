@@ -1,4 +1,74 @@
-<details class="panel-monitor" id="panel-verificar">
-    <summary><span class="panel-icon">⚪</span> 🔍 Verificar Red</summary>
-    <div class="panel-body">Pendiente...</div>
+<details id="panel-verificar-red-wrapper" class="panel-monitor orion-fase-b-panel">
+    <summary>
+        <span class="panel-icon">🔍</span>
+        Verificar Red
+    </summary>
+
+    <div class="panel-body">
+        <div class="orion-fase-abc-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Unidad de red ORION</h4>
+                        <p>Verifica que existan las carpetas y archivos fuente en la ruta de red configurada.</p>
+                    </div>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Categorías</b>
+                        <span>Causales, Lotes y Discador</span>
+                    </div>
+                    <div>
+                        <b>Validación</b>
+                        <span>Año, mes, subcarpetas y archivos encontrados</span>
+                    </div>
+                    <div>
+                        <b>Destino</b>
+                        <span>La estructura local creada en Fase A</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar verificación</h4>
+                        <p>Comprueba la disponibilidad de archivos en red antes de distribuirlos localmente.</p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-panel-verificar-red"
+                    class="ui-btn-success orion-main-action"
+                    onclick="prepararYEjecutarAccionOrion('verificar-red', this)"
+                >
+                    Verificar red
+                </button>
+
+                <div class="orion-help-text">
+                    Si no encuentra archivos, revise fecha, mes y ruta de red configurada.
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de verificación</h4>
+                        <p>Archivos encontrados, rutas verificadas y advertencias de red.</p>
+                    </div>
+                </div>
+
+                <div id="panel-verificar-red" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Red ORION pendiente de verificación.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

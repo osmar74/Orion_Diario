@@ -1,4 +1,70 @@
-<details class="panel-monitor" id="panel-distribuir">
-    <summary><span class="panel-icon">⚪</span> 📤 Distribuir Archivos</summary>
-    <div class="panel-body">Pendiente...</div>
+<details id="panel-distribuir-wrapper" class="panel-monitor orion-fase-d-panel">
+    <summary>
+        <span class="panel-icon">📤</span>
+        Distribuir Archivos
+    </summary>
+
+    <div class="panel-body">
+        <div class="orion-fase-d-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Archivos fuente verificados</h4>
+                        <p>Usa los archivos encontrados en la verificación de red para copiarlos a la estructura local diaria.</p>
+                    </div>
+                </div>
+
+                <div class="orion-checklist">
+                    <div>✅ Causales desde red</div>
+                    <div>✅ Lotes desde red</div>
+                    <div>✅ Discador desde red</div>
+                    <div>✅ Carpeta local ORION creada</div>
+                </div>
+
+                <div class="orion-help-text">
+                    Antes de distribuir, ejecute Crear Carpetas y Verificar Red.
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar distribución</h4>
+                        <p>Copia los archivos fuente hacia las carpetas locales correspondientes del proceso diario.</p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-panel-distribuir"
+                    class="ui-btn-success orion-main-action"
+                    onclick="ejecutarAccion('distribuir', this)"
+                >
+                    Distribuir archivos
+                </button>
+
+                <div class="orion-help-text">
+                    El resultado indicará qué archivos fueron copiados y en qué ruta quedaron.
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado de distribución</h4>
+                        <p>Archivos copiados, rutas destino y advertencias si falta algún archivo.</p>
+                    </div>
+                </div>
+
+                <div id="panel-distribuir" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Distribución pendiente de ejecución.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

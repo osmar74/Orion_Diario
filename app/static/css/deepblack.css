@@ -1911,3 +1911,403 @@ a {
         gap: 2px;
     }
 }
+
+/* ============================================================
+   UI REFACTOR ORION - TRACKER DE FASES
+   ============================================================ */
+
+.orion-phase-status-card {
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.orion-phase-status-title {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #dcfce7;
+    margin-bottom: 8px;
+}
+
+.orion-phase-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.orion-phase-status-item {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 6px;
+    align-items: center;
+    padding: 5px 6px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    font-size: 0.68rem;
+}
+
+.orion-phase-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    border-radius: 999px;
+    background: #14532d;
+    color: #fff;
+    font-weight: 900;
+}
+
+.orion-phase-name {
+    color: #cbd5e1;
+}
+
+.orion-phase-state {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.orion-phase-status-item.pending .orion-phase-state,
+.orion-phase-header-chip.pending {
+    color: #cbd5e1;
+}
+
+.orion-phase-status-item.running .orion-phase-state,
+.orion-phase-header-chip.running {
+    color: #facc15;
+}
+
+.orion-phase-status-item.done .orion-phase-state,
+.orion-phase-header-chip.done {
+    color: #22c55e;
+}
+
+.orion-phase-status-item.error .orion-phase-state,
+.orion-phase-header-chip.error {
+    color: #fb7185;
+}
+
+.orion-phase-status-item.info .orion-phase-state,
+.orion-phase-header-chip.info {
+    color: #38bdf8;
+}
+
+.orion-phase-header-chip {
+    margin-left: auto;
+    font-size: 0.68rem;
+    border-radius: 999px;
+    padding: 3px 8px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    white-space: nowrap;
+}
+
+/* ============================================================
+   UI REFACTOR ORION FASE A/B/C - PANELES ORDENADOS
+   ============================================================ */
+
+.orion-fase-abc-grid,
+.orion-fase-c-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.orion-fase-abc-grid .orion-result-card,
+.orion-fase-c-grid .orion-result-card {
+    grid-column: 1 / -1;
+}
+
+.orion-step-card,
+.orion-result-card {
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(34, 197, 94, 0.16);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.orion-step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.orion-step-header h4 {
+    margin: 0;
+    color: #dcfce7;
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
+.orion-step-header p {
+    margin: 3px 0 0;
+    color: #94a3b8;
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
+.orion-step-number {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #22c55e, #14532d);
+    color: #ffffff;
+    font-weight: 900;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.orion-step-number.result {
+    background: linear-gradient(135deg, #0ea5e9, #0369a1);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.orion-field-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.orion-checklist {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+}
+
+.orion-checklist div {
+    padding: 7px 9px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.orion-info-card {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.18);
+}
+
+.orion-info-card div {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.74rem;
+}
+
+.orion-info-card b {
+    color: #dcfce7;
+}
+
+.orion-info-card span {
+    color: #cbd5e1;
+    word-break: break-word;
+}
+
+.orion-file-picker-row,
+.orion-total-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.orion-main-action {
+    margin-top: 2px;
+}
+
+.orion-help-text {
+    margin-top: 10px;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 8px;
+}
+
+.orion-result-content {
+    background: rgba(0, 0, 0, 0.16);
+    border-radius: 10px;
+    padding: 10px;
+    min-height: 90px;
+}
+
+.orion-result-content.compact {
+    margin-top: 12px;
+    min-height: 48px;
+}
+
+.orion-fase-b-panel .orion-step-number {
+    background: linear-gradient(135deg, #0ea5e9, #0369a1);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.orion-fase-c-panel .orion-step-number {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.orion-fase-c-panel .orion-step-number.result {
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+@media (max-width: 1000px) {
+    .orion-fase-abc-grid,
+    .orion-fase-c-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .orion-fase-abc-grid .orion-result-card,
+    .orion-fase-c-grid .orion-result-card {
+        grid-column: auto;
+    }
+
+    .orion-info-card div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+}
+
+/* ============================================================
+   UI FIX ORION A/B - BOTONES Y RESULTADOS
+   ============================================================ */
+
+.orion-main-action.ui-btn-success,
+.orion-step-card .ui-btn-success {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #22c55e;
+    color: #06130a;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 0.8rem;
+    min-width: 150px;
+}
+
+.orion-main-action.ui-btn-success:hover,
+.orion-step-card .ui-btn-success:hover {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.orion-result-content {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ============================================================
+   UI FIX ORION - ENFOQUE DE PANEL CENTRAL DESDE SIDEBAR
+   ============================================================ */
+
+.orion-panel-focus-flash {
+    animation: orionPanelFocusFlash 1.6s ease-in-out;
+}
+
+@keyframes orionPanelFocusFlash {
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.75);
+        border-color: rgba(34, 197, 94, 0.85);
+    }
+
+    50% {
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.28);
+        border-color: rgba(34, 197, 94, 1);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+/* ============================================================
+   UI FIX ORION - SIDEBAR DIRECT PANEL FOCUS
+   ============================================================ */
+
+.orion-panel-focus-flash {
+    animation: orionPanelFocusFlash 1.6s ease-in-out;
+}
+
+@keyframes orionPanelFocusFlash {
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.75);
+        border-color: rgba(34, 197, 94, 0.85);
+    }
+
+    50% {
+        box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.28);
+        border-color: rgba(34, 197, 94, 1);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+/* ============================================================
+   UI REFACTOR ORION FASE C/D - OCR Y DISTRIBUCIÓN
+   ============================================================ */
+
+.orion-fase-d-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.orion-fase-d-grid .orion-result-card {
+    grid-column: 1 / -1;
+}
+
+.orion-fase-d-panel .orion-step-number {
+    background: linear-gradient(135deg, #f97316, #c2410c);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.orion-fase-d-panel .orion-step-number.result {
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.orion-fase-d-panel .orion-step-card,
+.orion-fase-d-panel .orion-result-card {
+    border-color: rgba(249, 115, 22, 0.20);
+}
+
+/* Ajuste menor Fase C para que el resultado no se vea suelto */
+.orion-fase-c-panel #ocr-result-content,
+.orion-fase-c-panel #ocr-consolidado-resultado {
+    border: 1px solid rgba(139, 92, 246, 0.16);
+}
+
+@media (max-width: 1000px) {
+    .orion-fase-d-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .orion-fase-d-grid .orion-result-card {
+        grid-column: auto;
+    }
+}
