@@ -469,62 +469,13 @@ const ORION_DISTRIBUIR_COPIA_ENDPOINTS = ["/accion/distribuir-seleccionados"];
 
 
 
-function obtenerPanelResultadoDistribucionOrion() {
-    return (
-        getById("panel-distribuir") ||
-        document.querySelector("#panel-distribuir-wrapper .orion-result-content") ||
-        document.querySelector("#panel-distribuir-wrapper .panel-body") ||
-        document.querySelector("#panel-distribuir-wrapper")
-    );
-}
 
-function obtenerChecksDistribucionOrion() {
-    const panel =
-        getById("panel-distribuir") ||
-        getById("panel-distribuir-wrapper") ||
-        document;
 
-    return Array.from(
-        panel.querySelectorAll(".chk-distribucion-orion:checked")
-    );
-}
 
-function obtenerSeleccionadosDistribucionOrion() {
-    const checks = obtenerChecksDistribucionOrion();
 
-    return checks
-        .map((check) => {
-            return {
-                categoria: check.dataset.categoria || "",
-                archivo: check.dataset.archivo || "",
-            };
-        })
-        .filter((item) => item.categoria && item.archivo);
-}
 
-function actualizarEstadoDistribucionOrionDesdeHtml(html) {
-    const texto = String(html || "").toLowerCase();
 
-    const sinSeleccion =
-        texto.includes("no seleccionó archivos") ||
-        texto.includes("no selecciono archivos");
 
-    const exito = esRespuestaExitosa(html) && !sinSeleccion;
-
-    if (typeof actualizarEstadoFaseOrion === "function") {
-        actualizarEstadoFaseOrion(
-            "D",
-            exito ? "done" : "error",
-            exito ? "Completado" : "Error"
-        );
-    }
-
-    if (typeof programarActualizacionEstadoOrionDesdePaneles === "function") {
-        programarActualizacionEstadoOrionDesdePaneles();
-    }
-
-    return exito;
-}
 
 
 function copiarDistribucionSeleccionada(boton = null) {
@@ -773,9 +724,7 @@ function mostrarModoManualOrion() {
     setModoOcrOrion("manual");
 }
 
-function mostrarIngresoManualOrion() {
-    mostrarModoManualOrion();
-}
+
 
 function activarOProcesarOcrOrion() {
     mostrarModoOcrOrion();
@@ -864,22 +813,7 @@ function subirOCR() {
 
 
 
-function mostrarIngresoManualOrion() {
-    const manualDiv = getById("manual-totales");
-    const panel = getById("panel-ocr");
 
-    if (panel) {
-        panel.open = true;
-    }
-
-    if (manualDiv) {
-        manualDiv.style.display = "block";
-        manualDiv.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-        });
-    }
-}
 
 function consolidarTotales() {
     const orion = getInputValue("manualOrion");
@@ -1146,7 +1080,7 @@ window.actualizarEstadoDiscador = actualizarEstadoDiscador;
 window.actualizarCuadre = actualizarCuadre;
 window.subirOCR = subirOCR;
 window.consolidarTotales = consolidarTotales;
-window.mostrarIngresoManualOrion = mostrarIngresoManualOrion;
+
 window.probarConexion = probarConexion;
 window.seleccionarConexion = seleccionarConexion;
 window.actualizarBadgesConexion = actualizarBadgesConexion;
@@ -2126,30 +2060,44 @@ window.buscarPanelCentralOrionPorTexto = buscarPanelCentralOrionPorTexto;
 window.abrirPanelCentralOrionDirecto = abrirPanelCentralOrionDirecto;
 window.abrirYEjecutarOrionSidebar = abrirYEjecutarOrionSidebar;
 window.registrarClickSidebarOrionDirecto = registrarClickSidebarOrionDirecto;
-window.obtenerPanelResultadoDistribucionOrion = obtenerPanelResultadoDistribucionOrion;
-window.obtenerChecksDistribucionOrion = obtenerChecksDistribucionOrion;
-window.actualizarEstadoDistribucionOrionDesdeHtml = actualizarEstadoDistribucionOrionDesdeHtml;
-function htmlEsNotFoundOrion(html) {
-    const texto = String(html || "").toLowerCase();
 
-    return (
-        texto.includes("not found") ||
-        texto.includes("404") ||
-        texto.includes("requested url was not found")
-    );
-}
-
-window.htmlEsNotFoundOrion = htmlEsNotFoundOrion;
 /* ============================================================
    ORION LEGACY COMPATIBILITY - DISTRIBUCIÓN
    Estas funciones evitan ReferenceError de exports antiguos.
    La Fase D real ahora la controla app/static/js/orion_workflow.js
    ============================================================ */
 
+
+
+
+
+
+
+
+
+
+
+
+
+window.accionOrionDesdeSummary = accionOrionDesdeSummary;
+window.faseOrionDesdeAccion = faseOrionDesdeAccion;
+window.leerEstadoAccionesOrion = leerEstadoAccionesOrion;
+window.guardarEstadoAccionesOrion = guardarEstadoAccionesOrion;
+window.actualizarEstadoAccionOrion = actualizarEstadoAccionOrion;
+window.actualizarEstadoOperacionOrion = actualizarEstadoOperacionOrion;
+window.recalcularEstadoFaseOrionDesdeAcciones = recalcularEstadoFaseOrionDesdeAcciones;
+
+/* ============================================================
+   ORION LEGACY COMPATIBILITY CANÓNICO
+   Funciones únicas para compatibilidad con flujo anterior.
+   La ejecución principal ORION está controlada por orion_workflow.js.
+   ============================================================ */
+
 function obtenerPanelResultadoDistribucionOrion() {
     return (
         document.getElementById("panel-distribuir") ||
         document.querySelector("#panel-distribuir-wrapper .orion-result-content") ||
+        document.querySelector("#panel-distribuir-wrapper .panel-body") ||
         document.querySelector("#panel-distribuir-wrapper")
     );
 }
@@ -2168,22 +2116,44 @@ function valorCheckboxDistribucionOrion(check) {
         return "";
     }
 
-    return (
-        check.dataset?.archivo ||
-        check.dataset?.ruta ||
-        check.dataset?.path ||
-        check.value ||
-        ""
-    );
+    const row = check.closest ? check.closest("tr") : null;
+
+    const candidatos = [
+        check.dataset?.archivo,
+        check.dataset?.ruta,
+        check.dataset?.path,
+        check.dataset?.file,
+        check.dataset?.nombre,
+        check.dataset?.name,
+        row?.dataset?.archivo,
+        row?.dataset?.ruta,
+        row?.dataset?.path,
+        check.value,
+    ];
+
+    const valor = candidatos
+        .map((item) => String(item || "").trim())
+        .find((item) => item && item.toLowerCase() !== "on");
+
+    return valor || "";
 }
 
 function obtenerSeleccionadosDistribucionOrion() {
     return obtenerChecksDistribucionOrion()
-        .map((check) => ({
-            categoria: check.dataset?.categoria || "",
-            archivo: check.dataset?.archivo || valorCheckboxDistribucionOrion(check),
-        }))
-        .filter((item) => item.categoria && item.archivo && item.archivo !== "on");
+        .map((check) => {
+            const row = check.closest ? check.closest("tr") : null;
+
+            return {
+                categoria:
+                    check.dataset?.categoria ||
+                    row?.dataset?.categoria ||
+                    "",
+                archivo: valorCheckboxDistribucionOrion(check),
+            };
+        })
+        .filter((item) => {
+            return item.categoria && item.archivo;
+        });
 }
 
 function htmlEsNotFoundOrion(html) {
@@ -2203,18 +2173,56 @@ function actualizarEstadoDistribucionOrionDesdeHtml(html) {
             : !htmlEsNotFoundOrion(html);
 
     if (typeof actualizarEstadoFaseOrion === "function") {
-        actualizarEstadoFaseOrion("D", exito ? "done" : "error", exito ? "Completado" : "Error");
+        actualizarEstadoFaseOrion(
+            "D",
+            exito ? "done" : "error",
+            exito ? "Completado" : "Error"
+        );
+    }
+
+    if (typeof actualizarEstadoFaseDDirecto === "function") {
+        try {
+            actualizarEstadoFaseDDirecto();
+        } catch {
+            // Compatibilidad visual únicamente.
+        }
     }
 
     return exito;
 }
 
+function mostrarIngresoManualOrion() {
+    if (typeof mostrarModoManualWorkflow === "function") {
+        mostrarModoManualWorkflow();
+        return;
+    }
+
+    if (
+        typeof mostrarModoManualOrion === "function" &&
+        mostrarModoManualOrion !== mostrarIngresoManualOrion
+    ) {
+        mostrarModoManualOrion();
+        return;
+    }
+
+    const manual = document.getElementById("manual-totales");
+
+    if (manual) {
+        manual.style.display = "block";
+        manual.classList.add("active");
+    }
+
+    const ocr = document.getElementById("orion-ocr-mode");
+
+    if (ocr) {
+        ocr.classList.remove("active");
+    }
+}
+
+window.obtenerPanelResultadoDistribucionOrion = obtenerPanelResultadoDistribucionOrion;
+window.obtenerChecksDistribucionOrion = obtenerChecksDistribucionOrion;
 window.valorCheckboxDistribucionOrion = valorCheckboxDistribucionOrion;
 window.obtenerSeleccionadosDistribucionOrion = obtenerSeleccionadosDistribucionOrion;
-window.accionOrionDesdeSummary = accionOrionDesdeSummary;
-window.faseOrionDesdeAccion = faseOrionDesdeAccion;
-window.leerEstadoAccionesOrion = leerEstadoAccionesOrion;
-window.guardarEstadoAccionesOrion = guardarEstadoAccionesOrion;
-window.actualizarEstadoAccionOrion = actualizarEstadoAccionOrion;
-window.actualizarEstadoOperacionOrion = actualizarEstadoOperacionOrion;
-window.recalcularEstadoFaseOrionDesdeAcciones = recalcularEstadoFaseOrionDesdeAcciones;
+window.actualizarEstadoDistribucionOrionDesdeHtml = actualizarEstadoDistribucionOrionDesdeHtml;
+window.htmlEsNotFoundOrion = htmlEsNotFoundOrion;
+window.mostrarIngresoManualOrion = mostrarIngresoManualOrion;
