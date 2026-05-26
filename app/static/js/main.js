@@ -648,7 +648,7 @@ function construirMonitorTemporal(config) {
     `;
 }
 
-const UI_VIEW_CACHE_VERSION = "v40";
+const UI_VIEW_CACHE_VERSION = "v45";
 const UI_VIEW_CACHE_PREFIX = `orionDiario.view.${UI_VIEW_CACHE_VERSION}.`;
 
 function claveVistaModulo(modulo) {

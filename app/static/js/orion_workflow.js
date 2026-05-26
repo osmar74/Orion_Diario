@@ -10,6 +10,15 @@
     const STATE_KEY_PREFIX = "orionDiario.workflow.orion.v1";
 
     const ACTIONS = {
+        "consolidado.gestion.consultar": {
+            phase: "G",
+            label: "Consultar Consolidado Gestión Orion",
+            panelId: "panel-consolidado-resultado",
+            wrapperId: "panel-consolidado-wrapper",
+            buttonId: "btn-wf-consolidado-consultar",
+            method: "LEGACY_FUNCTION",
+            legacyFunction: "ejecutarConsultaConsolidado",
+        },
         "ocr.procesar": {
             phase: "C",
             label: "Procesar OCR",
@@ -198,12 +207,33 @@
             return "";
         }
 
+        // Aceptar YYYY-MM-DD y convertir a YYYYMM_DD para endpoints ORION.
+        const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        if (iso) {
+            return `${iso[1]}${iso[2]}_${iso[3]}`;
+        }
+
+        // Aceptar YYYYMMDD y convertir a YYYYMM_DD.
+        const ymd = v.match(/^(\d{4})(\d{2})(\d{2})$/);
+
+        if (ymd) {
+            return `${ymd[1]}${ymd[2]}_${ymd[3]}`;
+        }
+
+        // Aceptar YYYYMM_DD.
+        if (/^\d{6}_\d{2}$/.test(v)) {
+            return v;
+        }
+
         if (typeof window.normalizarFechaOrion === "function") {
             return window.normalizarFechaOrion(v);
         }
 
         return v;
     }
+
+
 
     function htmlLoadingWorkflow(texto) {
         if (typeof window.htmlLoading === "function") {
@@ -574,31 +604,69 @@ function limpiarChipsViejosFaseD() {
         return { status: "pending", detail: "Carga pendiente" };
     }
 
+
+    function estadoConsolidadoGestionWorkflow() {
+        const estado = leerEstado();
+        const consulta = estado["consolidado.gestion.consultar"]?.status || "pending";
+
+        if (consulta === "running") {
+            return { status: "running", detail: "Consulta consolidado en ejecución" };
+        }
+
+        if (consulta === "error") {
+            return { status: "error", detail: "Error en consolidado gestión" };
+        }
+
+        if (consulta === "done") {
+            return { status: "done", detail: "Consolidado gestión consultado" };
+        }
+
+        return { status: "pending", detail: "Consolidado gestión pendiente" };
+    }
+
+    function actualizarEstadoConsolidadoGestionDirecto() {
+        const estado = estadoConsolidadoGestionWorkflow();
+        const [icon, label, cls] = estadoMeta(estado.status);
+
+        const legacyLabel = estado.status === "ready" ? "Revisar" : label;
+
+        const chip = byId("wf-status-consolidado-gestion-global");
+
+        if (chip) {
+            chip.className = `wf-status-chip ${cls}`;
+            chip.textContent = `${icon} ${legacyLabel}`;
+            chip.title = estado.detail || legacyLabel;
+        }
+    }
+
     function calcularEstadoCargaGlobal() {
         const estados = [
             estadoCargaTipoWorkflow("causales").status,
             estadoCargaTipoWorkflow("lote").status,
             estadoCargaTipoWorkflow("discador").status,
+            estadoConsolidadoGestionWorkflow().status,
         ];
 
         if (estados.includes("running")) {
-            return { status: "running", detail: "Carga consolidada en ejecución" };
+            return { status: "running", detail: "Fase G en ejecución" };
         }
 
         if (estados.includes("error")) {
-            return { status: "error", detail: "Error en carga consolidada" };
+            return { status: "error", detail: "Error en Fase G" };
         }
 
         if (estados.every((item) => item === "done")) {
-            return { status: "done", detail: "Cargas consolidadas completadas" };
+            return { status: "done", detail: "Fase G completada" };
         }
 
         if (estados.some((item) => item === "done" || item === "ready")) {
-            return { status: "ready", detail: "Carga consolidada parcial" };
+            return { status: "ready", detail: "Fase G parcial" };
         }
 
-        return { status: "pending", detail: "Carga consolidada pendiente" };
+        return { status: "pending", detail: "Fase G pendiente" };
     }
+
+
 
     function actualizarEstadoCargaTipoDirecto(tipo) {
         const key = tipoKeyCargaWorkflow(tipo);
@@ -618,6 +686,7 @@ function limpiarChipsViejosFaseD() {
 
     function actualizarEstadoFaseGDirecto() {
         ["causales", "lote", "discador"].forEach(actualizarEstadoCargaTipoDirecto);
+        actualizarEstadoConsolidadoGestionDirecto();
 
         const estado = calcularEstadoCargaGlobal();
         const [icon, label, cls] = estadoMeta(estado.status);
@@ -705,6 +774,10 @@ function limpiarChipsViejosFaseD() {
             typeof window.consolidarTotales === "function"
                 ? window.consolidarTotales.bind(window)
                 : null,
+        ejecutarConsultaConsolidado:
+            typeof window.ejecutarConsultaConsolidado === "function"
+                ? window.ejecutarConsultaConsolidado.bind(window)
+                : null,
     };
 
     function mostrarModoOcrWorkflow() {
@@ -787,9 +860,188 @@ function limpiarChipsViejosFaseD() {
         };
     }
 
+
+    function getLegacyWorkflowFunction(nombre) {
+        const fn = window[nombre];
+
+        if (typeof fn === "function") {
+            return fn.bind(window);
+        }
+
+        return null;
+    }
+
+    let CONEXION_CONSOLIDADO_WORKFLOW = "local";
+
+    function seleccionarConexionConsolidadoWorkflow(tipo) {
+        const normalizado = String(tipo || "local").toLowerCase() === "remoto"
+            ? "remoto"
+            : "local";
+
+        CONEXION_CONSOLIDADO_WORKFLOW = normalizado;
+
+        const btnLocal = byId("btn-wf-consolidado-local");
+        const btnRemoto = byId("btn-wf-consolidado-remoto");
+        const chip = byId("wf-status-consolidado-conexion");
+
+        if (btnLocal) {
+            btnLocal.classList.toggle("active", normalizado === "local");
+        }
+
+        if (btnRemoto) {
+            btnRemoto.classList.toggle("active", normalizado === "remoto");
+        }
+
+        if (chip) {
+            chip.className = normalizado === "local"
+                ? "wf-status-chip done"
+                : "wf-status-chip info";
+
+            chip.textContent = normalizado === "local"
+                ? "✅ Local activo"
+                : "ℹ️ Remoto activo";
+
+            chip.title = normalizado === "local"
+                ? "Conexión local seleccionada"
+                : "Conexión remota seleccionada";
+        }
+
+        if (typeof window.seleccionarConexionConsolidado === "function") {
+            try {
+                window.seleccionarConexionConsolidado(normalizado);
+            } catch (error) {
+                console.warn("No se pudo sincronizar conexión consolidado legacy:", error);
+            }
+        }
+    }
+
+
+    const CONSOLIDADO_RESULT_ALIAS_IDS = [
+            "consolidado-body",
+            "consolidado-resultado",
+            "consolidadoContenido",
+            "consolidadoResultado",
+            "consultaConsolidadoResultado",
+            "panel-consolidado-resultado",
+            "panelConsolidadoResultado",
+            "resultado-consolidado",
+            "resultadoConsolidado",
+            "resultadoConsultaConsolidado"
+];
+
+    function asegurarAliasesResultadoConsolidadoWorkflow() {
+        const panel = byId("panel-consolidado-resultado");
+
+        if (!panel) {
+            return;
+        }
+
+        let root = byId("wf-consolidado-alias-root");
+
+        if (!root) {
+            root = document.createElement("div");
+            root.id = "wf-consolidado-alias-root";
+            root.className = "consolidado-alias-root";
+            panel.appendChild(root);
+        }
+
+        CONSOLIDADO_RESULT_ALIAS_IDS.forEach((id) => {
+            if (!id || id === "panel-consolidado-resultado") {
+                return;
+            }
+
+            if (!document.getElementById(id)) {
+                const alias = document.createElement("div");
+                alias.id = id;
+                alias.className = "consolidado-result-alias";
+                root.appendChild(alias);
+            }
+        });
+    }
+
+    function inicializarConsolidadoWorkflow() {
+        asegurarAliasesResultadoConsolidadoWorkflow();
+        seleccionarConexionConsolidadoWorkflow(CONEXION_CONSOLIDADO_WORKFLOW);
+
+        const fechaProceso = normalizarFechaWorkflow(getFechaOrionWorkflow());
+        const consFecha = byId("consFecha");
+        const consMeses = byId("consMeses");
+
+        const limpia = fechaProceso.replace("_", "");
+
+        if (fechaProceso && consFecha && !String(consFecha.value || "").trim()) {
+            if (/^\d{8}$/.test(limpia)) {
+                consFecha.value = `${limpia.slice(0, 4)}-${limpia.slice(4, 6)}-${limpia.slice(6, 8)}`;
+            }
+        }
+
+        if (fechaProceso && consMeses && !String(consMeses.value || "").trim()) {
+            if (/^\d{8}$/.test(limpia)) {
+                consMeses.value = limpia.slice(0, 6);
+            }
+        }
+    }
+
+
+
+
+
+    function obtenerFechaConsolidadoWorkflow() {
+        const consFecha = byId("consFecha");
+        const consMeses = byId("consMeses");
+
+        let fecha = String(consFecha?.value || "").trim();
+        let meses = String(consMeses?.value || "").trim();
+
+        const fechaProceso = normalizarFechaWorkflow(getFechaOrionWorkflow());
+        const limpiaProceso = fechaProceso.replace("_", "");
+
+        if (!fecha && /^\d{8}$/.test(limpiaProceso)) {
+            fecha = `${limpiaProceso.slice(0, 4)}-${limpiaProceso.slice(4, 6)}-${limpiaProceso.slice(6, 8)}`;
+
+            if (consFecha) {
+                consFecha.value = fecha;
+            }
+        }
+
+        if (!meses && /^\d{8}$/.test(limpiaProceso)) {
+            meses = limpiaProceso.slice(0, 6);
+
+            if (consMeses) {
+                consMeses.value = meses;
+            }
+        }
+
+        if (/^\d{8}$/.test(fecha)) {
+            fecha = `${fecha.slice(0, 4)}-${fecha.slice(4, 6)}-${fecha.slice(6, 8)}`;
+
+            if (consFecha) {
+                consFecha.value = fecha;
+            }
+        }
+
+        if (/^\d{6}_\d{2}$/.test(fecha)) {
+            const limpia = fecha.replace("_", "");
+            fecha = `${limpia.slice(0, 4)}-${limpia.slice(4, 6)}-${limpia.slice(6, 8)}`;
+
+            if (consFecha) {
+                consFecha.value = fecha;
+            }
+        }
+
+        const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fecha);
+        const mesesValido = /^\d{6}$/.test(meses);
+
+        return {
+            fecha,
+            meses,
+            valido: fechaValida && mesesValido,
+        };
+    }
+
     async function ejecutarLegacyFunction(actionName, boton = null) {
         const action = ACTIONS[actionName];
-        const fn = LEGACY_ORION_FUNCTIONS[action.legacyFunction];
+        const fn = getLegacyWorkflowFunction(action.legacyFunction);
 
         if (typeof fn !== "function") {
             throw new Error(`No está disponible la función legacy ${action.legacyFunction}`);
@@ -811,17 +1063,24 @@ function limpiarChipsViejosFaseD() {
             }
         }
 
+        if (actionName === "consolidado.gestion.consultar") {
+            inicializarConsolidadoWorkflow();
+            asegurarAliasesResultadoConsolidadoWorkflow();
+        }
+
         const resultado = fn(boton);
 
         if (resultado && typeof resultado.then === "function") {
             await resultado;
         } else {
-            await new Promise((resolve) => setTimeout(resolve, 800));
+            await new Promise((resolve) => setTimeout(resolve, 1200));
         }
 
         const target = panel(actionName);
         return target ? target.innerHTML : "OK";
     }
+
+
 
     function calcularEstadoOcrWorkflow() {
         const estado = leerEstado();
@@ -1126,7 +1385,22 @@ function limpiarChipsViejosFaseD() {
 
         abrirPanel(actionName);
 
-        const fecha = normalizarFechaWorkflow(getFechaOrionWorkflow());
+        let fecha = normalizarFechaWorkflow(getFechaOrionWorkflow());
+
+        if (actionName === "consolidado.gestion.consultar") {
+            inicializarConsolidadoWorkflow();
+
+            const params = obtenerFechaConsolidadoWorkflow();
+
+            if (!params.valido) {
+                alert("Ingrese una fecha válida y un mes de gestión válido para el consolidado.");
+                return "";
+            }
+
+            // Para esta acción, la función legacy usa consFecha y consMeses.
+            // Solo damos un valor interno para no bloquear el workflow.
+            fecha = normalizarFechaWorkflow(params.fecha);
+        }
 
         if (!fecha) {
             alert("Ingrese una fecha válida antes de ejecutar.");
@@ -1240,6 +1514,8 @@ function limpiarChipsViejosFaseD() {
 
 
 
+
+
     function abrirWorkflowOrion(actionName) {
         abrirPanel(actionName);
         renderEstadoWorkflow(actionName);
@@ -1301,6 +1577,13 @@ function limpiarChipsViejosFaseD() {
     window.ejecutarWorkflowOrion = ejecutarWorkflowOrion;
     window.abrirWorkflowOrion = abrirWorkflowOrion;
     window.inicializarWorkflowOrion = inicializarWorkflowOrion;
+    window.obtenerFechaConsolidadoWorkflow = obtenerFechaConsolidadoWorkflow;
+    window.asegurarAliasesResultadoConsolidadoWorkflow = asegurarAliasesResultadoConsolidadoWorkflow;
+    window.inicializarConsolidadoWorkflow = inicializarConsolidadoWorkflow;
+    window.seleccionarConexionConsolidadoWorkflow = seleccionarConexionConsolidadoWorkflow;
+    window.getLegacyWorkflowFunction = getLegacyWorkflowFunction;
+    window.actualizarEstadoConsolidadoGestionDirecto = actualizarEstadoConsolidadoGestionDirecto;
+    window.estadoConsolidadoGestionWorkflow = estadoConsolidadoGestionWorkflow;
     window.actualizarEstadoFaseCDirecto = actualizarEstadoFaseCDirecto;
     window.calcularEstadoOcrWorkflow = calcularEstadoOcrWorkflow;
     window.actualizarNombreArchivosOcrWorkflow = actualizarNombreArchivosOcrWorkflow;
