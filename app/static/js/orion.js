@@ -1696,6 +1696,10 @@ function decorarHeadersMonitorOrion() {
     const estadoAcciones = leerEstadoAccionesOrion();
 
     monitor.querySelectorAll(".panel-monitor > summary").forEach((summary) => {
+        if (summary.closest('[data-orion-workflow-managed="1"]')) {
+            return;
+        }
+
         const accion = accionOrionDesdeSummary(summary);
         const fase = faseOrionDesdeSummary(summary);
 
@@ -1832,6 +1836,14 @@ function observarPanelesOrion() {
     }
 
     monitor.querySelectorAll(".panel-monitor").forEach((panel) => {
+        if (panel.dataset.orionWorkflowManaged === "1") {
+            return;
+        }
+
+        if (panel.getAttribute("data-orion-workflow-managed") === "1") {
+            return;
+        }
+
         if (panel.dataset.orionObserver === "1") {
             return;
         }
@@ -2117,6 +2129,16 @@ window.registrarClickSidebarOrionDirecto = registrarClickSidebarOrionDirecto;
 window.obtenerPanelResultadoDistribucionOrion = obtenerPanelResultadoDistribucionOrion;
 window.obtenerChecksDistribucionOrion = obtenerChecksDistribucionOrion;
 window.actualizarEstadoDistribucionOrionDesdeHtml = actualizarEstadoDistribucionOrionDesdeHtml;
+function htmlEsNotFoundOrion(html) {
+    const texto = String(html || "").toLowerCase();
+
+    return (
+        texto.includes("not found") ||
+        texto.includes("404") ||
+        texto.includes("requested url was not found")
+    );
+}
+
 window.htmlEsNotFoundOrion = htmlEsNotFoundOrion;
 window.valorCheckboxDistribucionOrion = valorCheckboxDistribucionOrion;
 window.obtenerSeleccionadosDistribucionOrion = obtenerSeleccionadosDistribucionOrion;

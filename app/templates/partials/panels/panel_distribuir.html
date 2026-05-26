@@ -1,7 +1,8 @@
-<details id="panel-distribuir-wrapper" class="panel-monitor orion-fase-d-panel">
+<details id="panel-distribuir-wrapper" class="panel-monitor orion-fase-d-panel" data-orion-workflow-managed="1">
     <summary>
         <span class="panel-icon">📤</span>
         Distribuir Archivos
+        <span id="wf-status-distribuir-global" class="wf-status-chip pending">⚪ Pendiente</span>
     </summary>
 
     <div class="panel-body">
@@ -10,43 +11,55 @@
                 <div class="orion-step-header">
                     <span class="orion-step-number">1</span>
                     <div>
-                        <h4>Archivos fuente verificados</h4>
-                        <p>Usa los archivos encontrados en la verificación de red para copiarlos a la estructura local diaria.</p>
+                        <h4>Preparar distribución</h4>
+                        <p>Busca los archivos fuente encontrados en red y prepara la lista seleccionable.</p>
                     </div>
                 </div>
 
                 <div class="orion-checklist">
-                    <div>✅ Causales desde red</div>
-                    <div>✅ Lotes desde red</div>
-                    <div>✅ Discador desde red</div>
-                    <div>✅ Carpeta local ORION creada</div>
-                </div>
-
-                <div class="orion-help-text">
-                    Antes de distribuir, ejecute Crear Carpetas y Verificar Red.
-                </div>
-            </section>
-
-            <section class="orion-step-card">
-                <div class="orion-step-header">
-                    <span class="orion-step-number">2</span>
-                    <div>
-                        <h4>Ejecutar distribución</h4>
-                        <p>Copia los archivos fuente hacia las carpetas locales correspondientes del proceso diario.</p>
-                    </div>
+                    <div>✅ Requiere Crear Carpetas completado</div>
+                    <div>✅ Requiere Verificar Red completado</div>
+                    <div>✅ Todos los archivos quedan seleccionados por defecto</div>
+                    <div>✅ Desmarque solo los archivos que NO desea copiar</div>
                 </div>
 
                 <button
                     type="button"
                     id="btn-panel-distribuir"
                     class="ui-btn-success orion-main-action"
-                    onclick="ejecutarAccion('distribuir', this)"
+                    onclick="ejecutarWorkflowOrion('distribuir.preparar', this)"
                 >
-                    Distribuir archivos
+                    Preparar distribución
+                    <span class="status-icon"></span>
                 </button>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Copiar seleccionados</h4>
+                        <p>Después de preparar, revise la lista, desmarque lo que no va y copie los seleccionados.</p>
+                    </div>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Regla</b>
+                        <span>Seleccionado = se copia</span>
+                    </div>
+                    <div>
+                        <b>No seleccionado</b>
+                        <span>Se excluye de la copia</span>
+                    </div>
+                    <div>
+                        <b>Estado</b>
+                        <span id="wf-status-distribuir-copiar" class="wf-status-chip pending">⚪ Pendiente</span>
+                    </div>
+                </div>
 
                 <div class="orion-help-text">
-                    El resultado indicará qué archivos fueron copiados y en qué ruta quedaron.
+                    El botón de copiar aparecerá dentro del resultado después de preparar la distribución.
                 </div>
             </section>
 
@@ -55,13 +68,13 @@
                     <span class="orion-step-number result">3</span>
                     <div>
                         <h4>Resultado de distribución</h4>
-                        <p>Archivos copiados, rutas destino y advertencias si falta algún archivo.</p>
+                        <p>Lista de archivos, selección activa y resultado final de copia.</p>
                     </div>
                 </div>
 
                 <div id="panel-distribuir" class="ui-result-block orion-result-content">
                     <div class="log-line warning">
-                        ⚠️ Distribución pendiente de ejecución.
+                        ⚠️ Distribución pendiente de preparación.
                     </div>
                 </div>
             </section>
