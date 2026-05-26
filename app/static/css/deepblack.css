@@ -3247,3 +3247,270 @@ body.gc-body .gc-process-panels .gc-section:first-child {
         grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)) !important;
     }
 }
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN LAYOUT v1D.4
+   Header fijo + resumen compacto + scroll solo en fases
+   ============================================================ */
+
+/* La página se comporta como una pantalla de trabajo */
+html:has(body.gc-body) {
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+body.gc-body,
+body.deepblack-body.gc-body {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* Contenedor general en columna: arriba fijo, abajo área de trabajo */
+body.gc-body .gc-shell {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 10px 14px !important;
+}
+
+/* Panel superior más compacto */
+body.gc-body .gc-hero {
+    flex column !important;
+    gap: 10px !important;
+    padding: 10px 14px !important;
+}
+
+/: 0 0 auto !important;
+    padding: 10px 14px !important;
+    margin-bottom: 0 !important;
+    min-height: 58px !important;
+}
+
+body.gc-body .gc-hero h1 {
+    font-size: 1.28rem !important;
+    margin-bottom: 2px !important;
+}
+
+body.gc-body .gc-hero p {
+    font-size: 0.78rem !important;
+    margin: 0 !important;
+}
+
+body.gc-body .gc-back-link {
+    padding: 7px 11px !important;
+    font-size: 0.78rem !important;
+}
+
+/* Fecha / conexión / acciones compacto */
+body.gc-body .gc-control-panel {
+    flex: 0 0 auto !important;
+    margin-bottom: 0 !important;
+    padding: 9px 14px !important;
+    min-height: 66px !important;
+    grid-template-columns: minmax(230px, 0.8fr) minmax(460px, 1.25fr) minmax(280px, 0.65fr) !important;
+}
+
+body.gc-body .gc-control-panel .gc-field label {
+    font-size: 0.74rem !important;
+}
+
+body.gc-body .gc-control-panel .gc-field input {
+    height: 32px !important;
+    font-size: 0.78rem !important;
+    padding: 6px 10px !important;
+}
+
+body.gc-body .gc-control-panel .gc-btn {
+    min-height: 30px !important;
+    padding: 6px 11px !important;
+    font-size: 0.74rem !important;
+}
+
+body.gc-body .gc-control-panel .wf-status-chip {
+    font-size: 0.68rem !important;
+    padding: 3px 8px !important;
+}
+
+/* Panel 1: Tabla resumen inicial SQL más bajo y con fuente menor */
+body.gc-body > .gc-shell > .gc-section:first-of-type {
+    flex: 0 0 auto !important;
+    margin-bottom: 0 !important;
+    padding: 10px 14px !important;
+    min-height: unset !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-section-header {
+    margin-bottom: 6px !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-section-header h2 {
+    font-size: 0.98rem !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-section-header h2::before {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 0.72rem !important;
+    margin-right: 8px !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-section-header p {
+    font-size: 0.72rem !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-result-block {
+    margin-top: 6px !important;
+    padding: 8px 10px !important;
+    border-radius: 10px !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-table {
+    font-size: 0.70rem !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-table th,
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-table td {
+    padding: 5px 7px !important;
+}
+
+body.gc-body > .gc-shell > .gc-section:first-of-type .gc-mini-note {
+    font-size: 0.70rem !important;
+    margin-top: 3px !important;
+}
+
+/* Área de trabajo: izquierda estado fijo, derecha scroll interno */
+body.gc-body .gc-work-layout {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+    grid-template-columns: 225px minmax(0, 1fr) !important;
+    gap: 12px !important;
+}
+
+/* Panel de estados más angosto */
+body.gc-body .gc-phase-sidebar {
+    position: static !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-state-section {
+    height: 100% !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-section-header h2 {
+    font-size: 0.88rem !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-section-header h2::before {
+    width: 26px !important;
+    height: 26px !important;
+    flex-basis: 26px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-grid {
+    gap: 6px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card {
+    padding: 7px 8px !important;
+    gap: 2px 7px !important;
+    border-radius: 10px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card b {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 0.70rem !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card span {
+    font-size: 0.74rem !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card em {
+    font-size: 0.66rem !important;
+}
+
+/* Scroll solo en paneles operativos desde Fase A hacia abajo */
+body.gc-body .gc-process-panels {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 6px !important;
+    scroll-behavior: smooth;
+}
+
+body.gc-body .gc-process-panels .gc-section {
+    margin-bottom: 12px !important;
+}
+
+/* Fases operativas un poco más compactas */
+body.gc-body .gc-process-panels .gc-section {
+    padding: 13px 14px !important;
+}
+
+body.gc-body .gc-process-panels .gc-section-header {
+    margin-bottom: 9px !important;
+}
+
+body.gc-body .gc-process-panels .gc-section-header h2 {
+    font-size: 1rem !important;
+}
+
+body.gc-body .gc-process-panels .gc-section-header h2::before {
+    width: 27px !important;
+    height: 27px !important;
+    font-size: 0.74rem !important;
+}
+
+body.gc-body .gc-process-panels .gc-section-header p {
+    font-size: 0.74rem !important;
+}
+
+/* Responsive: en pantallas pequeñas vuelve a scroll normal */
+@media (max-width: 1180px) {
+    html:has(body.gc-body) {
+        height: auto !important;
+        overflow-y: auto !important;
+    }
+
+    body.gc-body,
+    body.deepblack-body.gc-body {
+        height: auto !important;
+        min-height: 100vh !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+    }
+
+    body.gc-body .gc-shell {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body.gc-body .gc-work-layout {
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+    }
+
+    body.gc-body .gc-phase-sidebar,
+    body.gc-body .gc-phase-sidebar .gc-state-section,
+    body.gc-body .gc-process-panels {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}

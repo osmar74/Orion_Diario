@@ -99,6 +99,7 @@ def main():
         "CONSOLIDAR GESTIÓN UX REFINEMENT v1D",
         "CONSOLIDAR GESTIÓN UX REFINEMENT v1D.2",
         "CONSOLIDAR GESTIÓN LAYOUT v1D.3",
+        "CONSOLIDAR GESTIÓN LAYOUT v1D.4",
         "gc-collapse",
         "gc-values-grid-six",
         "gc-donut-card",
