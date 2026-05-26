@@ -90,6 +90,22 @@ def main():
     else:
         print(f"⚠️ ASTER no existe aún: {ruta_aster}")
 
+
+    print("\n[4] UX refinement v1D")
+    css = read(APP / "static" / "css" / "deepblack.css")
+    renderer = read(APP / "services" / "gestion_consolidada_renderer_service.py")
+
+    for item in [
+        "CONSOLIDAR GESTIÓN UX REFINEMENT v1D",
+        "gc-collapse",
+        "gc-values-grid-six",
+        "gc-donut-card",
+    ]:
+        if item in css or item in renderer:
+            ok(f"UX OK: {item}")
+        else:
+            errors += fail(f"Falta UX: {item}")
+
     print("\n" + "=" * 100)
     if errors:
         print(f"❌ Auditoría Consolidar Gestión con {errors} pendiente(s).")

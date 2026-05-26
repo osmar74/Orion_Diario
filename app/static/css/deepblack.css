@@ -2839,3 +2839,184 @@ body.gc-body .gc-control-panel {
     border-radius: 10px;
     padding: 8px 10px;
 }
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN UX REFINEMENT v1D
+   ============================================================ */
+
+body.gc-body .gc-shell {
+    counter-reset: gc-panel-counter;
+}
+
+body.gc-body .gc-section {
+    counter-increment: gc-panel-counter;
+}
+
+body.gc-body .gc-section-header h2::before {
+    content: counter(gc-panel-counter);
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #2563eb, #0891b2);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 950;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.gc-collapse {
+    margin-top: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(2, 6, 23, 0.38);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.gc-collapse summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 10px 12px;
+    color: #e2e8f0;
+    font-weight: 950;
+    background: rgba(15, 23, 42, 0.84);
+    list-style: none;
+}
+
+.gc-collapse summary::-webkit-details-marker {
+    display: none;
+}
+
+.gc-collapse summary::after {
+    content: "Mostrar";
+    color: #93c5fd;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.gc-collapse[open] summary::after {
+    content: "Ocultar";
+}
+
+.gc-collapse-body {
+    padding: 12px;
+}
+
+.gc-badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 22px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.18);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    color: #bfdbfe;
+    font-size: 0.72rem;
+    font-weight: 950;
+    white-space: nowrap;
+}
+
+.gc-values-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.gc-values-grid-six {
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+}
+
+.gc-value-pill {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    min-height: 44px;
+    padding: 8px 9px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.72);
+}
+
+.gc-value-pill span {
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.gc-value-pill b {
+    color: #67e8f9;
+    font-size: 0.78rem;
+}
+
+.gc-donut-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.gc-donut-card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.72);
+    padding: 12px;
+}
+
+.gc-donut-card h4 {
+    margin: 0 0 8px 0;
+}
+
+.gc-donut-layout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gc-donut {
+    width: 72px;
+    height: 72px;
+    flex: 0 0 72px;
+}
+
+.gc-donut-bg {
+    fill: none;
+    stroke: rgba(51, 65, 85, 0.95);
+    stroke-width: 5;
+}
+
+.gc-donut-fill {
+    fill: none;
+    stroke: #22c55e;
+    stroke-width: 5;
+    stroke-linecap: round;
+}
+
+.gc-donut-text {
+    fill: #e5e7eb;
+    font-size: 0.34rem;
+    text-anchor: middle;
+    font-weight: 900;
+}
+
+@media (max-width: 1200px) {
+    .gc-values-grid-six {
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .gc-values-grid-six {
+        grid-template-columns: 1fr;
+    }
+
+    .gc-collapse summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
