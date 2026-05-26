@@ -1653,25 +1653,343 @@ def _contar_registros_tabla_sql(cursor: Any, schema: str, table: str) -> int | N
         return None
 
 
+# ============================================================
+# CONSOLIDAR GESTIÓN FASE I - MAPEO EXACTO SQL
+# ============================================================
+
+GESTION_SQL_SCHEMA_EXACTO = [
+    {
+        "sql": "ClienteNro_Contrato",
+        "tipo": "float",
+        "aliases": ["ClienteNro_Contrato", "Cliente Nro.", "Cliente Nro", "NroCliente_Contrato", "Codigo_Cliente", "Código Cliente"],
+    },
+    {
+        "sql": "Fecha_De_Gestion",
+        "tipo": "datetime",
+        "aliases": ["Fecha_De_Gestion", "Fecha De Gestion", "Fecha de Gestión", "Fecha Gestion", "Fecha"],
+    },
+    {
+        "sql": "Hora_De_Gestion",
+        "tipo": "datetime_time",
+        "aliases": ["Hora_De_Gestion", "Hora De Gestion", "Hora de Gestión", "Hora Gestion", "Hora"],
+    },
+    {
+        "sql": "Duracion_llamada",
+        "tipo": "datetime_time",
+        "aliases": ["Duracion_llamada", "Duracion llamada", "Duración llamada", "Duracion de llamada", "Duración de llamada"],
+    },
+    {
+        "sql": "Descripcion_Codigo_De_Gestion",
+        "tipo": "nvarchar",
+        "max": 255,
+        "aliases": ["Descripcion_Codigo_De_Gestion", "Descripcion Codigo De Gestion", "Descripción Código De Gestión", "Descripcion Codigo Gestion"],
+    },
+    {
+        "sql": "Fecha_Compromiso",
+        "tipo": "datetime",
+        "aliases": ["Fecha_Compromiso", "Fecha Compromiso", "Fecha de Compromiso", "FechaCompromiso"],
+    },
+    {
+        "sql": "Grabador",
+        "tipo": "nvarchar",
+        "max": 100,
+        "aliases": ["Grabador"],
+    },
+    {
+        "sql": "Responsable_De_Cobro",
+        "tipo": "nvarchar",
+        "max": 15,
+        "aliases": ["Responsable_De_Cobro", "Responsable De Cobro", "Responsable Cobro"],
+    },
+    {
+        "sql": "Telefonos",
+        "tipo": "float",
+        "aliases": ["Telefonos", "Teléfonos", "Telefono", "Teléfono"],
+    },
+    {
+        "sql": "Tipo_Cartera",
+        "tipo": "nvarchar",
+        "max": 15,
+        "aliases": ["Tipo_Cartera", "Tipo Cartera"],
+    },
+    {
+        "sql": "Asesor",
+        "tipo": "nvarchar",
+        "max": 25,
+        "aliases": ["Asesor"],
+    },
+    {
+        "sql": "Antigüedad_De_La_Cartera",
+        "tipo": "nvarchar",
+        "max": 50,
+        "aliases": ["Antigüedad_De_La_Cartera", "Antiguedad_De_La_Cartera", "Antigüedad De La Cartera", "Antiguedad De La Cartera"],
+    },
+    {
+        "sql": "Nota_de_la_Gestion",
+        "tipo": "nvarchar",
+        "max": 255,
+        "aliases": ["Nota_de_la_Gestion", "Nota de la Gestion", "Nota de la Gestión", "Nota Gestion", "Nota"],
+    },
+    {
+        "sql": "Clase_de_Gestion",
+        "tipo": "nvarchar",
+        "max": 25,
+        "aliases": ["Clase_de_Gestion", "Clase de Gestion", "Clase de Gestión"],
+    },
+    {
+        "sql": "Causal_de_Mora_Respuesta",
+        "tipo": "nvarchar",
+        "max": 255,
+        "aliases": ["Causal_de_Mora_Respuesta", "Causal de Mora Respuesta", "Causal de Mora", "Causal Mora Respuesta"],
+    },
+    {
+        "sql": "Mes_Gestion",
+        "tipo": "float",
+        "aliases": ["Mes_Gestion", "Mes Gestion"],
+    },
+    {
+        "sql": "origen_datos",
+        "tipo": "nvarchar",
+        "max": 25,
+        "aliases": ["origen_datos", "Origen Datos", "origen datos"],
+    },
+    {
+        "sql": "crm",
+        "tipo": "nvarchar",
+        "max": 10,
+        "aliases": ["crm", "CRM"],
+    },
+]
+
+
+def _gc_col_key(nombre: Any) -> str:
+    import unicodedata
+
+    texto = str(nombre or "").strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    texto = re.sub(r"[^a-z0-9]+", "", texto)
+
+    return texto
+
+
+def _gc_mapa_columnas_excel(df: Any) -> dict[str, str]:
+    return {
+        _gc_col_key(col): col
+        for col in df.columns
+    }
+
+
+def _gc_resolver_columna_excel(df: Any, aliases: list[str]) -> str | None:
+    mapa = _gc_mapa_columnas_excel(df)
+
+    for alias in aliases:
+        key = _gc_col_key(alias)
+
+        if key in mapa:
+            return mapa[key]
+
+    return None
+
+
+def _gc_es_vacio(value: Any) -> bool:
+    try:
+        import pandas as pd
+
+        if pd.isna(value):
+            return True
+    except Exception:
+        pass
+
+    texto = str(value if value is not None else "").strip()
+
+    return texto == "" or texto.lower() in {"nan", "nat", "none", "null"}
+
+
+def _gc_convertir_float(value: Any) -> tuple[Any, str]:
+    if _gc_es_vacio(value):
+        return None, ""
+
+    texto = str(value).strip()
+
+    # Evitar teléfonos o clientes con separadores.
+    texto = texto.replace(" ", "")
+    texto = texto.replace("-", "")
+    texto = texto.replace("/", "")
+    texto = texto.replace("(", "").replace(")", "")
+
+    # Si viene con coma decimal.
+    texto = texto.replace(",", ".")
+
+    # Si viene como 123.0 para identificadores.
+    try:
+        return float(texto), ""
+    except Exception:
+        # Intento alternativo: extraer primer número.
+        match = re.search(r"-?\d+(?:\.\d+)?", texto)
+
+        if match:
+            try:
+                return float(match.group(0)), ""
+            except Exception:
+                pass
+
+    return None, f"No se puede convertir a float: {value}"
+
+
+def _gc_convertir_datetime(value: Any, time_only: bool = False) -> tuple[Any, str]:
+    from datetime import datetime, date, time, timedelta
+
+    if _gc_es_vacio(value):
+        return None, ""
+
+    # Si viene como time puro.
+    if isinstance(value, time):
+        return datetime.combine(date(1900, 1, 1), value), ""
+
+    if isinstance(value, datetime):
+        if time_only:
+            return datetime.combine(date(1900, 1, 1), value.time()), ""
+        return value, ""
+
+    # Excel serial date/time.
+    if isinstance(value, (int, float)):
+        try:
+            if time_only and 0 <= float(value) < 1:
+                base = datetime(1900, 1, 1)
+                return base + timedelta(days=float(value)), ""
+
+            import pandas as pd
+            dt = pd.to_datetime(value, unit="D", origin="1899-12-30", errors="coerce")
+
+            if not pd.isna(dt):
+                if time_only:
+                    return datetime.combine(date(1900, 1, 1), dt.time()), ""
+                return dt.to_pydatetime(), ""
+        except Exception:
+            pass
+
+    texto = str(value).strip()
+
+    # Hora o duración tipo HH:MM o HH:MM:SS.
+    if time_only:
+        match = re.match(r"^(\d{1,3}):(\d{2})(?::(\d{2}))?$", texto)
+
+        if match:
+            horas = int(match.group(1))
+            minutos = int(match.group(2))
+            segundos = int(match.group(3) or 0)
+
+            # SQL datetime no guarda duración > 23h como hora real.
+            # Para duraciones grandes se deja como fecha base + horas.
+            base = datetime(1900, 1, 1)
+            return base + timedelta(hours=horas, minutes=minutos, seconds=segundos), ""
+
+    try:
+        import pandas as pd
+
+        dt = pd.to_datetime(texto, errors="coerce", dayfirst=False)
+
+        if pd.isna(dt):
+            dt = pd.to_datetime(texto, errors="coerce", dayfirst=True)
+
+        if pd.isna(dt):
+            return None, f"No se puede convertir a datetime: {value}"
+
+        if time_only:
+            return datetime.combine(date(1900, 1, 1), dt.time()), ""
+
+        return dt.to_pydatetime(), ""
+    except Exception as exc:
+        return None, f"No se puede convertir a datetime: {value} | {exc}"
+
+
+def _gc_convertir_texto(value: Any, max_len: int | None = None) -> tuple[Any, str]:
+    if _gc_es_vacio(value):
+        return None, ""
+
+    texto = str(value).strip()
+
+    if max_len and len(texto) > max_len:
+        # Para nvarchar no conviene fallar; truncamos y lo reportamos como advertencia controlada.
+        return texto[:max_len], f"Texto truncado a {max_len} caracteres"
+
+    return texto, ""
+
+
+def _gc_preparar_carga_exacta(df: Any) -> tuple[list[str], list[tuple[Any, ...]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    columnas_sql = [item["sql"] for item in GESTION_SQL_SCHEMA_EXACTO]
+    rows = []
+    errores = []
+    advertencias = []
+    mapeo = []
+
+    for item in GESTION_SQL_SCHEMA_EXACTO:
+        col_excel = _gc_resolver_columna_excel(df, item["aliases"])
+
+        mapeo.append(
+            {
+                "columna_sql": item["sql"],
+                "tipo_sql": item["tipo"],
+                "columna_excel": col_excel or "",
+                "estado": "OK" if col_excel else "SIN COLUMNA EXCEL - INSERTA NULL",
+            }
+        )
+
+    for row_idx, (_, row) in enumerate(df.iterrows(), start=2):
+        values = []
+
+        for item, map_item in zip(GESTION_SQL_SCHEMA_EXACTO, mapeo):
+            col_sql = item["sql"]
+            tipo = item["tipo"]
+            col_excel = map_item["columna_excel"]
+
+            raw = None if not col_excel else row.get(col_excel)
+
+            if not col_excel:
+                values.append(None)
+                continue
+
+            if tipo == "float":
+                convertido, error = _gc_convertir_float(raw)
+            elif tipo == "datetime":
+                convertido, error = _gc_convertir_datetime(raw, time_only=False)
+            elif tipo == "datetime_time":
+                convertido, error = _gc_convertir_datetime(raw, time_only=True)
+            elif tipo == "nvarchar":
+                convertido, error = _gc_convertir_texto(raw, item.get("max"))
+            else:
+                convertido, error = raw, ""
+
+            if error:
+                registro = {
+                    "fila_excel": row_idx,
+                    "columna_sql": col_sql,
+                    "columna_excel": col_excel,
+                    "tipo_sql": tipo,
+                    "valor": str(raw),
+                    "mensaje": error,
+                }
+
+                if "truncado" in error.lower():
+                    advertencias.append(registro)
+                else:
+                    errores.append(registro)
+
+            values.append(convertido)
+
+        rows.append(tuple(values))
+
+    return columnas_sql, rows, errores, advertencias, mapeo
+
 def cargar_informacion_gestion_sql(
     data_dir: str | Path,
     fecha_raw: str,
     conexion: str = "local",
 ) -> dict[str, Any]:
     """
-    Fase I - Cargar información.
-
-    Lee:
-    - 05_final/YYYYMMDD_Gestion_excel.xlsx
-
-    Inserta en:
-    - Vencorp_V2.gestion.gestion_adminfo_onedrive
-
-    Reporta:
-    - filas leídas
-    - filas insertadas
-    - columnas insertadas
-    - errores
+    Fase I - Cargar información usando mapeo exacto a:
+    Vencorp_V2.gestion.gestion_adminfo_onedrive
     """
     try:
         import pandas as pd
@@ -1702,6 +2020,10 @@ def cargar_informacion_gestion_sql(
         / f"{fecha}_Gestion_excel.xlsx"
     )
 
+    carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+    carpeta_reportes.mkdir(parents=True, exist_ok=True)
+    ruta_reporte = carpeta_reportes / f"{fecha}_reporte_carga_sql.xlsx"
+
     if not ruta_excel.exists():
         return {
             "ok": False,
@@ -1711,6 +2033,7 @@ def cargar_informacion_gestion_sql(
             "database": database,
             "schema": schema,
             "table": table,
+            "tabla_destino": f"{database}.{schema}.{table}",
         }
 
     try:
@@ -1725,10 +2048,57 @@ def cargar_informacion_gestion_sql(
                 "error": "El archivo final no contiene filas para insertar.",
                 "ruta_excel": str(ruta_excel),
                 "conexion": conexion_normalizada,
+                "tabla_destino": f"{database}.{schema}.{table}",
+                "filas_leidas": 0,
+            }
+
+        columnas_sql, rows, errores_conversion, advertencias, mapeo = _gc_preparar_carga_exacta(df)
+
+        # Si hay errores reales de conversión, NO se inserta.
+        if errores_conversion:
+            resumen = pd.DataFrame(
+                [
+                    {"control": "Conexión", "valor": conexion_normalizada},
+                    {"control": "Base de datos", "valor": database},
+                    {"control": "Tabla destino", "valor": f"{schema}.{table}"},
+                    {"control": "Archivo leído", "valor": str(ruta_excel)},
+                    {"control": "Filas leídas Excel", "valor": filas_leidas},
+                    {"control": "Filas insertadas SQL", "valor": 0},
+                    {"control": "Errores de conversión", "valor": len(errores_conversion)},
+                    {"control": "Advertencias", "valor": len(advertencias)},
+                    {"control": "Acción", "valor": "NO SE INSERTÓ POR ERRORES DE CONVERSIÓN"},
+                ]
+            )
+
+            with pd.ExcelWriter(ruta_reporte) as writer:
+                resumen.to_excel(writer, sheet_name="Resumen", index=False)
+                pd.DataFrame(mapeo).to_excel(writer, sheet_name="MapeoColumnas", index=False)
+                pd.DataFrame(errores_conversion).to_excel(writer, sheet_name="ErroresConversion", index=False)
+                pd.DataFrame(advertencias).to_excel(writer, sheet_name="Advertencias", index=False)
+
+            return {
+                "ok": False,
+                "tipo_error": "conversion",
+                "fecha": fecha,
+                "conexion": conexion_normalizada,
                 "database": database,
                 "schema": schema,
                 "table": table,
-                "filas_leidas": 0,
+                "tabla_destino": f"{database}.{schema}.{table}",
+                "ruta_excel": str(ruta_excel),
+                "ruta_reporte": str(ruta_reporte),
+                "archivo_reporte": ruta_reporte.name,
+                "filas_leidas": filas_leidas,
+                "filas_insertadas": 0,
+                "error": "Se encontraron valores incompatibles con la estructura SQL exacta. No se insertó ningún registro.",
+                "errores_conversion": errores_conversion[:250],
+                "advertencias": advertencias[:250],
+                "mapeo": mapeo,
+                "columnas_insertadas": columnas_sql,
+                "columnas_omitidas_excel": [],
+                "columnas_tabla_sin_excel": [],
+                "total_antes": "",
+                "total_despues": "",
             }
 
         conn_str = _connection_string_vencorp(conexion_normalizada)
@@ -1738,56 +2108,18 @@ def cargar_informacion_gestion_sql(
 
             total_antes = _contar_registros_tabla_sql(cursor, schema, table)
 
-            columnas_tabla = _columnas_insertables_sql(cursor, schema, table)
-
-            if not columnas_tabla:
-                raise ValueError(
-                    f"No se encontraron columnas insertables para {database}.{schema}.{table}. "
-                    "Verifique que la tabla exista y que el usuario tenga permisos."
-                )
-
-            columnas_excel = list(df.columns)
-
-            columnas_insertar = [
-                col for col in columnas_tabla
-                if col in columnas_excel
-            ]
-
-            columnas_omitidas_excel = [
-                col for col in columnas_excel
-                if col not in columnas_insertar
-            ]
-
-            columnas_tabla_sin_excel = [
-                col for col in columnas_tabla
-                if col not in columnas_excel
-            ]
-
-            if not columnas_insertar:
-                raise ValueError(
-                    "No hay columnas comunes entre el Excel final y la tabla destino. "
-                    f"Columnas Excel: {columnas_excel}. "
-                    f"Columnas tabla: {columnas_tabla}."
-                )
-
-            placeholders = ", ".join(["?"] * len(columnas_insertar))
-            columnas_sql = ", ".join(f"[{col}]" for col in columnas_insertar)
+            placeholders = ", ".join(["?"] * len(columnas_sql))
+            columnas_sql_brackets = ", ".join(f"[{col}]" for col in columnas_sql)
 
             insert_sql = (
                 f"INSERT INTO [{schema}].[{table}] "
-                f"({columnas_sql}) VALUES ({placeholders})"
+                f"({columnas_sql_brackets}) VALUES ({placeholders})"
             )
-
-            rows = []
-
-            for row in df[columnas_insertar].itertuples(index=False, name=None):
-                rows.append(tuple(_normalizar_valor_sql(value) for value in row))
 
             cursor.fast_executemany = True
 
             filas_insertadas = 0
-            errores = []
-
+            errores_sql = []
             chunk_size = 1000
 
             for inicio in range(0, len(rows), chunk_size):
@@ -1797,25 +2129,18 @@ def cargar_informacion_gestion_sql(
                     cursor.executemany(insert_sql, chunk)
                     filas_insertadas += len(chunk)
                 except Exception as exc:
-                    errores.append(
+                    errores_sql.append(
                         {
                             "bloque_inicio": inicio + 1,
                             "bloque_fin": inicio + len(chunk),
                             "error": str(exc),
                         }
                     )
+                    conn.rollback()
                     raise
 
             conn.commit()
-
             total_despues = _contar_registros_tabla_sql(cursor, schema, table)
-
-        carpeta_carga = Path(rutas["subcarpetas"]["06_carga"])
-        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
-        carpeta_carga.mkdir(parents=True, exist_ok=True)
-        carpeta_reportes.mkdir(parents=True, exist_ok=True)
-
-        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_carga_sql.xlsx"
 
         resumen = pd.DataFrame(
             [
@@ -1825,26 +2150,20 @@ def cargar_informacion_gestion_sql(
                 {"control": "Archivo leído", "valor": str(ruta_excel)},
                 {"control": "Filas leídas Excel", "valor": filas_leidas},
                 {"control": "Filas insertadas SQL", "valor": filas_insertadas},
-                {"control": "Columnas insertadas", "valor": len(columnas_insertar)},
-                {"control": "Columnas Excel omitidas", "valor": len(columnas_omitidas_excel)},
-                {"control": "Columnas tabla sin Excel", "valor": len(columnas_tabla_sin_excel)},
+                {"control": "Columnas insertadas", "valor": len(columnas_sql)},
+                {"control": "Advertencias", "valor": len(advertencias)},
                 {"control": "Total tabla antes", "valor": "" if total_antes is None else total_antes},
                 {"control": "Total tabla después", "valor": "" if total_despues is None else total_despues},
-                {"control": "Errores", "valor": len(errores)},
+                {"control": "Errores SQL", "valor": len(errores_sql)},
             ]
         )
 
-        df_columnas_insertadas = pd.DataFrame({"columna_insertada": columnas_insertar})
-        df_columnas_omitidas = pd.DataFrame({"columna_excel_omitida": columnas_omitidas_excel})
-        df_columnas_faltantes = pd.DataFrame({"columna_tabla_sin_excel": columnas_tabla_sin_excel})
-        df_errores = pd.DataFrame(errores)
-
         with pd.ExcelWriter(ruta_reporte) as writer:
             resumen.to_excel(writer, sheet_name="Resumen", index=False)
-            df_columnas_insertadas.to_excel(writer, sheet_name="ColumnasInsertadas", index=False)
-            df_columnas_omitidas.to_excel(writer, sheet_name="ColumnasExcelOmitidas", index=False)
-            df_columnas_faltantes.to_excel(writer, sheet_name="ColumnasTablaSinExcel", index=False)
-            df_errores.to_excel(writer, sheet_name="Errores", index=False)
+            pd.DataFrame(mapeo).to_excel(writer, sheet_name="MapeoColumnas", index=False)
+            pd.DataFrame({"columna_insertada": columnas_sql}).to_excel(writer, sheet_name="ColumnasInsertadas", index=False)
+            pd.DataFrame(advertencias).to_excel(writer, sheet_name="Advertencias", index=False)
+            pd.DataFrame(errores_sql).to_excel(writer, sheet_name="ErroresSQL", index=False)
 
         return {
             "ok": True,
@@ -1860,16 +2179,19 @@ def cargar_informacion_gestion_sql(
             "archivo_reporte": ruta_reporte.name,
             "filas_leidas": filas_leidas,
             "filas_insertadas": filas_insertadas,
-            "columnas_insertadas": columnas_insertar,
-            "columnas_omitidas_excel": columnas_omitidas_excel,
-            "columnas_tabla_sin_excel": columnas_tabla_sin_excel,
+            "columnas_insertadas": columnas_sql,
+            "columnas_omitidas_excel": [],
+            "columnas_tabla_sin_excel": [],
+            "advertencias": advertencias[:250],
+            "mapeo": mapeo,
             "total_antes": total_antes,
             "total_despues": total_despues,
-            "errores": errores,
+            "errores": errores_sql,
         }
     except Exception as exc:
         return {
             "ok": False,
+            "tipo_error": "sql",
             "fecha": fecha,
             "conexion": conexion_normalizada,
             "database": database,
@@ -1877,5 +2199,7 @@ def cargar_informacion_gestion_sql(
             "table": table,
             "tabla_destino": f"{database}.{schema}.{table}",
             "ruta_excel": str(ruta_excel),
+            "ruta_reporte": str(ruta_reporte),
             "error": str(exc),
         }
+
