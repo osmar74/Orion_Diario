@@ -511,13 +511,75 @@ function ajustarConciliacionAster(boton) {
 
 /* ---------- ASTER - FASE H: INSERCIÓN DE DATOS ---------- */
 
+/* ============================================================
+   ASTER FASE H - CONTENEDOR SEGURO DE CONEXIÓN
+   Fix específico para evitar:
+   "No se encontró el contenedor de conexión ASTER."
+   ============================================================ */
+
+function obtenerOCrearContenedorConexionAsterFaseH() {
+    const ids = [
+        "aster-insercion-conexion-resultado",
+        "aster-conexion-insercion-resultado",
+        "aster-fase-h-conexion-resultado",
+        "aster-insercion-resultado-conexion",
+        "aster-conexion-resultado",
+        "aster-resultado-conexion-insercion",
+        "aster-fase-h-resultado-conexion",
+        "aster-insercion-sql-resultado",
+        "aster-fase-h-conexion-safe-result"
+    ];
+
+    for (const id of ids) {
+        const existente = document.getElementById(id);
+
+        if (existente) {
+            return existente;
+        }
+    }
+
+    const paneles = Array.from(document.querySelectorAll("details, .panel-monitor, section, div"));
+
+    const panelFaseH = paneles.find((panel) => {
+        const texto = String(panel.textContent || "").toLowerCase();
+
+        return (
+            texto.includes("fase h") ||
+            texto.includes("inserción de datos aster") ||
+            texto.includes("insercion de datos aster") ||
+            texto.includes("probar conexión aster") ||
+            texto.includes("probar conexion aster") ||
+            texto.includes("insertar datos aster")
+        );
+    }) || document.body;
+
+    let destino =
+        panelFaseH.querySelector(".orion-result-content") ||
+        panelFaseH.querySelector(".ui-result-block") ||
+        panelFaseH.querySelector(".panel-body") ||
+        panelFaseH;
+
+    const contenedor = document.createElement("div");
+
+    contenedor.id = "aster-fase-h-conexion-safe-result";
+    contenedor.className = "ui-result-block orion-result-content aster-fase-h-compat-result";
+    contenedor.innerHTML = `
+        <div class="log-line warning">
+            ⚠️ Conexión ASTER pendiente de prueba.
+        </div>
+    `;
+
+    destino.appendChild(contenedor);
+
+    return contenedor;
+}
+
 function probarConexionInsercionAster(boton) {
-    const resultado = document.getElementById("aster-conexion-insercion-resultado");
+    let resultado = document.getElementById("aster-conexion-insercion-resultado");
     const conexionSelect = document.getElementById("asterConexionInsercion");
 
     if (!resultado) {
-        alert("No se encontró el contenedor de conexión ASTER.");
-        return;
+        resultado = obtenerOCrearContenedorConexionAsterFaseH();
     }
 
     const conexion = conexionSelect?.value || "local";
@@ -1300,3 +1362,81 @@ window.actualizarEstadoFaseAster = actualizarEstadoFaseAster;
 window.renderizarEstadoFasesAster = renderizarEstadoFasesAster;
 window.inicializarEstadoFasesAster = inicializarEstadoFasesAster;
 window.actualizarNombreArchivosAsterOcr = actualizarNombreArchivosAsterOcr;
+
+/* ============================================================
+   ASTER LEGACY COMPATIBILITY - FASE H CONEXIÓN
+   Evita error: "No se encontró el contenedor de conexión ASTER"
+   ============================================================ */
+
+const ASTER_FASE_H_CONEXION_CONTAINER_IDS = ['aster-conexion-insercion-resultado', 'asterConexionInsercion', 'aster-insercion-conexion-resultado', 'aster-fase-h-conexion-resultado', 'aster-insercion-resultado-conexion', 'aster-conexion-resultado', 'aster-resultado-conexion-insercion', 'aster-fase-h-resultado-conexion', 'aster-insercion-sql-resultado'];
+
+function buscarPanelFaseHInsercionAster() {
+    const candidatos = Array.from(
+        document.querySelectorAll("details, .panel-monitor, section, div")
+    );
+
+    return candidatos.find((item) => {
+        const texto = String(item.textContent || "").toLowerCase();
+
+        return (
+            texto.includes("fase h") ||
+            texto.includes("inserción de datos aster") ||
+            texto.includes("insercion de datos aster") ||
+            texto.includes("probar conexión aster") ||
+            texto.includes("probar conexion aster")
+        );
+    }) || document.body;
+}
+
+function asegurarContenedorConexionInsercionAster() {
+    for (const id of ASTER_FASE_H_CONEXION_CONTAINER_IDS) {
+        const existente = document.getElementById(id);
+
+        if (existente) {
+            return existente;
+        }
+    }
+
+    const panel = buscarPanelFaseHInsercionAster();
+
+    const destino =
+        panel.querySelector(".orion-result-card .orion-result-content") ||
+        panel.querySelector(".ui-result-block") ||
+        panel.querySelector(".panel-body") ||
+        panel;
+
+    const contenedor = document.createElement("div");
+
+    contenedor.id = ASTER_FASE_H_CONEXION_CONTAINER_IDS[0] || "aster-insercion-conexion-resultado";
+    contenedor.className = "ui-result-block orion-result-content aster-fase-h-compat-result";
+    contenedor.innerHTML = `
+        <div class="log-line warning">
+            ⚠️ Conexión ASTER pendiente de prueba.
+        </div>
+    `;
+
+    destino.appendChild(contenedor);
+
+    return contenedor;
+}
+
+document.addEventListener("click", function(event) {
+    const boton = event.target?.closest?.("button, input[type='button'], input[type='submit']");
+
+    if (!boton) {
+        return;
+    }
+
+    const texto = String(boton.textContent || boton.value || "").toLowerCase();
+
+    if (
+        texto.includes("probar conexión aster") ||
+        texto.includes("probar conexion aster")
+    ) {
+        asegurarContenedorConexionInsercionAster();
+    }
+}, true);
+
+window.asegurarContenedorConexionInsercionAster = asegurarContenedorConexionInsercionAster;
+window.buscarPanelFaseHInsercionAster = buscarPanelFaseHInsercionAster;
+window.obtenerOCrearContenedorConexionAsterFaseH = obtenerOCrearContenedorConexionAsterFaseH;
