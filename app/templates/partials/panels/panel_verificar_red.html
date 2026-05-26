@@ -1,7 +1,8 @@
-<details id="panel-verificar-red-wrapper" class="panel-monitor orion-fase-b-panel">
+<details id="panel-verificar-red-wrapper" class="panel-monitor orion-fase-b-panel" data-orion-workflow-managed="1">
     <summary>
         <span class="panel-icon">🔍</span>
         Verificar Red
+        <span id="wf-status-verificar-red" class="wf-status-chip pending">⚪ Pendiente</span>
     </summary>
 
     <div class="panel-body">
@@ -42,11 +43,12 @@
 
                 <button
                     type="button"
-                    id="btn-panel-verificar-red"
+                    id="btn-wf-verificar-red"
                     class="ui-btn-success orion-main-action"
-                    onclick="prepararYEjecutarAccionOrion('verificar-red', this)"
+                    onclick="ejecutarWorkflowOrion('verificar.red', this)"
                 >
                     Verificar red
+                    <span class="status-icon"></span>
                 </button>
 
                 <div class="orion-help-text">

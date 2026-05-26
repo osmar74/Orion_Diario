@@ -1,7 +1,8 @@
-<details id="panel-crear-carpetas-wrapper" class="panel-monitor orion-fase-ab-panel" open>
+<details id="panel-crear-carpetas-wrapper" class="panel-monitor orion-fase-ab-panel" data-orion-workflow-managed="1" open>
     <summary>
         <span class="panel-icon">📁</span>
         Crear Carpetas
+        <span id="wf-status-crear-carpetas" class="wf-status-chip pending">⚪ Pendiente</span>
     </summary>
 
     <div class="panel-body">
@@ -55,11 +56,12 @@
 
                 <button
                     type="button"
-                    id="btn-panel-crear-carpetas"
+                    id="btn-wf-crear-carpetas"
                     class="ui-btn-success orion-main-action"
-                    onclick="prepararYEjecutarAccionOrion('crear-carpetas', this)"
+                    onclick="ejecutarWorkflowOrion('crear.carpetas', this)"
                 >
                     Crear carpetas
+                    <span class="status-icon"></span>
                 </button>
             </section>
 

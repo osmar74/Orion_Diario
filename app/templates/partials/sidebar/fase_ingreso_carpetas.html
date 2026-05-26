@@ -1,9 +1,26 @@
 <details open>
-    <summary>📁 Fase A-B: Ingreso y Carpetas</summary>
+    <summary>📁 Fase A/B: Ingreso y Carpetas</summary>
+
     <div class="fase-actions">
-        <label>Fecha (YYYYMM_DD):</label>
-        <input type="text" id="fechaInput" placeholder="202605_12" value="{{ ultima_fecha }}" class="ui-input-date">
-        <button onclick="abrirPanelCentralOrionDirecto('crear-carpetas'); return false;" id="btn-crear">Ir a Crear Carpetas <span class="status-icon">⚪</span></button>
-        <button onclick="abrirPanelCentralOrionDirecto('verificar-red'); return false;" id="btn-verred">Ir a Verificar Red <span class="status-icon">⚪</span></button>
+        <label>Fecha proceso:</label>
+        <input
+            type="text"
+            id="fechaInput"
+            placeholder="Ejemplo: 202605_21"
+            oninput="sincronizarFechaOrionPanel(this.value)"
+            onchange="sincronizarFechaOrionPanel(this.value)"
+        >
+
+        <div class="log-line info">
+            Use el panel izquierdo para navegar. Ejecute desde el panel central.
+        </div>
+
+        <button type="button" onclick="abrirWorkflowOrion('crear.carpetas'); return false;">
+            Ir a Crear Carpetas
+        </button>
+
+        <button type="button" onclick="abrirWorkflowOrion('verificar.red'); return false;">
+            Ir a Verificar Red
+        </button>
     </div>
 </details>

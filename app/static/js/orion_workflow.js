@@ -10,6 +10,24 @@
     const STATE_KEY_PREFIX = "orionDiario.workflow.orion.v1";
 
     const ACTIONS = {
+        "crear.carpetas": {
+            phase: "A",
+            label: "Crear Carpetas",
+            panelId: "panel-crear-carpetas",
+            wrapperId: "panel-crear-carpetas-wrapper",
+            buttonId: "btn-wf-crear-carpetas",
+            method: "GET",
+            endpoint: "/accion/crear-carpetas",
+        },
+        "verificar.red": {
+            phase: "B",
+            label: "Verificar Red",
+            panelId: "panel-verificar-red",
+            wrapperId: "panel-verificar-red-wrapper",
+            buttonId: "btn-wf-verificar-red",
+            method: "GET",
+            endpoint: "/accion/verificar-red",
+        },
         "distribuir.preparar": {
             phase: "D",
             label: "Preparar distribución",
@@ -413,6 +431,16 @@ function limpiarChipsViejosFaseD() {
     }
 
     function actualizarEstadoWorkflowDirecto(phase) {
+        if (phase === "A") {
+            actualizarEstadoFaseSimpleDirecto("A", "crear.carpetas");
+            return;
+        }
+
+        if (phase === "B") {
+            actualizarEstadoFaseSimpleDirecto("B", "verificar.red");
+            return;
+        }
+
         if (phase === "D") {
             actualizarEstadoFaseDDirecto();
             return;
@@ -428,6 +456,8 @@ function limpiarChipsViejosFaseD() {
             return;
         }
     }
+
+
 
 
 
@@ -596,6 +626,46 @@ function limpiarChipsViejosFaseD() {
 
             if (state) {
                 state.textContent = `${icon} ${legacyLabel}`;
+            }
+        }
+    }
+
+
+    function calcularEstadoSimpleWorkflow(actionName) {
+        const estado = leerEstado();
+        return estado[actionName]?.status || "pending";
+    }
+
+    function actualizarEstadoFaseSimpleDirecto(phase, actionName) {
+        const status = calcularEstadoSimpleWorkflow(actionName);
+        const [icon, label, cls] = estadoMeta(status);
+
+        try {
+            const key = "orionDiario.ui.orion.phaseStatus";
+            const raw = localStorage.getItem(key);
+            const phaseStatus = raw ? JSON.parse(raw) : {};
+
+            phaseStatus[phase] = {
+                status,
+                detail: label,
+                updatedAt: new Date().toLocaleTimeString(),
+            };
+
+            localStorage.setItem(key, JSON.stringify(phaseStatus));
+        } catch {
+            // No bloquear UI.
+        }
+
+        const sidebarItem = document.querySelector(`[data-orion-phase="${phase}"]`);
+
+        if (sidebarItem) {
+            sidebarItem.classList.remove("pending", "running", "done", "error", "info");
+            sidebarItem.classList.add(cls);
+
+            const state = sidebarItem.querySelector(".orion-phase-state");
+
+            if (state) {
+                state.textContent = `${icon} ${label}`;
             }
         }
     }
@@ -995,6 +1065,8 @@ function limpiarChipsViejosFaseD() {
     window.ejecutarWorkflowOrion = ejecutarWorkflowOrion;
     window.abrirWorkflowOrion = abrirWorkflowOrion;
     window.inicializarWorkflowOrion = inicializarWorkflowOrion;
+    window.actualizarEstadoFaseSimpleDirecto = actualizarEstadoFaseSimpleDirecto;
+    window.calcularEstadoSimpleWorkflow = calcularEstadoSimpleWorkflow;
     window.getConexionCargaWorkflow = getConexionCargaWorkflow;
     window.estadoCargaTipoWorkflow = estadoCargaTipoWorkflow;
     window.actualizarEstadoFaseGDirecto = actualizarEstadoFaseGDirecto;
