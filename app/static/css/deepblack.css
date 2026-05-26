@@ -2465,3 +2465,18 @@ button.is-busy {
 .orion-fase-c-panel .orion-result-card {
     border-color: rgba(139, 92, 246, 0.22);
 }
+
+/* ============================================================
+   ORION WORKFLOW ENGINE - CONSOLIDADO GESTIÓN ORION
+   ============================================================ */
+
+#panel-consolidado-wrapper .orion-info-card input,
+#panel-consolidado-wrapper .orion-info-card select {
+    width: 100%;
+}
+
+#panel-consolidado-wrapper .orion-action-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}

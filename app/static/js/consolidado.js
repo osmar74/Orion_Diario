@@ -68,7 +68,7 @@ function seleccionarConexionConsolidado(tipo) {
 }
 
 function ejecutarConsultaConsolidado() {
-    const resultado = getById("cons-resultado");
+    const resultado = getById("panel-consolidado-resultado");
 
     if (!resultado) {
         alert("No se encontró el panel de resultado del consolidado.");
@@ -100,7 +100,7 @@ function ejecutarConsultaConsolidado() {
 }
 
 function aplicarFiltroYExportar() {
-    const resultado = getById("cons-resultado");
+    const resultado = getById("panel-consolidado-resultado");
 
     if (!resultado) {
         alert("No se encontró el panel de resultado del consolidado.");

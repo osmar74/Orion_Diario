@@ -1,23 +1,143 @@
-<details class="panel-monitor" id="panel-consolidado">
+<details id="panel-consolidado-wrapper" class="panel-monitor orion-fase-g-panel" data-orion-workflow-managed="1">
     <summary>
-        <span class="panel-icon">⚪</span> 📊 Consolidado Gestión Orion
-        <span id="badge-consolidado" class="badge-conexion badge-rojo">⚫ Desconectado</span>
+        <span class="panel-icon">📊</span>
+        Consolidado Gestión Orion
+        <span id="wf-status-consolidado-gestion-global" class="wf-status-chip pending">⚪ Pendiente</span>
     </summary>
+
     <div class="panel-body">
-        <p class="ui-panel-description">Parámetros del proceso</p>
-        <div class="ui-form-row-compact">
-            <label class="ui-mini-label">Fecha (YYYY-MM-DD):</label>
-            <input type="text" id="consFecha" placeholder="2026-05-05" value="2026-05-05" class="ui-input-120">
-            <label class="ui-mini-label">Meses Gestión (YYYYMM):</label>
-            <input type="text" id="consMeses" placeholder="202605" value="202605" class="ui-input-120">
+        <div class="orion-fase-g-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Parámetros del proceso</h4>
+                        <p>Define la fecha y el mes de gestión para consultar el consolidado.</p>
+                    </div>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Fecha</b>
+                        <span>
+                            <input
+                                type="text"
+                                id="consFecha"
+                                placeholder="YYYY-MM-DD"
+                                class="ui-input ui-input-md"
+                            >
+                        </span>
+                    </div>
+
+                    <div>
+                        <b>Meses Gestión</b>
+                        <span>
+                            <input
+                                type="text"
+                                id="consMeses"
+                                placeholder="YYYYMM"
+                                class="ui-input ui-input-md"
+                            >
+                        </span>
+                    </div>
+                </div>
+
+                <div class="orion-help-text">
+                    La consulta usa los parámetros indicados para generar/mostrar el consolidado de Gestión Orion.
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Conexión</h4>
+                        <p>Seleccione LOCAL para pruebas o REMOTO cuando corresponda.</p>
+                    </div>
+                </div>
+
+                <div class="orion-action-stack">
+                    <button
+                        type="button"
+                        id="btn-wf-consolidado-local"
+                        class="ui-btn-blue-sm active"
+                        onclick="seleccionarConexionConsolidadoWorkflow('local'); return false;"
+                    >
+                        Local
+                    </button>
+
+                    <button
+                        type="button"
+                        id="btn-wf-consolidado-remoto"
+                        class="ui-btn-blue-sm"
+                        onclick="seleccionarConexionConsolidadoWorkflow('remoto'); return false;"
+                    >
+                        Remoto
+                    </button>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Estado conexión</b>
+                        <span id="wf-status-consolidado-conexion" class="wf-status-chip pending">⚪ Revisar</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">3</span>
+                    <div>
+                        <h4>Ejecutar consulta</h4>
+                        <p>Ejecuta la consulta consolidada usando la lógica existente de Consolidado.</p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-wf-consolidado-consultar"
+                    class="ui-btn-success orion-main-action"
+                    onclick="ejecutarWorkflowOrion('consolidado.gestion.consultar', this)"
+                >
+                    Ejecutar consulta
+                    <span class="status-icon"></span>
+                </button>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Estado consulta</b>
+                        <span id="wf-status-consolidado-gestion-consultar" class="wf-status-chip pending">⚪ Pendiente</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">4</span>
+                    <div>
+                        <h4>Resultado Consolidado Gestión Orion</h4>
+                        <p>Resultado de la consulta, filtros, conteos y exportación si aplica.</p>
+                    </div>
+                </div>
+
+                <div id="panel-consolidado-resultado" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Consolidado Gestión Orion pendiente de consulta.
+                    </div>
+
+                    <div id="wf-consolidado-alias-root" class="consolidado-alias-root">
+                        <div id="consolidado-body" class="consolidado-result-alias"></div>
+                        <div id="consolidado-resultado" class="consolidado-result-alias"></div>
+                        <div id="consolidadoContenido" class="consolidado-result-alias"></div>
+                        <div id="consolidadoResultado" class="consolidado-result-alias"></div>
+                        <div id="consultaConsolidadoResultado" class="consolidado-result-alias"></div>
+                        <div id="panelConsolidadoResultado" class="consolidado-result-alias"></div>
+                        <div id="resultado-consolidado" class="consolidado-result-alias"></div>
+                        <div id="resultadoConsolidado" class="consolidado-result-alias"></div>
+                        <div id="resultadoConsultaConsolidado" class="consolidado-result-alias"></div>
+                    </div>
+                </div>
+            </section>
         </div>
-        <p class="ui-label-muted">Conexión para consolidado:</p>
-        <div class="ui-form-row-tight">
-            <button id="btnConsLocal" onclick="seleccionarConexionConsolidado('local')" class="conexion-btn active">Local</button>
-            <button id="btnConsRemoto" onclick="seleccionarConexionConsolidado('remoto')" class="conexion-btn">Remoto</button>
-            <span id="cons-conexion-indicador" class="ui-sidebar-indicator">Local activo</span>
-        </div>
-        <button onclick="ejecutarConsultaConsolidado()" class="ui-btn-blue ui-mb-10">Ejecutar Consulta</button>
-        <div id="cons-resultado"></div>
     </div>
 </details>
