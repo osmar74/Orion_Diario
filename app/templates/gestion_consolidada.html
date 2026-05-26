@@ -165,6 +165,22 @@
             </div>
         </section>
 
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase F — Compromiso</h2>
+                <p>Valida Acuerdo De Pago contra Fecha_Compromiso y genera Excel compromiso + CSV gestión.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseF()">
+                Ejecutar Fase F: Compromiso
+            </button>
+
+            <div id="gcResultadoFaseF" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase F pendiente.</div>
+            </div>
+        </section>
+
         <section class="gc-section muted">
             <div class="gc-section-header">
                 <h2>Fases siguientes</h2>
@@ -172,7 +188,6 @@
             </div>
 
             <div class="gc-roadmap">
-                <div>F — Compromiso</div>
                 <div>G — Código cliente y archivo final</div>
                 <div>H — Reporte de archivos generados</div>
                 <div>I — Carga SQL final</div>

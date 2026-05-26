@@ -3523,3 +3523,12 @@ body.gc-body .gc-process-panels .gc-section-header p {
 body.gc-body .gc-process-panels #gcResultadoFaseE .gc-result-card p {
     word-break: break-word;
 }
+
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1F
+   ============================================================ */
+
+body.gc-body .gc-process-panels #gcResultadoFaseF .gc-result-card p {
+    word-break: break-word;
+}

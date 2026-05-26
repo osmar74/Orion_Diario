@@ -693,3 +693,86 @@ def render_limpiar_nota_gestion(resultado: dict[str, Any]) -> str:
     html.append("</tbody></table></div>")
 
     return "".join(html)
+
+
+
+def render_compromiso_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error procesando Compromiso: {resultado.get('error', '')}")
+            + "<div class='gc-result-card'><h4>Archivo entrada</h4><p>"
+            + escape(str(resultado.get("ruta_entrada", "")))
+            + "</p></div>"
+        )
+
+    total_acuerdo = _safe_int(resultado.get("total_acuerdo", 0))
+    total_con_fecha = _safe_int(resultado.get("total_con_fecha", 0))
+    total_sin_fecha = _safe_int(resultado.get("total_sin_fecha", 0))
+    total_reemplazados = _safe_int(resultado.get("total_reemplazados", 0))
+
+    html = [
+        render_alert("success", "✅ Fase Compromiso completada correctamente."),
+        "<div class='gc-result-grid'>",
+        "<div class='gc-result-card'><h4>Total filas antes</h4><p><b>",
+        escape(str(resultado.get("total_inicial", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total filas después</h4><p><b>",
+        escape(str(resultado.get("total_final", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Control filas iguales</h4><p><b>",
+        "✅ SI" if resultado.get("control_filas_ok") else "❌ NO",
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Acuerdo De Pago total</h4><p><b>",
+        escape(str(total_acuerdo)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Con Fecha_Compromiso</h4><p><b>",
+        escape(str(total_con_fecha)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Sin Fecha_Compromiso</h4><p><b>",
+        escape(str(total_sin_fecha)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Reemplazados</h4><p><b>",
+        escape(str(total_reemplazados)),
+        "</b></p></div>",
+        "</div>",
+    ]
+
+    html.append("<div class='gc-donut-row'>")
+    html.append(_render_gc_donut_card("Acuerdos sin fecha", total_acuerdo, total_sin_fecha, "sin Fecha_Compromiso"))
+    html.append(_render_gc_donut_card("Acuerdos con fecha", total_acuerdo, total_con_fecha, "con Fecha_Compromiso"))
+    html.append(_render_gc_donut_card("Reemplazados", total_acuerdo, total_reemplazados, "a No Hubo Acuerdo"))
+    html.append("</div>")
+
+    html.append("<h4>Columnas usadas</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Uso</th><th>Columna detectada</th></tr></thead><tbody>")
+    html.append(f"<tr><td>Descripción</td><td>{escape(str(resultado.get('columna_descripcion', '')))}</td></tr>")
+    html.append(f"<tr><td>Fecha compromiso</td><td>{escape(str(resultado.get('columna_fecha_compromiso', '')))}</td></tr>")
+    html.append("</tbody></table></div>")
+
+    preview = resultado.get("preview_reemplazados") or []
+
+    html.append(
+        _render_gc_collapsible(
+            "Vista previa de acuerdos reemplazados",
+            _gc_count_badge(total_reemplazados),
+            _render_gc_table_from_dicts(preview, 80),
+            open_default=False,
+        )
+    )
+
+    html.append("<h4>Archivos generados</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>")
+    html.append(
+        f"<tr><td>Excel compromiso</td><td>{escape(str(resultado.get('archivo_excel', '')))}</td><td>{escape(str(resultado.get('ruta_excel', '')))}</td></tr>"
+    )
+    html.append(
+        f"<tr><td>CSV gestión</td><td>{escape(str(resultado.get('archivo_csv', '')))}</td><td>{escape(str(resultado.get('ruta_csv', '')))}</td></tr>"
+    )
+    html.append(
+        f"<tr><td>Reporte</td><td>{escape(str(resultado.get('archivo_reporte', '')))}</td><td>{escape(str(resultado.get('ruta_reporte', '')))}</td></tr>"
+    )
+    html.append("</tbody></table></div>")
+
+    return "".join(html)

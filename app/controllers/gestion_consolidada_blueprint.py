@@ -11,6 +11,7 @@ from app.services.gestion_consolidada_service import (
     verificar_calidad_gestion,
     aplicar_ajuste_no_contestan_gestion,
     limpiar_nota_gestion,
+    procesar_compromiso_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
@@ -19,6 +20,7 @@ from app.services.gestion_consolidada_renderer_service import (
     render_verificar_calidad_gestion,
     render_ajuste_no_contestan_gestion,
     render_limpiar_nota_gestion,
+    render_compromiso_gestion,
 )
 
 
@@ -97,3 +99,13 @@ def accion_gestion_consolidada_limpiar_nota():
     resultado = limpiar_nota_gestion(_data_dir(), fecha)
 
     return render_limpiar_nota_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/compromiso", methods=["POST"])
+def accion_gestion_consolidada_compromiso():
+    fecha = request.form.get("fecha", "")
+
+    resultado = procesar_compromiso_gestion(_data_dir(), fecha)
+
+    return render_compromiso_gestion(resultado)

@@ -337,6 +337,35 @@
         }
     }
 
+
+    async function gcEjecutarFaseF() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("F", "running", "Procesando compromiso.");
+        setHtml("gcResultadoFaseF", htmlLoading("Procesando Acuerdo De Pago y Fecha_Compromiso..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/compromiso", formBase());
+            setHtml("gcResultadoFaseF", html);
+
+            const error = String(html).includes("Error procesando Compromiso");
+
+            actualizarFase(
+                "F",
+                error ? "error" : "done",
+                error ? "Error en compromiso." : "Compromiso procesado."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseF", htmlError(`Error ejecutando Fase F: ${error.message || error}`));
+            actualizarFase("F", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -367,6 +396,7 @@
     window.gcEjecutarFaseC = gcEjecutarFaseC;
     window.gcEjecutarFaseD = gcEjecutarFaseD;
     window.gcEjecutarFaseE = gcEjecutarFaseE;
+    window.gcEjecutarFaseF = gcEjecutarFaseF;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);

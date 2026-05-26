@@ -1018,3 +1018,162 @@ def limpiar_nota_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]
             "error": str(exc),
             "ruta_entrada": str(ruta_entrada),
         }
+
+
+
+def procesar_compromiso_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
+    """
+    Fase F - Compromiso.
+
+    Reglas:
+    - Filtra Descripcion Codigo De Gestion que inicia con "Acuerdo De Pago".
+    - Si Fecha_Compromiso está vacía, cambia Descripcion Codigo De Gestion a:
+      "No Hubo Acuerdo de pago".
+
+    Genera:
+    - 04_compromiso/YYYYMMDD_Gestion_compromiso.xlsx
+    - 04_compromiso/YYYYMMDD_Gestion.csv
+    - Reportes/YYYYMMDD_reporte_compromiso.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+
+    ruta_entrada = (
+        Path(rutas["subcarpetas"]["03_ajustes"])
+        / f"{fecha}_Gestion_nota_limpia.xlsx"
+    )
+
+    if not ruta_entrada.exists():
+        return {
+            "ok": False,
+            "error": f"No existe archivo de Fase E. Ejecute primero Fase E: {ruta_entrada}",
+            "ruta_entrada": str(ruta_entrada),
+        }
+
+    try:
+        df = pd.read_excel(ruta_entrada)
+        df.columns = [str(col).strip() for col in df.columns]
+
+        total_inicial = len(df)
+
+        col_desc = _buscar_columna_gestion(
+            df,
+            [
+                "Descripcion Codigo De Gestion",
+                "Descripción Código De Gestión",
+                "Descripcion Codigo Gestion",
+            ],
+        )
+
+        col_fecha_compromiso = _buscar_columna_gestion(
+            df,
+            [
+                "Fecha_Compromiso",
+                "Fecha Compromiso",
+                "Fecha de Compromiso",
+                "FechaCompromiso",
+            ],
+        )
+
+        df_compromiso = df.copy()
+
+        serie_desc = df_compromiso[col_desc].fillna("").astype(str).str.strip()
+        serie_fecha = df_compromiso[col_fecha_compromiso]
+
+        mask_acuerdo = serie_desc.str.lower().str.startswith("acuerdo de pago", na=False)
+
+        serie_fecha_texto = serie_fecha.fillna("").astype(str).str.strip()
+        mask_fecha_vacia = (
+            serie_fecha.isna()
+            | serie_fecha_texto.eq("")
+            | serie_fecha_texto.str.lower().isin(["nan", "nat", "none", "null"])
+        )
+
+        mask_reemplazo = mask_acuerdo & mask_fecha_vacia
+        mask_con_fecha = mask_acuerdo & ~mask_fecha_vacia
+
+        total_acuerdo = int(mask_acuerdo.sum())
+        total_con_fecha = int(mask_con_fecha.sum())
+        total_sin_fecha = int(mask_reemplazo.sum())
+
+        df_reemplazados = df_compromiso.loc[mask_reemplazo].copy()
+
+        if total_sin_fecha:
+            df_reemplazados["Descripcion antes"] = df_reemplazados[col_desc].astype(str)
+            df_compromiso.loc[mask_reemplazo, col_desc] = "No Hubo Acuerdo de pago"
+            df_reemplazados["Descripcion después"] = "No Hubo Acuerdo de pago"
+
+        total_final = len(df_compromiso)
+        control_filas_ok = total_inicial == total_final
+
+        carpeta_compromiso = Path(rutas["subcarpetas"]["04_compromiso"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_compromiso.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_excel = carpeta_compromiso / f"{fecha}_Gestion_compromiso.xlsx"
+        ruta_csv = carpeta_compromiso / f"{fecha}_Gestion.csv"
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_compromiso.xlsx"
+
+        df_compromiso.to_excel(ruta_excel, index=False)
+        df_compromiso.to_csv(ruta_csv, index=False, encoding="utf-8-sig")
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Total filas antes", "valor": total_inicial},
+                {"control": "Total filas después", "valor": total_final},
+                {"control": "Control filas iguales", "valor": "SI" if control_filas_ok else "NO"},
+                {"control": "Columna descripción", "valor": col_desc},
+                {"control": "Columna Fecha_Compromiso", "valor": col_fecha_compromiso},
+                {"control": "Acuerdo De Pago total", "valor": total_acuerdo},
+                {"control": "Acuerdo De Pago con Fecha_Compromiso", "valor": total_con_fecha},
+                {"control": "Acuerdo De Pago sin Fecha_Compromiso", "valor": total_sin_fecha},
+                {"control": "Reemplazados a No Hubo Acuerdo de pago", "valor": total_sin_fecha},
+                {"control": "Archivo Excel compromiso", "valor": str(ruta_excel)},
+                {"control": "Archivo CSV gestión", "valor": str(ruta_csv)},
+            ]
+        )
+
+        df_acuerdos = df_compromiso.loc[mask_acuerdo].copy()
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            df_acuerdos.to_excel(writer, sheet_name="AcuerdosPago", index=False)
+            df_reemplazados.to_excel(writer, sheet_name="Reemplazados", index=False)
+
+        return {
+            "ok": control_filas_ok,
+            "fecha": fecha,
+            "ruta_entrada": str(ruta_entrada),
+            "ruta_excel": str(ruta_excel),
+            "ruta_csv": str(ruta_csv),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_excel": ruta_excel.name,
+            "archivo_csv": ruta_csv.name,
+            "archivo_reporte": ruta_reporte.name,
+            "columna_descripcion": col_desc,
+            "columna_fecha_compromiso": col_fecha_compromiso,
+            "total_inicial": total_inicial,
+            "total_final": total_final,
+            "control_filas_ok": control_filas_ok,
+            "total_acuerdo": total_acuerdo,
+            "total_con_fecha": total_con_fecha,
+            "total_sin_fecha": total_sin_fecha,
+            "total_reemplazados": total_sin_fecha,
+            "preview_reemplazados": df_reemplazados.head(80).to_dict(orient="records") if total_sin_fecha else [],
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "ruta_entrada": str(ruta_entrada),
+        }

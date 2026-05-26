@@ -58,6 +58,7 @@ def main():
         "/accion/gestion-consolidada/verificar-calidad",
         "/accion/gestion-consolidada/ajuste-no-contestan",
         "/accion/gestion-consolidada/limpiar-nota",
+        "/accion/gestion-consolidada/compromiso",
     ]:
         if item in bp:
             ok(f"Ruta backend OK: {item}")
@@ -72,6 +73,7 @@ def main():
         "gcEjecutarFaseC",
         "gcEjecutarFaseD",
         "gcEjecutarFaseE",
+        "gcEjecutarFaseF",
     ]:
         if item in js:
             ok(f"Función JS OK: {item}")
