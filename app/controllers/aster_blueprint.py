@@ -300,6 +300,65 @@ def _generar_excel_entidades_aster(
     )
 
 
+
+
+def _normalizar_fecha_yyyymmdd_aster_para_fase_i(fecha_raw: str) -> str:
+    """Normaliza fecha a YYYYMMDD sin depender del frontend."""
+    fecha_limpia = "".join(ch for ch in str(fecha_raw or "") if ch.isdigit())
+
+    if len(fecha_limpia) >= 8:
+        return fecha_limpia[:8]
+
+    raise ValueError(f"Fecha ASTER inválida para Fase I: {fecha_raw}")
+
+
+def _ruta_excel_entidades_aster_para_fase_i(fecha_raw: str) -> str:
+    """Ruta canónica del Excel de entidades que consume Fase I."""
+    fecha_limpia = _normalizar_fecha_yyyymmdd_aster_para_fase_i(fecha_raw)
+
+    return os.path.join(
+        DATA_DIR,
+        fecha_limpia,
+        "Aster",
+        f"aster_{fecha_limpia}",
+        "Entidades",
+        f"entidades_aster_{fecha_limpia}.xlsx",
+    )
+
+
+def _asegurar_excel_entidades_aster_para_fase_i(fecha_raw: str) -> tuple[str, str, int]:
+    """
+    Garantiza que exista entidades_aster_YYYYMMDD.xlsx antes de Fase I.
+
+    La fuente sigue siendo la información validada en sesión por las fases
+    previas ASTER. No altera ORION ni otras fases.
+    """
+    ruta_esperada = _ruta_excel_entidades_aster_para_fase_i(fecha_raw)
+
+    if os.path.exists(ruta_esperada):
+        return (
+            ruta_esperada,
+            os.path.basename(ruta_esperada),
+            int(session.get("aster_fase_i_total_entidades") or 0),
+        )
+
+    ruta_generada, nombre_generado, total_entidades = _generar_excel_entidades_aster(
+        fecha_raw
+    )
+
+    if not ruta_generada or not os.path.exists(ruta_generada):
+        raise ValueError(
+            "No se pudo generar el archivo de entidades ASTER requerido por Fase I. "
+            "Revise que las fases de Entidades, Consulta SQL, Depuración y Conciliación "
+            "hayan dejado entidades validadas en sesión."
+        )
+
+    session["aster_reporte_entidades"] = ruta_generada
+    session["aster_fase_i_ruta_entidades"] = ruta_generada
+    session["aster_fase_i_total_entidades"] = int(total_entidades or 0)
+
+    return ruta_generada, nombre_generado, int(total_entidades or 0)
+
 def _registrar_historial_carga_aster(
     fecha_proceso: str,
     archivo_excel: str,
@@ -1242,6 +1301,29 @@ def accion_aster_fase_i_preparar():
     try:
         conexion = request.form.get("conexion", "local").strip().lower()
         fecha_raw = request.form.get("fecha_proceso", "").strip()
+
+
+        # ASTER Fase I requiere entidades_aster_YYYYMMDD.xlsx.
+        # Si no existe, se genera aquí desde las entidades validadas en sesión.
+        try:
+            fecha_para_entidades = (
+                locals().get("fecha_raw")
+                or locals().get("fecha")
+                or request.form.get("fecha")
+                or request.args.get("fecha")
+                or session.get("aster_fecha_proceso")
+                or session.get("fecha_proceso_aster")
+                or session.get("fecha_proceso")
+                or ""
+            )
+            _asegurar_excel_entidades_aster_para_fase_i(fecha_para_entidades)
+        except Exception as exc:
+            return (
+                "<div class='log-line error'>"
+                f"❌ No se pudo preparar el archivo de entidades ASTER requerido por Fase I: "
+                f"{escape(str(exc))}"
+                "</div>"
+            )
 
         resultado = preparar_fase_i_aster(
             data_dir=DATA_DIR,
