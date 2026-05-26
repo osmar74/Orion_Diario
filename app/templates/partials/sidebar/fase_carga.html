@@ -1,15 +1,21 @@
 <details>
-  <summary>💾 Fase G: Carga Consolidados</summary>
-  <div class="fase-actions">
-    <p class="ui-label-muted">Seleccione conexión:</p>
-    <div class="ui-connection-row">
-      <button id="btnConLocalSidebar" onclick="seleccionarConexion('local')" class="conexion-btn active">Local</button>
-      <button id="btnConRemotoSidebar" onclick="seleccionarConexion('remoto')" class="conexion-btn">Remoto</button>
-      <span id="conexion-actual-indicador" class="ui-sidebar-indicator">Local activo</span>
+    <summary>💾 Fase G: Carga Consolidados</summary>
+
+    <div class="fase-actions">
+        <div class="log-line info">
+            Verifique e inserte los consolidados de Causales, Lotes y Discador.
+        </div>
+
+        <button type="button" onclick="abrirWorkflowOrion('carga.causales.verificar'); return false;">
+            Ir a Carga Causales
+        </button>
+
+        <button type="button" onclick="abrirWorkflowOrion('carga.lotes.verificar'); return false;">
+            Ir a Carga Lotes
+        </button>
+
+        <button type="button" onclick="abrirWorkflowOrion('carga.discador.verificar'); return false;">
+            Ir a Carga Discador
+        </button>
     </div>
-    <button onclick="verificarCarga('causales')" id="btn-carga-causales">Causales <span class="status-icon">⚪</span></button>
-    <button onclick="verificarCarga('lote')" id="btn-carga-lotes">Lotes <span class="status-icon">⚪</span></button>
-    <button onclick="verificarCarga('discador')" id="btn-carga-discador">Discador <span class="status-icon">⚪</span></button>
-    <button onclick="abrirConsolidado()" id="btn-consolidado">Consolidado <span class="status-icon">⚪</span></button>
-  </div>
 </details>

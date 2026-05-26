@@ -1,7 +1,111 @@
-<details class="panel-monitor" id="panel-carga-discador">
+<details id="panel-carga-discador-wrapper" class="panel-monitor orion-fase-g-panel" data-orion-workflow-managed="1">
     <summary>
-        <span class="panel-icon">⚪</span> 📥 Carga Discador
-        <span id="badge-discador" class="badge-conexion badge-rojo">⚫ Desconectado</span>
+        <span class="panel-icon">📥</span>
+        Carga Discador
+        <span id="wf-status-carga-discador-global" class="wf-status-chip pending">⚪ Pendiente</span>
     </summary>
-    <div class="panel-body">Pendiente...</div>
+
+    <div class="panel-body">
+        <div class="orion-fase-g-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Conexión SQL Server</h4>
+                        <p>Seleccione la conexión para verificar e insertar el consolidado.</p>
+                    </div>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Conexión</b>
+                        <span>
+                            <select id="wf-conexion-discador" class="ui-select-dark">
+                                <option value="local" selected>LOCAL - Pruebas</option>
+                                <option value="remoto">REMOTO - Producción</option>
+                            </select>
+                        </span>
+                    </div>
+                    <div>
+                        <b>Destino</b>
+                        <span>Consolidado Discador hacia SQL Server</span>
+                    </div>
+                    <div>
+                        <b>Seguridad</b>
+                        <span>LOCAL para pruebas. REMOTO pedirá confirmación.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Verificar consolidado</h4>
+                        <p>Busca el archivo consolidado del día, muestra ruta evaluada y valida si puede cargarse.</p>
+                    </div>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Estado</b>
+                        <span id="wf-status-carga-discador-verificar" class="wf-status-chip pending">⚪ Pendiente</span>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-wf-verificar-discador"
+                    class="ui-btn-blue-sm orion-main-action"
+                    onclick="ejecutarWorkflowOrion('carga.discador.verificar', this)"
+                >
+                    Verificar Discador
+                    <span class="status-icon"></span>
+                </button>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">3</span>
+                    <div>
+                        <h4>Insertar datos</h4>
+                        <p>Inserta el consolidado validado usando la conexión seleccionada.</p>
+                    </div>
+                </div>
+
+                <div class="orion-info-card">
+                    <div>
+                        <b>Estado</b>
+                        <span id="wf-status-carga-discador-insertar" class="wf-status-chip pending">⚪ Pendiente</span>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-wf-insertar-discador"
+                    class="ui-btn-success orion-main-action"
+                    onclick="ejecutarWorkflowOrion('carga.discador.insertar', this)"
+                >
+                    Insertar Discador
+                    <span class="status-icon"></span>
+                </button>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">4</span>
+                    <div>
+                        <h4>Resultado de carga</h4>
+                        <p>Resultado de búsqueda, validación, duplicados e inserción.</p>
+                    </div>
+                </div>
+
+                <div id="panel-carga-discador" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Carga Discador pendiente de verificación/carga.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

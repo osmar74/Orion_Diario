@@ -65,6 +65,72 @@
             method: "GET",
             endpoint: "/accion/comparar-lotes",
         },
+
+        "carga.causales.verificar": {
+            phase: "G",
+            tipo: "causales",
+            label: "Verificar Causales",
+            panelId: "panel-carga-causales",
+            wrapperId: "panel-carga-causales-wrapper",
+            buttonId: "btn-wf-verificar-causales",
+            method: "POST_FORM",
+            endpoint: "/accion/verificar-carga",
+        },
+        "carga.causales.insertar": {
+            phase: "G",
+            tipo: "causales",
+            label: "Insertar Causales",
+            panelId: "panel-carga-causales",
+            wrapperId: "panel-carga-causales-wrapper",
+            buttonId: "btn-wf-insertar-causales",
+            method: "POST_FORM",
+            endpoint: "/accion/insertar-datos",
+            confirmRemote: true,
+        },
+
+        "carga.lotes.verificar": {
+            phase: "G",
+            tipo: "lote",
+            label: "Verificar Lotes",
+            panelId: "panel-carga-lote",
+            wrapperId: "panel-carga-lote-wrapper",
+            buttonId: "btn-wf-verificar-lotes",
+            method: "POST_FORM",
+            endpoint: "/accion/verificar-carga",
+        },
+        "carga.lotes.insertar": {
+            phase: "G",
+            tipo: "lote",
+            label: "Insertar Lotes",
+            panelId: "panel-carga-lote",
+            wrapperId: "panel-carga-lote-wrapper",
+            buttonId: "btn-wf-insertar-lotes",
+            method: "POST_FORM",
+            endpoint: "/accion/insertar-datos",
+            confirmRemote: true,
+        },
+
+        "carga.discador.verificar": {
+            phase: "G",
+            tipo: "discador",
+            label: "Verificar Discador",
+            panelId: "panel-carga-discador",
+            wrapperId: "panel-carga-discador-wrapper",
+            buttonId: "btn-wf-verificar-discador",
+            method: "POST_FORM",
+            endpoint: "/accion/verificar-carga",
+        },
+        "carga.discador.insertar": {
+            phase: "G",
+            tipo: "discador",
+            label: "Insertar Discador",
+            panelId: "panel-carga-discador",
+            wrapperId: "panel-carga-discador-wrapper",
+            buttonId: "btn-wf-insertar-discador",
+            method: "POST_FORM",
+            endpoint: "/accion/insertar-datos",
+            confirmRemote: true,
+        },
     };
 
     function byId(id) {
@@ -349,13 +415,188 @@ function limpiarChipsViejosFaseD() {
     function actualizarEstadoWorkflowDirecto(phase) {
         if (phase === "D") {
             actualizarEstadoFaseDDirecto();
-        actualizarEstadoFaseFDirecto();
             return;
         }
 
         if (phase === "F") {
             actualizarEstadoFaseFDirecto();
             return;
+        }
+
+        if (phase === "G") {
+            actualizarEstadoFaseGDirecto();
+            return;
+        }
+    }
+
+
+
+
+    function tipoKeyCargaWorkflow(tipo) {
+        if (tipo === "lote") {
+            return "lotes";
+        }
+
+        return tipo;
+    }
+
+    function getConexionCargaWorkflow(tipo) {
+        const key = tipoKeyCargaWorkflow(tipo);
+        const select = byId(`wf-conexion-${key}`);
+
+        if (select && select.value) {
+            return select.value;
+        }
+
+        return "local";
+    }
+
+    function crearFormDataCargaWorkflow(actionName, fecha) {
+        const action = ACTIONS[actionName];
+        const formData = new FormData();
+
+        formData.append("tipo", action.tipo || "");
+        formData.append("conexion", getConexionCargaWorkflow(action.tipo));
+        formData.append("fecha", fecha);
+
+        return formData;
+    }
+
+    async function ejecutarPostForm(actionName, fecha) {
+        const action = ACTIONS[actionName];
+        const conexion = getConexionCargaWorkflow(action.tipo);
+
+        if (action.confirmRemote && conexion === "remoto") {
+            const confirmar = confirm(
+                "Está a punto de insertar en REMOTO/Producción. ¿Desea continuar?"
+            );
+
+            if (!confirmar) {
+                throw new Error("Operación cancelada por el usuario.");
+            }
+        }
+
+        const response = await fetch(`${action.endpoint}?_=${Date.now()}`, {
+            method: "POST",
+            cache: "no-store",
+            body: crearFormDataCargaWorkflow(actionName, fecha),
+            headers: {
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return response.text();
+    }
+
+    function estadoCargaTipoWorkflow(tipo) {
+        const key = tipoKeyCargaWorkflow(tipo);
+        const estado = leerEstado();
+
+        const verificar = estado[`carga.${key}.verificar`]?.status || "pending";
+        const insertar = estado[`carga.${key}.insertar`]?.status || "pending";
+
+        if (verificar === "running" || insertar === "running") {
+            return { status: "running", detail: "Carga en ejecución" };
+        }
+
+        if (verificar === "error" || insertar === "error") {
+            return { status: "error", detail: "Error en carga" };
+        }
+
+        if (insertar === "done") {
+            return { status: "done", detail: "Carga completada" };
+        }
+
+        if (verificar === "done") {
+            return { status: "ready", detail: "Consolidado verificado" };
+        }
+
+        return { status: "pending", detail: "Carga pendiente" };
+    }
+
+    function calcularEstadoCargaGlobal() {
+        const estados = [
+            estadoCargaTipoWorkflow("causales").status,
+            estadoCargaTipoWorkflow("lote").status,
+            estadoCargaTipoWorkflow("discador").status,
+        ];
+
+        if (estados.includes("running")) {
+            return { status: "running", detail: "Carga consolidada en ejecución" };
+        }
+
+        if (estados.includes("error")) {
+            return { status: "error", detail: "Error en carga consolidada" };
+        }
+
+        if (estados.every((item) => item === "done")) {
+            return { status: "done", detail: "Cargas consolidadas completadas" };
+        }
+
+        if (estados.some((item) => item === "done" || item === "ready")) {
+            return { status: "ready", detail: "Carga consolidada parcial" };
+        }
+
+        return { status: "pending", detail: "Carga consolidada pendiente" };
+    }
+
+    function actualizarEstadoCargaTipoDirecto(tipo) {
+        const key = tipoKeyCargaWorkflow(tipo);
+        const estado = estadoCargaTipoWorkflow(tipo);
+        const [icon, label, cls] = estadoMeta(estado.status);
+
+        const legacyLabel = estado.status === "ready" ? "Revisar" : label;
+
+        const chip = byId(`wf-status-carga-${key}-global`);
+
+        if (chip) {
+            chip.className = `wf-status-chip ${cls}`;
+            chip.textContent = `${icon} ${legacyLabel}`;
+            chip.title = estado.detail || legacyLabel;
+        }
+    }
+
+    function actualizarEstadoFaseGDirecto() {
+        ["causales", "lote", "discador"].forEach(actualizarEstadoCargaTipoDirecto);
+
+        const estado = calcularEstadoCargaGlobal();
+        const [icon, label, cls] = estadoMeta(estado.status);
+
+        const legacyStatus = estado.status === "ready" ? "info" : estado.status;
+        const legacyLabel = estado.status === "ready" ? "Revisar" : label;
+
+        try {
+            const key = "orionDiario.ui.orion.phaseStatus";
+            const raw = localStorage.getItem(key);
+            const phaseStatus = raw ? JSON.parse(raw) : {};
+
+            phaseStatus.G = {
+                status: legacyStatus,
+                detail: estado.detail || legacyLabel,
+                updatedAt: new Date().toLocaleTimeString(),
+            };
+
+            localStorage.setItem(key, JSON.stringify(phaseStatus));
+        } catch {
+            // No bloquear UI por fallo de localStorage.
+        }
+
+        const sidebarItem = document.querySelector('[data-orion-phase="G"]');
+
+        if (sidebarItem) {
+            sidebarItem.classList.remove("pending", "running", "done", "error", "info");
+            sidebarItem.classList.add(cls);
+
+            const state = sidebarItem.querySelector(".orion-phase-state");
+
+            if (state) {
+                state.textContent = `${icon} ${legacyLabel}`;
+            }
         }
     }
 
@@ -616,7 +857,7 @@ function limpiarChipsViejosFaseD() {
             }
 
             if (target) {
-                if (action.method === "GET") {
+                if (action.method === "GET" || action.method === "POST_FORM") {
                     target.innerHTML = htmlLoadingWorkflow(action.label);
                 } else {
                     const aviso = document.createElement("div");
@@ -635,6 +876,8 @@ function limpiarChipsViejosFaseD() {
                     fecha,
                     seleccionados,
                 });
+            } else if (action.method === "POST_FORM") {
+                html = await ejecutarPostForm(actionName, fecha);
             } else {
                 throw new Error(`Método no soportado: ${action.method}`);
             }
@@ -664,7 +907,7 @@ function limpiarChipsViejosFaseD() {
             const mensaje = String(error?.message || error);
 
             if (target) {
-                if (action.method === "GET") {
+                if (action.method === "GET" || action.method === "POST_FORM") {
                     target.innerHTML = htmlErrorWorkflow(mensaje);
                 } else {
                     const aviso = document.createElement("div");
@@ -686,6 +929,8 @@ function limpiarChipsViejosFaseD() {
             prepararBotonCopiarDistribucion();
         }
     }
+
+
 
 
 
@@ -750,6 +995,10 @@ function limpiarChipsViejosFaseD() {
     window.ejecutarWorkflowOrion = ejecutarWorkflowOrion;
     window.abrirWorkflowOrion = abrirWorkflowOrion;
     window.inicializarWorkflowOrion = inicializarWorkflowOrion;
+    window.getConexionCargaWorkflow = getConexionCargaWorkflow;
+    window.estadoCargaTipoWorkflow = estadoCargaTipoWorkflow;
+    window.actualizarEstadoFaseGDirecto = actualizarEstadoFaseGDirecto;
+    window.calcularEstadoCargaGlobal = calcularEstadoCargaGlobal;
     window.actualizarEstadoWorkflowDirecto = actualizarEstadoWorkflowDirecto;
     window.actualizarEstadoFaseFDirecto = actualizarEstadoFaseFDirecto;
     window.calcularEstadoProcesamiento = calcularEstadoProcesamiento;
