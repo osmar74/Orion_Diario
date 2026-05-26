@@ -10,6 +10,7 @@ from app.services.gestion_consolidada_service import (
     unir_archivos_gestion,
     verificar_calidad_gestion,
     aplicar_ajuste_no_contestan_gestion,
+    limpiar_nota_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
@@ -17,6 +18,7 @@ from app.services.gestion_consolidada_renderer_service import (
     render_unir_archivos_gestion,
     render_verificar_calidad_gestion,
     render_ajuste_no_contestan_gestion,
+    render_limpiar_nota_gestion,
 )
 
 
@@ -85,3 +87,13 @@ def accion_gestion_consolidada_ajuste_no_contestan():
     resultado = aplicar_ajuste_no_contestan_gestion(_data_dir(), fecha, porcentaje)
 
     return render_ajuste_no_contestan_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/limpiar-nota", methods=["POST"])
+def accion_gestion_consolidada_limpiar_nota():
+    fecha = request.form.get("fecha", "")
+
+    resultado = limpiar_nota_gestion(_data_dir(), fecha)
+
+    return render_limpiar_nota_gestion(resultado)

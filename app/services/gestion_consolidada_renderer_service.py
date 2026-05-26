@@ -632,3 +632,64 @@ def render_ajuste_no_contestan_gestion(resultado: dict[str, Any]) -> str:
 
     return "".join(html)
 
+
+
+
+def render_limpiar_nota_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error limpiando Nota de la Gestión: {resultado.get('error', '')}")
+            + "<div class='gc-result-card'><h4>Archivo entrada</h4><p>"
+            + escape(str(resultado.get("ruta_entrada", "")))
+            + "</p></div>"
+        )
+
+    html = [
+        render_alert("success", "✅ Limpieza de Nota de la Gestión completada correctamente."),
+        "<div class='gc-result-grid'>",
+        "<div class='gc-result-card'><h4>Total filas antes</h4><p><b>",
+        escape(str(resultado.get("total_inicial", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total filas después</h4><p><b>",
+        escape(str(resultado.get("total_final", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Control filas iguales</h4><p><b>",
+        "✅ SI" if resultado.get("control_filas_ok") else "❌ NO",
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total reemplazos</h4><p><b>",
+        escape(str(resultado.get("total_reemplazos", 0))),
+        "</b></p></div>",
+        "</div>",
+    ]
+
+    html.append("<h4>Regla aplicada</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Campo</th><th>Valor</th></tr></thead><tbody>")
+    html.append(f"<tr><td>Columna</td><td>{escape(str(resultado.get('columna_nota', '')))}</td></tr>")
+    html.append(f"<tr><td>Texto buscado</td><td>{escape(str(resultado.get('valor_original', '')))}</td></tr>")
+    html.append(f"<tr><td>Texto reemplazo</td><td>{escape(str(resultado.get('valor_nuevo', '')))}</td></tr>")
+    html.append("</tbody></table></div>")
+
+    preview = resultado.get("preview") or []
+
+    html.append(
+        _render_gc_collapsible(
+            "Vista previa de registros limpiados",
+            _gc_count_badge(resultado.get("total_reemplazos", len(preview))),
+            _render_gc_table_from_dicts(preview, 80),
+            open_default=False,
+        )
+    )
+
+    html.append("<h4>Archivos generados</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>")
+    html.append(
+        f"<tr><td>Nota limpia</td><td>{escape(str(resultado.get('archivo_salida', '')))}</td><td>{escape(str(resultado.get('ruta_salida', '')))}</td></tr>"
+    )
+    html.append(
+        f"<tr><td>Reporte</td><td>{escape(str(resultado.get('archivo_reporte', '')))}</td><td>{escape(str(resultado.get('ruta_reporte', '')))}</td></tr>"
+    )
+    html.append("</tbody></table></div>")
+
+    return "".join(html)

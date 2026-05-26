@@ -3514,3 +3514,12 @@ body.gc-body .gc-process-panels .gc-section-header p {
         overflow: visible !important;
     }
 }
+
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1E
+   ============================================================ */
+
+body.gc-body .gc-process-panels #gcResultadoFaseE .gc-result-card p {
+    word-break: break-word;
+}

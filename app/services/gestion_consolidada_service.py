@@ -886,3 +886,135 @@ def aplicar_ajuste_no_contestan_gestion(
             "error": str(exc),
             "ruta_entrada": str(ruta_entrada),
         }
+
+
+
+def limpiar_nota_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
+    """
+    Fase E - Limpieza columna Nota de la Gestion.
+
+    Reemplaza:
+    - "Acepta táctico de reconexión."
+    por:
+    - "Acepta táctico de reconexión"
+
+    Genera:
+    - 03_ajustes/YYYYMMDD_Gestion_nota_limpia.xlsx
+    - Reportes/YYYYMMDD_reporte_limpieza_nota.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+
+    ruta_entrada = (
+        Path(rutas["subcarpetas"]["03_ajustes"])
+        / f"{fecha}_Gestion_ajuste_no_contestan.xlsx"
+    )
+
+    if not ruta_entrada.exists():
+        return {
+            "ok": False,
+            "error": f"No existe archivo de Fase D. Ejecute primero Fase D: {ruta_entrada}",
+            "ruta_entrada": str(ruta_entrada),
+        }
+
+    try:
+        df = pd.read_excel(ruta_entrada)
+        df.columns = [str(col).strip() for col in df.columns]
+
+        total_inicial = len(df)
+
+        col_nota = _buscar_columna_gestion(
+            df,
+            [
+                "Nota de la Gestion",
+                "Nota de la Gestión",
+                "Nota Gestion",
+                "Nota Gestión",
+                "Nota",
+            ],
+        )
+
+        valor_original = "Acepta táctico de reconexión."
+        valor_nuevo = "Acepta táctico de reconexión"
+
+        df_limpio = df.copy()
+        serie_original = df_limpio[col_nota].fillna("").astype(str)
+
+        mask_reemplazo = serie_original.str.contains(valor_original, regex=False, na=False)
+        total_reemplazos = int(mask_reemplazo.sum())
+
+        df_preview = df_limpio.loc[mask_reemplazo].copy()
+
+        if total_reemplazos:
+            df_preview["Nota antes"] = df_preview[col_nota].astype(str)
+
+            df_limpio.loc[mask_reemplazo, col_nota] = (
+                df_limpio.loc[mask_reemplazo, col_nota]
+                .astype(str)
+                .str.replace(valor_original, valor_nuevo, regex=False)
+            )
+
+            df_preview["Nota después"] = df_limpio.loc[mask_reemplazo, col_nota].astype(str)
+
+        total_final = len(df_limpio)
+        control_filas_ok = total_inicial == total_final
+
+        carpeta_ajustes = Path(rutas["subcarpetas"]["03_ajustes"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_ajustes.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_salida = carpeta_ajustes / f"{fecha}_Gestion_nota_limpia.xlsx"
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_limpieza_nota.xlsx"
+
+        df_limpio.to_excel(ruta_salida, index=False)
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Total filas antes", "valor": total_inicial},
+                {"control": "Total filas después", "valor": total_final},
+                {"control": "Control filas iguales", "valor": "SI" if control_filas_ok else "NO"},
+                {"control": "Columna usada", "valor": col_nota},
+                {"control": "Texto buscado", "valor": valor_original},
+                {"control": "Texto reemplazo", "valor": valor_nuevo},
+                {"control": "Total reemplazos", "valor": total_reemplazos},
+                {"control": "Archivo salida", "valor": str(ruta_salida)},
+            ]
+        )
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            df_preview.to_excel(writer, sheet_name="RegistrosLimpiados", index=False)
+
+        return {
+            "ok": control_filas_ok,
+            "fecha": fecha,
+            "ruta_entrada": str(ruta_entrada),
+            "ruta_salida": str(ruta_salida),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_salida": ruta_salida.name,
+            "archivo_reporte": ruta_reporte.name,
+            "columna_nota": col_nota,
+            "valor_original": valor_original,
+            "valor_nuevo": valor_nuevo,
+            "total_inicial": total_inicial,
+            "total_final": total_final,
+            "control_filas_ok": control_filas_ok,
+            "total_reemplazos": total_reemplazos,
+            "preview": df_preview.head(80).to_dict(orient="records") if total_reemplazos else [],
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "ruta_entrada": str(ruta_entrada),
+        }

@@ -308,6 +308,35 @@
         }
     }
 
+
+    async function gcEjecutarFaseE() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("E", "running", "Limpiando Nota de la Gestión.");
+        setHtml("gcResultadoFaseE", htmlLoading("Limpiando Nota de la Gestión..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/limpiar-nota", formBase());
+            setHtml("gcResultadoFaseE", html);
+
+            const error = String(html).includes("Error limpiando Nota de la Gestión");
+
+            actualizarFase(
+                "E",
+                error ? "error" : "done",
+                error ? "Error en limpieza de nota." : "Nota de la Gestión limpiada."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseE", htmlError(`Error ejecutando Fase E: ${error.message || error}`));
+            actualizarFase("E", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -337,6 +366,7 @@
     window.gcEjecutarFaseB = gcEjecutarFaseB;
     window.gcEjecutarFaseC = gcEjecutarFaseC;
     window.gcEjecutarFaseD = gcEjecutarFaseD;
+    window.gcEjecutarFaseE = gcEjecutarFaseE;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);
