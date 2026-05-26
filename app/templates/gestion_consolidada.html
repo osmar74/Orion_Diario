@@ -197,6 +197,22 @@
             </div>
         </section>
 
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase H — Archivos generados</h2>
+                <p>Muestra los CSV/XLSX creados con nombre, ruta, fecha de creación, modificación, tamaño y filas.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseH()">
+                Ejecutar Fase H: Listar archivos generados
+            </button>
+
+            <div id="gcResultadoFaseH" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase H pendiente.</div>
+            </div>
+        </section>
+
         <section class="gc-section muted">
             <div class="gc-section-header">
                 <h2>Fases siguientes</h2>
@@ -204,7 +220,6 @@
             </div>
 
             <div class="gc-roadmap">
-                <div>H — Reporte de archivos generados</div>
                 <div>I — Carga SQL final</div>
             </div>
         </section>

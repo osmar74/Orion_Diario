@@ -13,6 +13,7 @@ from app.services.gestion_consolidada_service import (
     limpiar_nota_gestion,
     procesar_compromiso_gestion,
     generar_archivo_final_gestion,
+    listar_archivos_generados_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
@@ -23,6 +24,7 @@ from app.services.gestion_consolidada_renderer_service import (
     render_limpiar_nota_gestion,
     render_compromiso_gestion,
     render_archivo_final_gestion,
+    render_archivos_generados_gestion,
 )
 
 
@@ -121,3 +123,13 @@ def accion_gestion_consolidada_archivo_final():
     resultado = generar_archivo_final_gestion(_data_dir(), fecha)
 
     return render_archivo_final_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/archivos-generados", methods=["POST"])
+def accion_gestion_consolidada_archivos_generados():
+    fecha = request.form.get("fecha", "")
+
+    resultado = listar_archivos_generados_gestion(_data_dir(), fecha)
+
+    return render_archivos_generados_gestion(resultado)

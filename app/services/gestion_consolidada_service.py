@@ -1385,3 +1385,166 @@ def generar_archivo_final_gestion(data_dir: str | Path, fecha_raw: str) -> dict[
             "ruta_entrada": str(ruta_entrada),
             "ruta_orion": str(ruta_orion_original),
         }
+
+
+
+def _contar_filas_archivo_generado(ruta: Path) -> int | str:
+    ext = ruta.suffix.lower()
+
+    try:
+        if ext == ".xlsx":
+            return contar_filas_excel(ruta) or ""
+
+        if ext == ".csv":
+            with ruta.open("r", encoding="utf-8-sig", errors="ignore") as fh:
+                total = sum(1 for _ in fh)
+
+            return max(0, total - 1)
+    except Exception:
+        return ""
+
+    return ""
+
+
+def _info_archivo_generado_gestion(ruta: Path, base_consolidado: Path) -> dict[str, Any]:
+    stat = ruta.stat()
+    ext = ruta.suffix.lower().replace(".", "")
+
+    try:
+        carpeta_relativa = str(ruta.parent.relative_to(base_consolidado))
+    except Exception:
+        carpeta_relativa = ruta.parent.name
+
+    return {
+        "nombre": ruta.name,
+        "ruta": str(ruta),
+        "tipo": ext.upper(),
+        "carpeta": carpeta_relativa,
+        "tamano_kb": round(stat.st_size / 1024, 2),
+        "fecha_creacion": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S"),
+        "fecha_modificacion": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+        "filas": _contar_filas_archivo_generado(ruta),
+    }
+
+
+def listar_archivos_generados_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
+    """
+    Fase H - Archivos generados.
+
+    Lista todos los .xlsx y .csv creados dentro de:
+    data/YYYYMMDD/Consolidado/Gestion
+
+    Genera además:
+    - Reportes/YYYYMMDD_reporte_archivos_generados.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+    carpeta_consolidado = Path(rutas["consolidado"])
+    carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+
+    if not carpeta_consolidado.exists():
+        return {
+            "ok": False,
+            "error": f"No existe la carpeta Consolidado/Gestion. Ejecute primero Fase A: {carpeta_consolidado}",
+            "carpeta_consolidado": str(carpeta_consolidado),
+        }
+
+    try:
+        archivos = []
+
+        for patron in ("*.xlsx", "*.csv"):
+            for ruta in carpeta_consolidado.rglob(patron):
+                if ruta.is_file():
+                    archivos.append(_info_archivo_generado_gestion(ruta, carpeta_consolidado))
+
+        archivos = sorted(
+            archivos,
+            key=lambda item: (
+                str(item.get("tipo", "")),
+                str(item.get("carpeta", "")),
+                str(item.get("nombre", "")),
+            ),
+        )
+
+        total_archivos = len(archivos)
+        total_excel = sum(1 for item in archivos if item.get("tipo") == "XLSX")
+        total_csv = sum(1 for item in archivos if item.get("tipo") == "CSV")
+        tamano_total_kb = round(sum(float(item.get("tamano_kb") or 0) for item in archivos), 2)
+
+        archivo_final = (
+            Path(rutas["subcarpetas"]["05_final"])
+            / f"{fecha}_Gestion_excel.xlsx"
+        )
+        archivo_csv = (
+            Path(rutas["subcarpetas"]["04_compromiso"])
+            / f"{fecha}_Gestion.csv"
+        )
+
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_archivos_generados.xlsx"
+
+        df_archivos = pd.DataFrame(archivos)
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Total archivos", "valor": total_archivos},
+                {"control": "Total Excel", "valor": total_excel},
+                {"control": "Total CSV", "valor": total_csv},
+                {"control": "Tamaño total KB", "valor": tamano_total_kb},
+                {"control": "Archivo final existe", "valor": "SI" if archivo_final.exists() else "NO"},
+                {"control": "Archivo CSV existe", "valor": "SI" if archivo_csv.exists() else "NO"},
+                {"control": "Carpeta Consolidado/Gestion", "valor": str(carpeta_consolidado)},
+            ]
+        )
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            df_archivos.to_excel(writer, sheet_name="Archivos", index=False)
+
+        # Incluir el reporte recién generado en el resultado visual.
+        if ruta_reporte.exists():
+            info_reporte = _info_archivo_generado_gestion(ruta_reporte, carpeta_consolidado)
+
+            if not any(item.get("ruta") == str(ruta_reporte) for item in archivos):
+                archivos.append(info_reporte)
+
+        archivos = sorted(
+            archivos,
+            key=lambda item: (
+                str(item.get("tipo", "")),
+                str(item.get("carpeta", "")),
+                str(item.get("nombre", "")),
+            ),
+        )
+
+        return {
+            "ok": True,
+            "fecha": fecha,
+            "carpeta_consolidado": str(carpeta_consolidado),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_reporte": ruta_reporte.name,
+            "archivo_final": str(archivo_final),
+            "archivo_csv": str(archivo_csv),
+            "archivo_final_existe": archivo_final.exists(),
+            "archivo_csv_existe": archivo_csv.exists(),
+            "total_archivos": len(archivos),
+            "total_excel": sum(1 for item in archivos if item.get("tipo") == "XLSX"),
+            "total_csv": sum(1 for item in archivos if item.get("tipo") == "CSV"),
+            "tamano_total_kb": round(sum(float(item.get("tamano_kb") or 0) for item in archivos), 2),
+            "archivos": archivos,
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "carpeta_consolidado": str(carpeta_consolidado),
+        }

@@ -395,6 +395,35 @@
         }
     }
 
+
+    async function gcEjecutarFaseH() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("H", "running", "Listando archivos generados.");
+        setHtml("gcResultadoFaseH", htmlLoading("Listando archivos CSV/XLSX generados..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/archivos-generados", formBase());
+            setHtml("gcResultadoFaseH", html);
+
+            const error = String(html).includes("Error listando archivos generados");
+
+            actualizarFase(
+                "H",
+                error ? "error" : "done",
+                error ? "Error listando archivos." : "Archivos generados listados."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseH", htmlError(`Error ejecutando Fase H: ${error.message || error}`));
+            actualizarFase("H", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -427,6 +456,7 @@
     window.gcEjecutarFaseE = gcEjecutarFaseE;
     window.gcEjecutarFaseF = gcEjecutarFaseF;
     window.gcEjecutarFaseG = gcEjecutarFaseG;
+    window.gcEjecutarFaseH = gcEjecutarFaseH;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);

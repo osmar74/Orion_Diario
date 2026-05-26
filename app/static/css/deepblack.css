@@ -3541,3 +3541,37 @@ body.gc-body .gc-process-panels #gcResultadoFaseF .gc-result-card p {
 body.gc-body .gc-process-panels #gcResultadoFaseG .gc-result-card p {
     word-break: break-word;
 }
+
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1H
+   ============================================================ */
+
+.gc-file-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 46px;
+    min-height: 21px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 950;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.gc-file-type-xlsx {
+    background: rgba(22, 163, 74, 0.18);
+    color: #bbf7d0;
+    border-color: rgba(74, 222, 128, 0.32);
+}
+
+.gc-file-type-csv {
+    background: rgba(37, 99, 235, 0.18);
+    color: #bfdbfe;
+    border-color: rgba(96, 165, 250, 0.32);
+}
+
+body.gc-body .gc-process-panels #gcResultadoFaseH .gc-table td {
+    word-break: break-word;
+}
