@@ -3070,3 +3070,180 @@ body.gc-body .gc-state-section .gc-phase-card b {
 .gc-donut-row-quality .gc-donut-card h4 {
     color: #bfdbfe;
 }
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN LAYOUT v1D.3
+   Estado de fases lateral + control superior compacto
+   ============================================================ */
+
+/* Panel superior Fecha / Conexión / Acciones */
+body.gc-body .gc-control-panel {
+    display: grid !important;
+    grid-template-columns: minmax(250px, 0.85fr) minmax(520px, 1.4fr) minmax(310px, 0.7fr) !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 13px 18px !important;
+    min-height: 82px !important;
+}
+
+body.gc-body .gc-control-panel .gc-field {
+    gap: 6px !important;
+    align-content: center !important;
+}
+
+body.gc-body .gc-control-panel .gc-field label {
+    margin: 0 !important;
+    line-height: 1.1 !important;
+}
+
+body.gc-body .gc-control-panel .gc-field input {
+    height: 38px !important;
+    padding: 8px 11px !important;
+}
+
+body.gc-body .gc-control-panel .gc-field:nth-child(2) {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    align-items: center !important;
+    column-gap: 10px !important;
+    row-gap: 4px !important;
+}
+
+body.gc-body .gc-control-panel .gc-field:nth-child(2) label {
+    grid-column: 1 / 4 !important;
+}
+
+body.gc-body .gc-control-panel .gc-connection-buttons {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+body.gc-body .gc-control-panel .gc-field.actions {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+body.gc-body .gc-control-panel .gc-field.actions label {
+    white-space: nowrap !important;
+}
+
+body.gc-body .gc-control-panel .gc-btn {
+    min-height: 34px !important;
+    padding: 8px 13px !important;
+}
+
+/* Layout principal: estado a la izquierda, fases a la derecha */
+body.gc-body .gc-work-layout {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+body.gc-body .gc-phase-sidebar {
+    position: sticky;
+    top: 12px;
+    z-index: 5;
+}
+
+body.gc-body .gc-phase-sidebar .gc-state-section {
+    margin-bottom: 0 !important;
+    padding: 14px !important;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+}
+
+body.gc-body .gc-phase-sidebar .gc-section-header {
+    display: block !important;
+    margin-bottom: 10px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-section-header p {
+    display: none !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-section-header h2 {
+    font-size: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-section-header h2::before {
+    margin-right: 0 !important;
+    flex: 0 0 30px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card {
+    display: grid !important;
+    grid-template-columns: auto 1fr !important;
+    min-height: auto !important;
+    padding: 9px 10px !important;
+    gap: 2px 8px !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card b {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.78rem !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card span {
+    font-size: 0.82rem !important;
+    line-height: 1.15 !important;
+}
+
+body.gc-body .gc-phase-sidebar .gc-phase-card em {
+    font-size: 0.72rem !important;
+}
+
+/* En esta vista, los paneles operativos mantienen el ancho completo del área derecha */
+body.gc-body .gc-process-panels {
+    min-width: 0;
+}
+
+body.gc-body .gc-process-panels .gc-section:first-child {
+    margin-top: 0 !important;
+}
+
+/* Responsive */
+@media (max-width: 1180px) {
+    body.gc-body .gc-control-panel {
+        grid-template-columns: 1fr !important;
+        min-height: auto !important;
+    }
+
+    body.gc-body .gc-control-panel .gc-field:nth-child(2) {
+        grid-template-columns: 1fr !important;
+    }
+
+    body.gc-body .gc-control-panel .gc-field:nth-child(2) label {
+        grid-column: auto !important;
+    }
+
+    body.gc-body .gc-control-panel .gc-field.actions {
+        justify-content: flex-start !important;
+    }
+
+    body.gc-body .gc-work-layout {
+        grid-template-columns: 1fr;
+    }
+
+    body.gc-body .gc-phase-sidebar {
+        position: static;
+    }
+
+    body.gc-body .gc-phase-sidebar .gc-phase-grid {
+        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)) !important;
+    }
+}

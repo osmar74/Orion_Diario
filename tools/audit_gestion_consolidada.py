@@ -98,11 +98,14 @@ def main():
     for item in [
         "CONSOLIDAR GESTIÓN UX REFINEMENT v1D",
         "CONSOLIDAR GESTIÓN UX REFINEMENT v1D.2",
+        "CONSOLIDAR GESTIÓN LAYOUT v1D.3",
         "gc-collapse",
         "gc-values-grid-six",
         "gc-donut-card",
         "gc-state-section",
         "gc-donut-row-quality",
+        "gc-work-layout",
+        "gc-phase-sidebar",
     ]:
         if item in css or item in renderer:
             ok(f"UX OK: {item}")

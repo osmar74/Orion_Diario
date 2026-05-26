@@ -56,7 +56,9 @@
             </div>
         </section>
 
-        <section class="gc-section gc-state-section">
+        <div class="gc-work-layout">
+    <aside class="gc-phase-sidebar">
+<section class="gc-section gc-state-section">
             <div class="gc-section-header">
                 <h2>Estado de fases</h2>
                 <p>Seguimiento paso a paso del proceso Consolidar Gestión.</p>
@@ -74,6 +76,9 @@
                 <div class="gc-phase-card" data-gc-phase="I"><b>I</b><span>Cargar información</span><em>⚪ Pendiente</em></div>
             </div>
         </section>
+    </aside>
+    <div class="gc-process-panels">
+
 
         <section class="gc-section">
             <div class="gc-section-header">
@@ -158,6 +163,8 @@
                 <div>I — Carga SQL final</div>
             </div>
         </section>
+    </div>
+</div>
     </main>
 
     <script src="{{ url_for('static', filename='js/gestion_consolidada.js') }}"></script>
