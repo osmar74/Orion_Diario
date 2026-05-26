@@ -976,3 +976,107 @@ def render_archivos_generados_gestion(resultado: dict[str, Any]) -> str:
 
     return "".join(html)
 
+
+
+
+def render_carga_sql_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error cargando información SQL: {resultado.get('error', '')}")
+            + "<div class='gc-result-grid'>"
+            + "<div class='gc-result-card'><h4>Conexión</h4><p>"
+            + escape(str(resultado.get("conexion", "")))
+            + "</p></div>"
+            + "<div class='gc-result-card'><h4>Tabla destino</h4><p>"
+            + escape(str(resultado.get("tabla_destino", "")))
+            + "</p></div>"
+            + "<div class='gc-result-card'><h4>Archivo Excel</h4><p>"
+            + escape(str(resultado.get("ruta_excel", "")))
+            + "</p></div>"
+            + "</div>"
+        )
+
+    filas_leidas = _safe_int(resultado.get("filas_leidas", 0))
+    filas_insertadas = _safe_int(resultado.get("filas_insertadas", 0))
+    columnas_insertadas = resultado.get("columnas_insertadas") or []
+    columnas_omitidas = resultado.get("columnas_omitidas_excel") or []
+    columnas_faltantes = resultado.get("columnas_tabla_sin_excel") or []
+    errores = resultado.get("errores") or []
+
+    html = [
+        render_alert("success", "✅ Carga SQL final completada correctamente."),
+        "<div class='gc-result-grid'>",
+        "<div class='gc-result-card'><h4>Conexión usada</h4><p><b>",
+        escape(str(resultado.get("conexion", ""))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Tabla destino</h4><p><b>",
+        escape(str(resultado.get("tabla_destino", ""))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Filas leídas</h4><p><b>",
+        escape(str(filas_leidas)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Filas insertadas</h4><p><b>",
+        escape(str(filas_insertadas)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total tabla antes</h4><p><b>",
+        escape(str(resultado.get("total_antes", ""))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total tabla después</h4><p><b>",
+        escape(str(resultado.get("total_despues", ""))),
+        "</b></p></div>",
+        "</div>",
+    ]
+
+    html.append("<div class='gc-donut-row'>")
+    html.append(_render_gc_donut_card("Inserción SQL", filas_leidas, filas_insertadas, "insertadas"))
+    html.append(_render_gc_donut_card("Columnas insertadas", len(columnas_insertadas) + len(columnas_omitidas), len(columnas_insertadas), "usadas"))
+    html.append("</div>")
+
+    html.append("<h4>Archivo cargado</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>")
+    html.append(
+        f"<tr><td>Excel final</td><td>{escape(str(resultado.get('archivo_excel', '')))}</td><td>{escape(str(resultado.get('ruta_excel', '')))}</td></tr>"
+    )
+    html.append(
+        f"<tr><td>Reporte carga SQL</td><td>{escape(str(resultado.get('archivo_reporte', '')))}</td><td>{escape(str(resultado.get('ruta_reporte', '')))}</td></tr>"
+    )
+    html.append("</tbody></table></div>")
+
+    html.append(
+        _render_gc_collapsible(
+            "Columnas insertadas",
+            _gc_count_badge(len(columnas_insertadas), "columnas"),
+            _render_gc_columns_grid(columnas_insertadas, 6),
+            open_default=False,
+        )
+    )
+
+    html.append(
+        _render_gc_collapsible(
+            "Columnas del Excel no insertadas",
+            _gc_count_badge(len(columnas_omitidas), "columnas"),
+            _render_gc_columns_grid(columnas_omitidas, 6),
+            open_default=False,
+        )
+    )
+
+    html.append(
+        _render_gc_collapsible(
+            "Columnas de tabla sin columna equivalente en Excel",
+            _gc_count_badge(len(columnas_faltantes), "columnas"),
+            _render_gc_columns_grid(columnas_faltantes, 6),
+            open_default=False,
+        )
+    )
+
+    html.append(
+        _render_gc_collapsible(
+            "Errores de carga",
+            _gc_count_badge(len(errores), "errores"),
+            _render_gc_table_from_dicts(errores, 80),
+            open_default=False,
+        )
+    )
+
+    return "".join(html)

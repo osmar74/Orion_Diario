@@ -3575,3 +3575,16 @@ body.gc-body .gc-process-panels #gcResultadoFaseG .gc-result-card p {
 body.gc-body .gc-process-panels #gcResultadoFaseH .gc-table td {
     word-break: break-word;
 }
+
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1I
+   ============================================================ */
+
+body.gc-body .gc-process-panels #gcResultadoFaseI .gc-result-card p {
+    word-break: break-word;
+}
+
+body.gc-body .gc-process-panels #gcResultadoFaseI .gc-values-grid-six {
+    grid-template-columns: repeat(6, minmax(110px, 1fr));
+}

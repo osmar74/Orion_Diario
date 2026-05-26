@@ -424,6 +424,45 @@
         }
     }
 
+
+    async function gcEjecutarFaseI() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        if (conexionGlobal === "remoto") {
+            const confirmar = confirm(
+                "Está por cargar información en conexión REMOTO / PRODUCCIÓN. ¿Desea continuar?"
+            );
+
+            if (!confirmar) {
+                return;
+            }
+        }
+
+        actualizarFase("I", "running", "Cargando información SQL.");
+        setHtml("gcResultadoFaseI", htmlLoading("Cargando información en SQL Server..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/cargar-sql", formBase());
+            setHtml("gcResultadoFaseI", html);
+
+            const error = String(html).includes("Error cargando información SQL");
+
+            actualizarFase(
+                "I",
+                error ? "error" : "done",
+                error ? "Error en carga SQL." : "Carga SQL completada."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseI", htmlError(`Error ejecutando Fase I: ${error.message || error}`));
+            actualizarFase("I", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -457,6 +496,7 @@
     window.gcEjecutarFaseF = gcEjecutarFaseF;
     window.gcEjecutarFaseG = gcEjecutarFaseG;
     window.gcEjecutarFaseH = gcEjecutarFaseH;
+    window.gcEjecutarFaseI = gcEjecutarFaseI;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);

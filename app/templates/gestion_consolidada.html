@@ -213,6 +213,28 @@
             </div>
         </section>
 
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase I — Cargar información</h2>
+                <p>Carga YYYYMMDD_Gestion_excel.xlsx en Vencorp_V2.gestion.gestion_adminfo_onedrive usando la conexión global.</p>
+            </div>
+
+            <div class="gc-inline-controls">
+                <span class="gc-mini-note">
+                    La carga usa la conexión global seleccionada arriba. LOCAL es para pruebas; REMOTO es producción.
+                </span>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseI()">
+                Ejecutar Fase I: Cargar información SQL
+            </button>
+
+            <div id="gcResultadoFaseI" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase I pendiente.</div>
+            </div>
+        </section>
+
         <section class="gc-section muted">
             <div class="gc-section-header">
                 <h2>Fases siguientes</h2>
@@ -220,7 +242,6 @@
             </div>
 
             <div class="gc-roadmap">
-                <div>I — Carga SQL final</div>
             </div>
         </section>
     </div>

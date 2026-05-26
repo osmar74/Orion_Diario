@@ -1548,3 +1548,334 @@ def listar_archivos_generados_gestion(data_dir: str | Path, fecha_raw: str) -> d
             "error": str(exc),
             "carpeta_consolidado": str(carpeta_consolidado),
         }
+
+
+
+def _connection_string_vencorp(conexion: str) -> str:
+    """
+    Conexión SQL Server para carga final de Consolidar Gestión.
+
+    Variables opcionales:
+    - GESTION_SQL_DRIVER
+    - GESTION_SQL_LOCAL_SERVER
+    - GESTION_SQL_REMOTE_SERVER
+    - GESTION_SQL_USER
+    - GESTION_SQL_PASSWORD
+
+    Si no hay usuario/clave, usa Trusted_Connection=yes.
+    """
+    conn = str(conexion or "local").lower()
+    driver = os.getenv("GESTION_SQL_DRIVER", "ODBC Driver 17 for SQL Server")
+
+    local_server = os.getenv("GESTION_SQL_LOCAL_SERVER", r"localhost\SQL2025DEV")
+    remote_server = os.getenv("GESTION_SQL_REMOTE_SERVER", "VC-EIDER")
+
+    server = remote_server if conn == "remoto" else local_server
+
+    user = os.getenv("GESTION_SQL_USER") or os.getenv("SQLSERVER_USER")
+    password = os.getenv("GESTION_SQL_PASSWORD") or os.getenv("SQLSERVER_PASSWORD")
+
+    if user and password:
+        return (
+            f"DRIVER={{{driver}}};"
+            f"SERVER={server};"
+            "DATABASE=Vencorp_V2;"
+            f"UID={user};"
+            f"PWD={password};"
+            "TrustServerCertificate=yes;"
+        )
+
+    return (
+        f"DRIVER={{{driver}}};"
+        f"SERVER={server};"
+        "DATABASE=Vencorp_V2;"
+        "Trusted_Connection=yes;"
+        "TrustServerCertificate=yes;"
+    )
+
+
+def _normalizar_valor_sql(value: Any) -> Any:
+    try:
+        import pandas as pd
+        import numpy as np
+    except Exception:
+        pd = None
+        np = None
+
+    if value is None:
+        return None
+
+    if pd is not None:
+        try:
+            if pd.isna(value):
+                return None
+        except Exception:
+            pass
+
+        try:
+            if isinstance(value, pd.Timestamp):
+                return value.to_pydatetime()
+        except Exception:
+            pass
+
+    if np is not None:
+        try:
+            if isinstance(value, np.generic):
+                return value.item()
+        except Exception:
+            pass
+
+    return value
+
+
+def _columnas_insertables_sql(cursor: Any, schema: str, table: str) -> list[str]:
+    query = """
+    SELECT c.name
+    FROM sys.columns c
+    INNER JOIN sys.objects o ON c.object_id = o.object_id
+    INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
+    WHERE s.name = ?
+      AND o.name = ?
+      AND o.type = 'U'
+      AND c.is_identity = 0
+      AND c.is_computed = 0
+    ORDER BY c.column_id;
+    """
+
+    return [row[0] for row in cursor.execute(query, schema, table).fetchall()]
+
+
+def _contar_registros_tabla_sql(cursor: Any, schema: str, table: str) -> int | None:
+    try:
+        row = cursor.execute(f"SELECT COUNT(*) FROM [{schema}].[{table}]").fetchone()
+        return int(row[0]) if row else 0
+    except Exception:
+        return None
+
+
+def cargar_informacion_gestion_sql(
+    data_dir: str | Path,
+    fecha_raw: str,
+    conexion: str = "local",
+) -> dict[str, Any]:
+    """
+    Fase I - Cargar información.
+
+    Lee:
+    - 05_final/YYYYMMDD_Gestion_excel.xlsx
+
+    Inserta en:
+    - Vencorp_V2.gestion.gestion_adminfo_onedrive
+
+    Reporta:
+    - filas leídas
+    - filas insertadas
+    - columnas insertadas
+    - errores
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    try:
+        import pyodbc
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pyodbc: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+    conexion_normalizada = str(conexion or "local").lower()
+
+    schema = "gestion"
+    table = "gestion_adminfo_onedrive"
+    database = "Vencorp_V2"
+
+    ruta_excel = (
+        Path(rutas["subcarpetas"]["05_final"])
+        / f"{fecha}_Gestion_excel.xlsx"
+    )
+
+    if not ruta_excel.exists():
+        return {
+            "ok": False,
+            "error": f"No existe archivo final. Ejecute primero Fase G: {ruta_excel}",
+            "ruta_excel": str(ruta_excel),
+            "conexion": conexion_normalizada,
+            "database": database,
+            "schema": schema,
+            "table": table,
+        }
+
+    try:
+        df = pd.read_excel(ruta_excel)
+        df.columns = [str(col).strip() for col in df.columns]
+
+        filas_leidas = len(df)
+
+        if filas_leidas == 0:
+            return {
+                "ok": False,
+                "error": "El archivo final no contiene filas para insertar.",
+                "ruta_excel": str(ruta_excel),
+                "conexion": conexion_normalizada,
+                "database": database,
+                "schema": schema,
+                "table": table,
+                "filas_leidas": 0,
+            }
+
+        conn_str = _connection_string_vencorp(conexion_normalizada)
+
+        with pyodbc.connect(conn_str, timeout=30) as conn:
+            cursor = conn.cursor()
+
+            total_antes = _contar_registros_tabla_sql(cursor, schema, table)
+
+            columnas_tabla = _columnas_insertables_sql(cursor, schema, table)
+
+            if not columnas_tabla:
+                raise ValueError(
+                    f"No se encontraron columnas insertables para {database}.{schema}.{table}. "
+                    "Verifique que la tabla exista y que el usuario tenga permisos."
+                )
+
+            columnas_excel = list(df.columns)
+
+            columnas_insertar = [
+                col for col in columnas_tabla
+                if col in columnas_excel
+            ]
+
+            columnas_omitidas_excel = [
+                col for col in columnas_excel
+                if col not in columnas_insertar
+            ]
+
+            columnas_tabla_sin_excel = [
+                col for col in columnas_tabla
+                if col not in columnas_excel
+            ]
+
+            if not columnas_insertar:
+                raise ValueError(
+                    "No hay columnas comunes entre el Excel final y la tabla destino. "
+                    f"Columnas Excel: {columnas_excel}. "
+                    f"Columnas tabla: {columnas_tabla}."
+                )
+
+            placeholders = ", ".join(["?"] * len(columnas_insertar))
+            columnas_sql = ", ".join(f"[{col}]" for col in columnas_insertar)
+
+            insert_sql = (
+                f"INSERT INTO [{schema}].[{table}] "
+                f"({columnas_sql}) VALUES ({placeholders})"
+            )
+
+            rows = []
+
+            for row in df[columnas_insertar].itertuples(index=False, name=None):
+                rows.append(tuple(_normalizar_valor_sql(value) for value in row))
+
+            cursor.fast_executemany = True
+
+            filas_insertadas = 0
+            errores = []
+
+            chunk_size = 1000
+
+            for inicio in range(0, len(rows), chunk_size):
+                chunk = rows[inicio: inicio + chunk_size]
+
+                try:
+                    cursor.executemany(insert_sql, chunk)
+                    filas_insertadas += len(chunk)
+                except Exception as exc:
+                    errores.append(
+                        {
+                            "bloque_inicio": inicio + 1,
+                            "bloque_fin": inicio + len(chunk),
+                            "error": str(exc),
+                        }
+                    )
+                    raise
+
+            conn.commit()
+
+            total_despues = _contar_registros_tabla_sql(cursor, schema, table)
+
+        carpeta_carga = Path(rutas["subcarpetas"]["06_carga"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_carga.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_carga_sql.xlsx"
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Conexión", "valor": conexion_normalizada},
+                {"control": "Base de datos", "valor": database},
+                {"control": "Tabla destino", "valor": f"{schema}.{table}"},
+                {"control": "Archivo leído", "valor": str(ruta_excel)},
+                {"control": "Filas leídas Excel", "valor": filas_leidas},
+                {"control": "Filas insertadas SQL", "valor": filas_insertadas},
+                {"control": "Columnas insertadas", "valor": len(columnas_insertar)},
+                {"control": "Columnas Excel omitidas", "valor": len(columnas_omitidas_excel)},
+                {"control": "Columnas tabla sin Excel", "valor": len(columnas_tabla_sin_excel)},
+                {"control": "Total tabla antes", "valor": "" if total_antes is None else total_antes},
+                {"control": "Total tabla después", "valor": "" if total_despues is None else total_despues},
+                {"control": "Errores", "valor": len(errores)},
+            ]
+        )
+
+        df_columnas_insertadas = pd.DataFrame({"columna_insertada": columnas_insertar})
+        df_columnas_omitidas = pd.DataFrame({"columna_excel_omitida": columnas_omitidas_excel})
+        df_columnas_faltantes = pd.DataFrame({"columna_tabla_sin_excel": columnas_tabla_sin_excel})
+        df_errores = pd.DataFrame(errores)
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            df_columnas_insertadas.to_excel(writer, sheet_name="ColumnasInsertadas", index=False)
+            df_columnas_omitidas.to_excel(writer, sheet_name="ColumnasExcelOmitidas", index=False)
+            df_columnas_faltantes.to_excel(writer, sheet_name="ColumnasTablaSinExcel", index=False)
+            df_errores.to_excel(writer, sheet_name="Errores", index=False)
+
+        return {
+            "ok": True,
+            "fecha": fecha,
+            "conexion": conexion_normalizada,
+            "database": database,
+            "schema": schema,
+            "table": table,
+            "tabla_destino": f"{database}.{schema}.{table}",
+            "ruta_excel": str(ruta_excel),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_excel": ruta_excel.name,
+            "archivo_reporte": ruta_reporte.name,
+            "filas_leidas": filas_leidas,
+            "filas_insertadas": filas_insertadas,
+            "columnas_insertadas": columnas_insertar,
+            "columnas_omitidas_excel": columnas_omitidas_excel,
+            "columnas_tabla_sin_excel": columnas_tabla_sin_excel,
+            "total_antes": total_antes,
+            "total_despues": total_despues,
+            "errores": errores,
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "conexion": conexion_normalizada,
+            "database": database,
+            "schema": schema,
+            "table": table,
+            "tabla_destino": f"{database}.{schema}.{table}",
+            "ruta_excel": str(ruta_excel),
+            "error": str(exc),
+        }

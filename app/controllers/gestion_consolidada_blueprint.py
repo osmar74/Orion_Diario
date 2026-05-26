@@ -14,6 +14,7 @@ from app.services.gestion_consolidada_service import (
     procesar_compromiso_gestion,
     generar_archivo_final_gestion,
     listar_archivos_generados_gestion,
+    cargar_informacion_gestion_sql,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
@@ -25,6 +26,7 @@ from app.services.gestion_consolidada_renderer_service import (
     render_compromiso_gestion,
     render_archivo_final_gestion,
     render_archivos_generados_gestion,
+    render_carga_sql_gestion,
 )
 
 
@@ -133,3 +135,14 @@ def accion_gestion_consolidada_archivos_generados():
     resultado = listar_archivos_generados_gestion(_data_dir(), fecha)
 
     return render_archivos_generados_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/cargar-sql", methods=["POST"])
+def accion_gestion_consolidada_cargar_sql():
+    fecha = request.form.get("fecha", "")
+    conexion = request.form.get("conexion", "local")
+
+    resultado = cargar_informacion_gestion_sql(_data_dir(), fecha, conexion)
+
+    return render_carga_sql_gestion(resultado)
