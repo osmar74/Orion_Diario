@@ -676,3 +676,213 @@ def verificar_calidad_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str,
             "error": str(exc),
             "ruta_union": str(ruta_union),
         }
+
+
+
+def _porcentaje_no_contestan_valido(valor: Any) -> float:
+    try:
+        pct = float(str(valor or "12").replace(",", "."))
+    except Exception:
+        pct = 12.0
+
+    if pct < 10:
+        pct = 10.0
+
+    if pct > 15:
+        pct = 15.0
+
+    return pct
+
+
+def aplicar_ajuste_no_contestan_gestion(
+    data_dir: str | Path,
+    fecha_raw: str,
+    porcentaje_raw: Any = 12,
+) -> dict[str, Any]:
+    """
+    Fase D - Ajuste No contestan.
+
+    Para Tipo Cartera Home/Mobile, reemplaza entre 10% y 15% de:
+    - Buzon de voz
+    - Telefono Fuera de Servicio
+    - Telefono Ocupado
+
+    por:
+    - No contestan
+
+    Genera:
+    - 03_ajustes/YYYYMMDD_Gestion_ajuste_no_contestan.xlsx
+    - Reportes/YYYYMMDD_reporte_ajuste_no_contestan.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+    porcentaje = _porcentaje_no_contestan_valido(porcentaje_raw)
+
+    ruta_entrada = (
+        Path(rutas["subcarpetas"]["02_verificaciones"])
+        / f"{fecha}_Gestion_verificada.xlsx"
+    )
+
+    if not ruta_entrada.exists():
+        return {
+            "ok": False,
+            "error": f"No existe archivo verificado. Ejecute primero Fase C: {ruta_entrada}",
+            "ruta_entrada": str(ruta_entrada),
+        }
+
+    try:
+        df = pd.read_excel(ruta_entrada)
+        df.columns = [str(col).strip() for col in df.columns]
+
+        total_inicial = len(df)
+
+        col_desc = _buscar_columna_gestion(
+            df,
+            [
+                "Descripcion Codigo De Gestion",
+                "Descripción Código De Gestión",
+                "Descripcion Codigo Gestion",
+            ],
+        )
+        col_cartera = _buscar_columna_gestion(
+            df,
+            [
+                "Tipo Cartera",
+                "Tipo_Cartera",
+                "Cartera",
+            ],
+        )
+
+        valores_objetivo = [
+            "Buzon de voz",
+            "Telefono Fuera de Servicio",
+            "Telefono Ocupado",
+        ]
+
+        carteras = ["Home", "Mobile"]
+
+        df_ajustado = df.copy()
+        serie_desc = _serie_texto_gestion(df_ajustado, col_desc)
+        serie_cartera = _serie_texto_gestion(df_ajustado, col_cartera)
+
+        reporte = []
+        indices_reemplazados = []
+
+        for cartera in carteras:
+            for descripcion in valores_objetivo:
+                mask = (
+                    serie_cartera.str.lower().eq(cartera.lower())
+                    & serie_desc.str.lower().eq(descripcion.lower())
+                )
+
+                indices = list(df_ajustado.index[mask])
+                total_encontrado = len(indices)
+
+                if total_encontrado:
+                    total_reemplazar = int(round(total_encontrado * porcentaje / 100))
+
+                    if total_reemplazar <= 0:
+                        total_reemplazar = 1
+
+                    if total_reemplazar > total_encontrado:
+                        total_reemplazar = total_encontrado
+
+                    # Selección determinística para que el proceso sea repetible.
+                    seed = int(fecha[-4:]) + len(cartera) + len(descripcion)
+                    seleccion = (
+                        df_ajustado.loc[indices]
+                        .sample(n=total_reemplazar, random_state=seed)
+                        .index
+                        .tolist()
+                    )
+                else:
+                    total_reemplazar = 0
+                    seleccion = []
+
+                if seleccion:
+                    df_ajustado.loc[seleccion, col_desc] = "No contestan"
+                    indices_reemplazados.extend(seleccion)
+
+                reporte.append(
+                    {
+                        "Tipo Cartera": cartera,
+                        "Descripcion original": descripcion,
+                        "Total encontrados": total_encontrado,
+                        "Porcentaje aplicado": porcentaje,
+                        "Total reemplazados": len(seleccion),
+                        "Nuevo valor": "No contestan",
+                    }
+                )
+
+        total_final = len(df_ajustado)
+        control_filas_ok = total_inicial == total_final
+
+        carpeta_ajustes = Path(rutas["subcarpetas"]["03_ajustes"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_ajustes.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_salida = carpeta_ajustes / f"{fecha}_Gestion_ajuste_no_contestan.xlsx"
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_ajuste_no_contestan.xlsx"
+
+        df_ajustado.to_excel(ruta_salida, index=False)
+
+        df_reporte = pd.DataFrame(reporte)
+
+        if indices_reemplazados:
+            df_reemplazados = df.loc[sorted(set(indices_reemplazados))].copy()
+            df_reemplazados["Nuevo valor"] = "No contestan"
+        else:
+            df_reemplazados = pd.DataFrame()
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Total filas antes", "valor": total_inicial},
+                {"control": "Total filas después", "valor": total_final},
+                {"control": "Control filas iguales", "valor": "SI" if control_filas_ok else "NO"},
+                {"control": "Porcentaje aplicado", "valor": porcentaje},
+                {"control": "Total reemplazos", "valor": len(indices_reemplazados)},
+                {"control": "Archivo salida", "valor": str(ruta_salida)},
+            ]
+        )
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            df_reporte.to_excel(writer, sheet_name="Detalle", index=False)
+            df_reemplazados.to_excel(writer, sheet_name="Reemplazados", index=False)
+
+        return {
+            "ok": control_filas_ok,
+            "fecha": fecha,
+            "porcentaje": porcentaje,
+            "ruta_entrada": str(ruta_entrada),
+            "ruta_salida": str(ruta_salida),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_salida": ruta_salida.name,
+            "archivo_reporte": ruta_reporte.name,
+            "total_inicial": total_inicial,
+            "total_final": total_final,
+            "control_filas_ok": control_filas_ok,
+            "total_reemplazos": len(indices_reemplazados),
+            "detalle": reporte,
+            "reemplazados_preview": df_reemplazados.head(80).to_dict(orient="records") if len(df_reemplazados) else [],
+            "columnas": {
+                "descripcion": col_desc,
+                "tipo_cartera": col_cartera,
+            },
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "ruta_entrada": str(ruta_entrada),
+        }

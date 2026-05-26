@@ -9,12 +9,14 @@ from app.services.gestion_consolidada_service import (
     preparar_proceso,
     unir_archivos_gestion,
     verificar_calidad_gestion,
+    aplicar_ajuste_no_contestan_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
     render_resumen_sql,
     render_unir_archivos_gestion,
     render_verificar_calidad_gestion,
+    render_ajuste_no_contestan_gestion,
 )
 
 
@@ -72,3 +74,14 @@ def accion_gestion_consolidada_verificar_calidad():
     resultado = verificar_calidad_gestion(_data_dir(), fecha)
 
     return render_verificar_calidad_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/ajuste-no-contestan", methods=["POST"])
+def accion_gestion_consolidada_ajuste_no_contestan():
+    fecha = request.form.get("fecha", "")
+    porcentaje = request.form.get("porcentaje_no_contestan", "12")
+
+    resultado = aplicar_ajuste_no_contestan_gestion(_data_dir(), fecha, porcentaje)
+
+    return render_ajuste_no_contestan_gestion(resultado)

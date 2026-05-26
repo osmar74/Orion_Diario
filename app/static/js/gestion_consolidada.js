@@ -255,6 +255,59 @@
         }
     }
 
+
+    function getPorcentajeNoContestan() {
+        const raw = Number(byId("gcPorcentajeNoContestan")?.value || 12);
+
+        if (!Number.isFinite(raw)) {
+            return 12;
+        }
+
+        if (raw < 10) {
+            return 10;
+        }
+
+        if (raw > 15) {
+            return 15;
+        }
+
+        return raw;
+    }
+
+    function formFaseD() {
+        const formData = formBase();
+        formData.append("porcentaje_no_contestan", String(getPorcentajeNoContestan()));
+        return formData;
+    }
+
+    async function gcEjecutarFaseD() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("D", "running", "Aplicando ajuste No contestan.");
+        setHtml("gcResultadoFaseD", htmlLoading("Aplicando ajuste No contestan para Home/Mobile..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/ajuste-no-contestan", formFaseD());
+            setHtml("gcResultadoFaseD", html);
+
+            const error = String(html).includes("Error aplicando ajuste No contestan");
+
+            actualizarFase(
+                "D",
+                error ? "error" : "done",
+                error ? "Error en ajuste No contestan." : "Ajuste No contestan aplicado."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseD", htmlError(`Error ejecutando Fase D: ${error.message || error}`));
+            actualizarFase("D", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -283,6 +336,7 @@
     window.gcEjecutarFaseA = gcEjecutarFaseA;
     window.gcEjecutarFaseB = gcEjecutarFaseB;
     window.gcEjecutarFaseC = gcEjecutarFaseC;
+    window.gcEjecutarFaseD = gcEjecutarFaseD;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);

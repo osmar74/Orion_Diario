@@ -321,3 +321,89 @@ def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
     html.append("</tbody></table></div>")
 
     return "".join(html)
+
+
+
+def render_ajuste_no_contestan_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error aplicando ajuste No contestan: {resultado.get('error', '')}")
+            + "<div class='gc-result-card'><h4>Archivo entrada</h4><p>"
+            + escape(str(resultado.get("ruta_entrada", "")))
+            + "</p></div>"
+        )
+
+    html = [
+        render_alert("success", "✅ Ajuste No contestan aplicado correctamente. Control de filas válido."),
+        "<div class='gc-result-grid'>",
+        "<div class='gc-result-card'><h4>Total filas antes</h4><p><b>",
+        escape(str(resultado.get("total_inicial", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total filas después</h4><p><b>",
+        escape(str(resultado.get("total_final", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Control filas iguales</h4><p><b>",
+        "✅ SI" if resultado.get("control_filas_ok") else "❌ NO",
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Porcentaje aplicado</h4><p><b>",
+        escape(str(resultado.get("porcentaje", ""))),
+        "%</b></p></div>",
+        "<div class='gc-result-card'><h4>Total reemplazos</h4><p><b>",
+        escape(str(resultado.get("total_reemplazos", 0))),
+        "</b></p></div>",
+        "</div>",
+    ]
+
+    columnas = resultado.get("columnas") or {}
+
+    html.append("<h4>Columnas usadas</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Uso</th><th>Columna detectada</th></tr></thead><tbody>")
+
+    for key, value in columnas.items():
+        html.append(f"<tr><td>{escape(str(key))}</td><td>{escape(str(value))}</td></tr>")
+
+    html.append("</tbody></table></div>")
+
+    html.append("<h4>Detalle de reemplazos por cartera y descripción</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append(
+        "<thead><tr>"
+        "<th>Tipo Cartera</th>"
+        "<th>Descripción original</th>"
+        "<th>Total encontrados</th>"
+        "<th>Porcentaje aplicado</th>"
+        "<th>Total reemplazados</th>"
+        "<th>Nuevo valor</th>"
+        "</tr></thead><tbody>"
+    )
+
+    for item in resultado.get("detalle", []):
+        html.append(
+            "<tr>"
+            f"<td>{escape(str(item.get('Tipo Cartera', '')))}</td>"
+            f"<td>{escape(str(item.get('Descripcion original', '')))}</td>"
+            f"<td>{escape(str(item.get('Total encontrados', 0)))}</td>"
+            f"<td>{escape(str(item.get('Porcentaje aplicado', '')))}%</td>"
+            f"<td>{escape(str(item.get('Total reemplazados', 0)))}</td>"
+            f"<td>{escape(str(item.get('Nuevo valor', '')))}</td>"
+            "</tr>"
+        )
+
+    html.append("</tbody></table></div>")
+
+    html.append("<h4>Vista previa de registros reemplazados</h4>")
+    html.append(_render_gc_table_from_dicts(resultado.get("reemplazados_preview") or [], 80))
+
+    html.append("<h4>Archivos generados</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>")
+    html.append(
+        f"<tr><td>Ajuste No contestan</td><td>{escape(str(resultado.get('archivo_salida', '')))}</td><td>{escape(str(resultado.get('ruta_salida', '')))}</td></tr>"
+    )
+    html.append(
+        f"<tr><td>Reporte</td><td>{escape(str(resultado.get('archivo_reporte', '')))}</td><td>{escape(str(resultado.get('ruta_reporte', '')))}</td></tr>"
+    )
+    html.append("</tbody></table></div>")
+
+    return "".join(html)
