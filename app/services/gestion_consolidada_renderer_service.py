@@ -862,3 +862,117 @@ def render_archivo_final_gestion(resultado: dict[str, Any]) -> str:
     html.append("</tbody></table></div>")
 
     return "".join(html)
+
+
+
+def render_archivos_generados_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error listando archivos generados: {resultado.get('error', '')}")
+            + "<div class='gc-result-card'><h4>Carpeta Consolidado/Gestion</h4><p>"
+            + escape(str(resultado.get("carpeta_consolidado", "")))
+            + "</p></div>"
+        )
+
+    total_archivos = _safe_int(resultado.get("total_archivos", 0))
+    total_excel = _safe_int(resultado.get("total_excel", 0))
+    total_csv = _safe_int(resultado.get("total_csv", 0))
+
+    html = []
+
+    html.append(render_alert("success", "✅ Archivos generados listados correctamente."))
+
+    html.append("<div class='gc-result-grid'>")
+
+    tarjetas = [
+        ("Total archivos", total_archivos),
+        ("Total Excel", total_excel),
+        ("Total CSV", total_csv),
+        ("Tamaño total KB", resultado.get("tamano_total_kb", 0)),
+        ("Archivo final", "✅ Existe" if resultado.get("archivo_final_existe") else "❌ No existe"),
+        ("Archivo CSV", "✅ Existe" if resultado.get("archivo_csv_existe") else "❌ No existe"),
+    ]
+
+    for titulo, valor in tarjetas:
+        html.append(
+            "<div class='gc-result-card'>"
+            f"<h4>{escape(str(titulo))}</h4>"
+            f"<p><b>{escape(str(valor))}</b></p>"
+            "</div>"
+        )
+
+    html.append("</div>")
+
+    html.append("<div class='gc-donut-row'>")
+    html.append(_render_gc_donut_card("Archivos Excel", total_archivos, total_excel, "Excel"))
+    html.append(_render_gc_donut_card("Archivos CSV", total_archivos, total_csv, "CSV"))
+    html.append("</div>")
+
+    html.append("<h4>Carpeta Consolidado/Gestion</h4>")
+    html.append(
+        "<div class='gc-result-card'><p>"
+        + escape(str(resultado.get("carpeta_consolidado", "")))
+        + "</p></div>"
+    )
+
+    archivos = resultado.get("archivos") or []
+
+    tabla = []
+    tabla.append("<div class='gc-table-wrap'><table class='gc-table gc-table-small'>")
+    tabla.append("<thead><tr>")
+    tabla.append("<th>Tipo</th>")
+    tabla.append("<th>Nombre</th>")
+    tabla.append("<th>Carpeta</th>")
+    tabla.append("<th>Filas</th>")
+    tabla.append("<th>Tamaño KB</th>")
+    tabla.append("<th>Fecha creación</th>")
+    tabla.append("<th>Fecha modificación</th>")
+    tabla.append("<th>Ruta</th>")
+    tabla.append("</tr></thead><tbody>")
+
+    for item in archivos:
+        tipo = str(item.get("tipo", ""))
+        tipo_class = escape(tipo.lower())
+
+        tipo_badge = (
+            f"<span class='gc-file-type gc-file-type-{tipo_class}'>"
+            f"{escape(tipo)}"
+            "</span>"
+        )
+
+        tabla.append("<tr>")
+        tabla.append(f"<td>{tipo_badge}</td>")
+        tabla.append(f"<td>{escape(str(item.get('nombre', '')))}</td>")
+        tabla.append(f"<td>{escape(str(item.get('carpeta', '')))}</td>")
+        tabla.append(f"<td>{escape(str(item.get('filas', '')))}</td>")
+        tabla.append(f"<td>{escape(str(item.get('tamano_kb', '')))}</td>")
+        tabla.append(f"<td>{escape(str(item.get('fecha_creacion', '')))}</td>")
+        tabla.append(f"<td>{escape(str(item.get('fecha_modificacion', '')))}</td>")
+        tabla.append(f"<td>{escape(str(item.get('ruta', '')))}</td>")
+        tabla.append("</tr>")
+
+    tabla.append("</tbody></table></div>")
+
+    html.append(
+        _render_gc_collapsible(
+            "Detalle de archivos generados",
+            _gc_count_badge(total_archivos, "archivos"),
+            "".join(tabla),
+            open_default=True,
+        )
+    )
+
+    html.append("<h4>Reporte generado</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>")
+    html.append(
+        "<tr>"
+        "<td>Reporte archivos generados</td>"
+        f"<td>{escape(str(resultado.get('archivo_reporte', '')))}</td>"
+        f"<td>{escape(str(resultado.get('ruta_reporte', '')))}</td>"
+        "</tr>"
+    )
+    html.append("</tbody></table></div>")
+
+    return "".join(html)
+
