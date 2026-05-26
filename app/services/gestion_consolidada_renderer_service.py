@@ -776,3 +776,89 @@ def render_compromiso_gestion(resultado: dict[str, Any]) -> str:
     html.append("</tbody></table></div>")
 
     return "".join(html)
+
+
+
+def render_archivo_final_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error generando archivo final: {resultado.get('error', '')}")
+            + "<div class='gc-result-grid'>"
+            + "<div class='gc-result-card'><h4>Archivo entrada</h4><p>"
+            + escape(str(resultado.get("ruta_entrada", "")))
+            + "</p></div>"
+            + "<div class='gc-result-card'><h4>Archivo ORION</h4><p>"
+            + escape(str(resultado.get("ruta_orion", "")))
+            + "</p></div>"
+            + "</div>"
+        )
+
+    total_final = _safe_int(resultado.get("total_final", 0))
+    total_orion = _safe_int(resultado.get("total_orion", 0))
+    total_aster = _safe_int(resultado.get("total_aster", 0))
+    clientes_vacios = _safe_int(resultado.get("clientes_despues_vacios", 0))
+
+    html = [
+        render_alert("success", "✅ Archivo final de Gestión generado correctamente."),
+        "<div class='gc-result-grid'>",
+        "<div class='gc-result-card'><h4>Total filas antes</h4><p><b>",
+        escape(str(resultado.get("total_inicial", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total filas después</h4><p><b>",
+        escape(str(resultado.get("total_final", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Control filas iguales</h4><p><b>",
+        "✅ SI" if resultado.get("control_filas_ok") else "❌ NO",
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>crm orion</h4><p><b>",
+        escape(str(total_orion)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>crm aster</h4><p><b>",
+        escape(str(total_aster)),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Clientes vacíos</h4><p><b>",
+        escape(str(clientes_vacios)),
+        "</b></p></div>",
+        "</div>",
+    ]
+
+    html.append("<div class='gc-donut-row'>")
+    html.append(_render_gc_donut_card("CRM ORION", total_final, total_orion, "registros"))
+    html.append(_render_gc_donut_card("CRM ASTER", total_final, total_aster, "registros"))
+    html.append(_render_gc_donut_card("Cliente Nro. vacío", total_final, clientes_vacios, "vacíos"))
+    html.append("</div>")
+
+    html.append("<h4>Columnas y reglas aplicadas</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Concepto</th><th>Valor</th></tr></thead><tbody>")
+    html.append(f"<tr><td>Columna Cliente Nro.</td><td>{escape(str(resultado.get('columna_cliente', '')))}</td></tr>")
+    html.append(f"<tr><td>Columna ORION cruce</td><td>{escape(str(resultado.get('columna_orion_cliente', '')))}</td></tr>")
+    html.append(f"<tr><td>Mes_Gestion</td><td>{escape(str(resultado.get('mes_gestion', '')))}</td></tr>")
+    html.append(f"<tr><td>origen_datos</td><td>{escape(str(resultado.get('origen_datos', '')))}</td></tr>")
+    html.append("<tr><td>Regla crm</td><td>orion si Cliente Nro. cruza con NroCliente_Contrato ORION; caso contrario aster</td></tr>")
+    html.append("<tr><td>Limpieza Cliente Nro.</td><td>Quita espacios y elimina letras m/M</td></tr>")
+    html.append("</tbody></table></div>")
+
+    preview = resultado.get("preview") or []
+
+    html.append(
+        _render_gc_collapsible(
+            "Vista previa del archivo final",
+            _gc_count_badge(len(preview), "filas preview"),
+            _render_gc_table_from_dicts(preview, 80),
+            open_default=False,
+        )
+    )
+
+    html.append("<h4>Archivos generados</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>")
+    html.append(
+        f"<tr><td>Excel final</td><td>{escape(str(resultado.get('archivo_excel', '')))}</td><td>{escape(str(resultado.get('ruta_excel', '')))}</td></tr>"
+    )
+    html.append(
+        f"<tr><td>Reporte</td><td>{escape(str(resultado.get('archivo_reporte', '')))}</td><td>{escape(str(resultado.get('ruta_reporte', '')))}</td></tr>"
+    )
+    html.append("</tbody></table></div>")
+
+    return "".join(html)

@@ -1177,3 +1177,211 @@ def procesar_compromiso_gestion(data_dir: str | Path, fecha_raw: str) -> dict[st
             "error": str(exc),
             "ruta_entrada": str(ruta_entrada),
         }
+
+
+
+def _limpiar_cliente_nro_gestion(valor: Any) -> str:
+    """
+    Limpia Cliente Nro.:
+    - convierte a texto
+    - quita espacios
+    - elimina letras m/M según regla del proceso
+    - elimina .0 cuando Excel lo leyó como número
+    """
+    texto = str(valor if valor is not None else "").strip()
+
+    if texto.lower() in {"nan", "nat", "none", "null"}:
+        texto = ""
+
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+
+    texto = texto.replace("m", "").replace("M", "").strip()
+
+    return texto
+
+
+def generar_archivo_final_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
+    """
+    Fase G - Código cliente y archivo final.
+
+    Reglas:
+    - Limpia Cliente Nro. / NroCliente_Contrato.
+    - Agrega Mes_Gestion.
+    - Agrega origen_datos = ondedrive.
+    - Agrega crm:
+        orion si Cliente Nro. cruza con NroCliente_Contrato del archivo ORION original.
+        aster si no cruza.
+    - Exporta:
+        05_final/YYYYMMDD_Gestion_excel.xlsx
+        Reportes/YYYYMMDD_reporte_archivo_final.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+    mes_gestion = rutas["mes_gestion"]
+
+    ruta_entrada = (
+        Path(rutas["subcarpetas"]["04_compromiso"])
+        / f"{fecha}_Gestion_compromiso.xlsx"
+    )
+    ruta_orion_original = Path(rutas["orion"])
+
+    if not ruta_entrada.exists():
+        return {
+            "ok": False,
+            "error": f"No existe archivo de Fase F. Ejecute primero Fase F: {ruta_entrada}",
+            "ruta_entrada": str(ruta_entrada),
+        }
+
+    if not ruta_orion_original.exists():
+        return {
+            "ok": False,
+            "error": f"No existe archivo ORION original para cruce CRM: {ruta_orion_original}",
+            "ruta_entrada": str(ruta_entrada),
+            "ruta_orion": str(ruta_orion_original),
+        }
+
+    try:
+        df = pd.read_excel(ruta_entrada)
+        df.columns = [str(col).strip() for col in df.columns]
+
+        total_inicial = len(df)
+
+        col_cliente = _buscar_columna_gestion(
+            df,
+            [
+                "Cliente Nro.",
+                "Cliente Nro",
+                "NroCliente_Contrato",
+                "Codigo_Cliente",
+                "Código Cliente",
+            ],
+        )
+
+        df_final = df.copy()
+
+        clientes_antes_vacios = int(
+            df_final[col_cliente].fillna("").astype(str).str.strip().eq("").sum()
+        )
+
+        df_final[col_cliente] = df_final[col_cliente].apply(_limpiar_cliente_nro_gestion)
+
+        clientes_despues_vacios = int(df_final[col_cliente].eq("").sum())
+
+        # Leer archivo ORION original y construir set de clientes ORION.
+        df_orion = pd.read_excel(ruta_orion_original)
+        df_orion.columns = [str(col).strip() for col in df_orion.columns]
+
+        col_orion_cliente = _buscar_columna_gestion(
+            df_orion,
+            [
+                "NroCliente_Contrato",
+                "Cliente Nro.",
+                "Cliente Nro",
+                "Codigo_Cliente",
+                "Código Cliente",
+            ],
+        )
+
+        clientes_orion = set(
+            df_orion[col_orion_cliente]
+            .apply(_limpiar_cliente_nro_gestion)
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
+        clientes_orion.discard("")
+
+        df_final["Mes_Gestion"] = mes_gestion
+        df_final["origen_datos"] = "ondedrive"
+        df_final["crm"] = df_final[col_cliente].apply(
+            lambda value: "orion" if str(value).strip() in clientes_orion else "aster"
+        )
+
+        total_orion = int((df_final["crm"] == "orion").sum())
+        total_aster = int((df_final["crm"] == "aster").sum())
+
+        total_final = len(df_final)
+        control_filas_ok = total_inicial == total_final
+
+        carpeta_final = Path(rutas["subcarpetas"]["05_final"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_final.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_excel = carpeta_final / f"{fecha}_Gestion_excel.xlsx"
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_archivo_final.xlsx"
+
+        df_final.to_excel(ruta_excel, index=False)
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Total filas antes", "valor": total_inicial},
+                {"control": "Total filas después", "valor": total_final},
+                {"control": "Control filas iguales", "valor": "SI" if control_filas_ok else "NO"},
+                {"control": "Columna Cliente Nro.", "valor": col_cliente},
+                {"control": "Columna ORION cruce", "valor": col_orion_cliente},
+                {"control": "Mes_Gestion", "valor": mes_gestion},
+                {"control": "origen_datos", "valor": "ondedrive"},
+                {"control": "Total crm orion", "valor": total_orion},
+                {"control": "Total crm aster", "valor": total_aster},
+                {"control": "Clientes vacíos antes", "valor": clientes_antes_vacios},
+                {"control": "Clientes vacíos después", "valor": clientes_despues_vacios},
+                {"control": "Clientes únicos ORION para cruce", "valor": len(clientes_orion)},
+                {"control": "Archivo final", "valor": str(ruta_excel)},
+            ]
+        )
+
+        crm_resumen = pd.DataFrame(
+            [
+                {"crm": "orion", "total": total_orion},
+                {"crm": "aster", "total": total_aster},
+            ]
+        )
+
+        preview = df_final.head(120).copy()
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            crm_resumen.to_excel(writer, sheet_name="CRM", index=False)
+            preview.to_excel(writer, sheet_name="PreviewFinal", index=False)
+
+        return {
+            "ok": control_filas_ok,
+            "fecha": fecha,
+            "mes_gestion": mes_gestion,
+            "ruta_entrada": str(ruta_entrada),
+            "ruta_orion": str(ruta_orion_original),
+            "ruta_excel": str(ruta_excel),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_excel": ruta_excel.name,
+            "archivo_reporte": ruta_reporte.name,
+            "columna_cliente": col_cliente,
+            "columna_orion_cliente": col_orion_cliente,
+            "total_inicial": total_inicial,
+            "total_final": total_final,
+            "control_filas_ok": control_filas_ok,
+            "total_orion": total_orion,
+            "total_aster": total_aster,
+            "clientes_antes_vacios": clientes_antes_vacios,
+            "clientes_despues_vacios": clientes_despues_vacios,
+            "clientes_orion_unicos": len(clientes_orion),
+            "origen_datos": "ondedrive",
+            "preview": preview.head(80).to_dict(orient="records"),
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "ruta_entrada": str(ruta_entrada),
+            "ruta_orion": str(ruta_orion_original),
+        }

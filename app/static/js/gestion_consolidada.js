@@ -366,6 +366,35 @@
         }
     }
 
+
+    async function gcEjecutarFaseG() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("G", "running", "Generando archivo final.");
+        setHtml("gcResultadoFaseG", htmlLoading("Generando archivo final de Gestión..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/archivo-final", formBase());
+            setHtml("gcResultadoFaseG", html);
+
+            const error = String(html).includes("Error generando archivo final");
+
+            actualizarFase(
+                "G",
+                error ? "error" : "done",
+                error ? "Error generando final." : "Archivo final generado."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseG", htmlError(`Error ejecutando Fase G: ${error.message || error}`));
+            actualizarFase("G", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -397,6 +426,7 @@
     window.gcEjecutarFaseD = gcEjecutarFaseD;
     window.gcEjecutarFaseE = gcEjecutarFaseE;
     window.gcEjecutarFaseF = gcEjecutarFaseF;
+    window.gcEjecutarFaseG = gcEjecutarFaseG;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);

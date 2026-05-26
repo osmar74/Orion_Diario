@@ -12,6 +12,7 @@ from app.services.gestion_consolidada_service import (
     aplicar_ajuste_no_contestan_gestion,
     limpiar_nota_gestion,
     procesar_compromiso_gestion,
+    generar_archivo_final_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
@@ -21,6 +22,7 @@ from app.services.gestion_consolidada_renderer_service import (
     render_ajuste_no_contestan_gestion,
     render_limpiar_nota_gestion,
     render_compromiso_gestion,
+    render_archivo_final_gestion,
 )
 
 
@@ -109,3 +111,13 @@ def accion_gestion_consolidada_compromiso():
     resultado = procesar_compromiso_gestion(_data_dir(), fecha)
 
     return render_compromiso_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/archivo-final", methods=["POST"])
+def accion_gestion_consolidada_archivo_final():
+    fecha = request.form.get("fecha", "")
+
+    resultado = generar_archivo_final_gestion(_data_dir(), fecha)
+
+    return render_archivo_final_gestion(resultado)
