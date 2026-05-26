@@ -390,19 +390,26 @@ def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
         else "✅ Verificación completada sin observaciones críticas."
     )
 
+    total_inicial = _safe_int(totales.get("total_inicial", 0))
+    desc_vacia = _safe_int(totales.get("descripcion_vacia", 0))
+    registros_tel = _safe_int(totales.get("registros_tel", 0))
+    tel_incompletos_total = _safe_int(totales.get("tel_sin_asesor_grabador", 0))
+    tel_dup_detectados = _safe_int(totales.get("tel_duplicados_detectados", 0))
+    tel_dup_eliminados = _safe_int(totales.get("tel_duplicados_eliminados", 0))
+
     html = [
         render_alert(tipo, mensaje),
         "<div class='gc-result-grid'>",
     ]
 
     cards = [
-        ("Total inicial", totales.get("total_inicial", 0)),
+        ("Total inicial", total_inicial),
         ("Valores únicos descripción", totales.get("valores_unicos_descripcion", 0)),
-        ("Descripción vacía", totales.get("descripcion_vacia", 0)),
-        ("Registros TEL", totales.get("registros_tel", 0)),
-        ("TEL sin Asesor/Grabador", totales.get("tel_sin_asesor_grabador", 0)),
-        ("Duplicados TEL detectados", totales.get("tel_duplicados_detectados", 0)),
-        ("Duplicados TEL eliminados", totales.get("tel_duplicados_eliminados", 0)),
+        ("Descripción vacía", desc_vacia),
+        ("Registros TEL", registros_tel),
+        ("TEL sin Asesor/Grabador", tel_incompletos_total),
+        ("Duplicados TEL detectados", tel_dup_detectados),
+        ("Duplicados TEL eliminados", tel_dup_eliminados),
         ("Total final", totales.get("total_final", 0)),
     ]
 
@@ -414,6 +421,13 @@ def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
             "</div>"
         )
 
+    html.append("</div>")
+
+    # Mini reportes visuales Fase C
+    html.append("<div class='gc-donut-row gc-donut-row-quality'>")
+    html.append(_render_gc_donut_card("Descripción vacía", total_inicial, desc_vacia, "vacíos"))
+    html.append(_render_gc_donut_card("TEL incompletos", registros_tel, tel_incompletos_total, "sin Asesor/Grabador"))
+    html.append(_render_gc_donut_card("Duplicados eliminados", tel_dup_detectados, tel_dup_eliminados, "eliminados"))
     html.append("</div>")
 
     html.append("<h4>Columnas usadas</h4>")
@@ -442,7 +456,7 @@ def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
     html.append(
         _render_gc_collapsible(
             "C2. Registros TEL sin Asesor o Grabador",
-            _gc_count_badge(totales.get("tel_sin_asesor_grabador", len(tel_incompleto))),
+            _gc_count_badge(tel_incompletos_total),
             _render_gc_table_from_dicts(tel_incompleto, 80),
             open_default=False,
         )
@@ -451,7 +465,7 @@ def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
     html.append(
         _render_gc_collapsible(
             "C3. Duplicados TEL por Cliente Nro.",
-            _gc_count_badge(totales.get("tel_duplicados_detectados", len(tel_duplicados))),
+            _gc_count_badge(tel_dup_detectados),
             _render_gc_table_from_dicts(tel_duplicados, 80),
             open_default=False,
         )
@@ -460,7 +474,7 @@ def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
     html.append(
         _render_gc_collapsible(
             "Registros eliminados por duplicidad TEL",
-            _gc_count_badge(totales.get("tel_duplicados_eliminados", len(tel_eliminados))),
+            _gc_count_badge(tel_dup_eliminados),
             _render_gc_table_from_dicts(tel_eliminados, 80),
             open_default=False,
         )

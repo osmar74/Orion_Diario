@@ -3020,3 +3020,53 @@ body.gc-body .gc-section-header h2::before {
         flex-direction: column;
     }
 }
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN UX REFINEMENT v1D.2
+   ============================================================ */
+
+/* Estado de fases es tablero de seguimiento, no fase operativa numerada */
+body.gc-body .gc-state-section {
+    counter-increment: none !important;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.82));
+    border-color: rgba(96, 165, 250, 0.26);
+}
+
+body.gc-body .gc-state-section .gc-section-header h2::before {
+    content: "📌" !important;
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.22);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+body.gc-body .gc-state-section .gc-section-header {
+    align-items: center;
+}
+
+body.gc-body .gc-state-section .gc-phase-grid {
+    grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+}
+
+body.gc-body .gc-state-section .gc-phase-card {
+    min-height: 58px;
+    padding: 10px;
+}
+
+body.gc-body .gc-state-section .gc-phase-card b {
+    width: 30px;
+    height: 30px;
+}
+
+.gc-donut-row-quality {
+    margin-top: 14px;
+    margin-bottom: 14px;
+}
+
+.gc-donut-row-quality .gc-donut-card {
+    min-height: 112px;
+}
+
+.gc-donut-row-quality .gc-donut-card h4 {
+    color: #bfdbfe;
+}
