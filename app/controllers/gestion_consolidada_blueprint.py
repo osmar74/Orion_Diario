@@ -8,11 +8,13 @@ from app.services.gestion_consolidada_service import (
     consultar_resumen_sql,
     preparar_proceso,
     unir_archivos_gestion,
+    verificar_calidad_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
     render_resumen_sql,
     render_unir_archivos_gestion,
+    render_verificar_calidad_gestion,
 )
 
 
@@ -60,3 +62,13 @@ def accion_gestion_consolidada_unir():
     resultado = unir_archivos_gestion(_data_dir(), fecha)
 
     return render_unir_archivos_gestion(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/verificar-calidad", methods=["POST"])
+def accion_gestion_consolidada_verificar_calidad():
+    fecha = request.form.get("fecha", "")
+
+    resultado = verificar_calidad_gestion(_data_dir(), fecha)
+
+    return render_verificar_calidad_gestion(resultado)

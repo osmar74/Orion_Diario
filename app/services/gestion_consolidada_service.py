@@ -448,3 +448,231 @@ def unir_archivos_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any
             "ruta_aster": str(ruta_aster),
             "ruta_orion": str(ruta_orion),
         }
+
+
+
+def _normalizar_nombre_columna_gestion(valor: str) -> str:
+    import unicodedata
+
+    texto = str(valor or "").strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    texto = re.sub(r"[^a-z0-9]+", " ", texto)
+    texto = re.sub(r"\s+", " ", texto).strip()
+
+    return texto
+
+
+def _buscar_columna_gestion(df: Any, candidatos: list[str]) -> str:
+    mapa = {
+        _normalizar_nombre_columna_gestion(col): col
+        for col in df.columns
+    }
+
+    for candidato in candidatos:
+        key = _normalizar_nombre_columna_gestion(candidato)
+
+        if key in mapa:
+            return mapa[key]
+
+    disponibles = ", ".join(str(col) for col in df.columns)
+
+    raise ValueError(
+        f"No se encontró ninguna columna candidata {candidatos}. "
+        f"Columnas disponibles: {disponibles}"
+    )
+
+
+def _serie_texto_gestion(df: Any, columna: str) -> Any:
+    return df[columna].fillna("").astype(str).str.strip()
+
+
+def verificar_calidad_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
+    """
+    Fase C - Verificaciones de calidad.
+
+    Verifica:
+    C1. Descripcion Codigo De Gestion: valores únicos y vacíos.
+    C2. Clase de Gestion contiene TEL y debe tener Asesor/Grabador.
+    C3. Duplicidad TEL por Cliente Nro.; conserva el primer registro por defecto.
+
+    Genera:
+    - 02_verificaciones/YYYYMMDD_Gestion_verificada.xlsx
+    - Reportes/YYYYMMDD_reporte_verificacion_calidad.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+
+    ruta_union = Path(rutas["subcarpetas"]["01_union"]) / f"{fecha}_Gestion_union.xlsx"
+
+    if not ruta_union.exists():
+        return {
+            "ok": False,
+            "error": f"No existe el archivo de unión. Ejecute primero Fase B: {ruta_union}",
+            "ruta_union": str(ruta_union),
+        }
+
+    try:
+        df = pd.read_excel(ruta_union)
+        df.columns = [str(col).strip() for col in df.columns]
+
+        total_inicial = len(df)
+
+        col_cliente = _buscar_columna_gestion(
+            df,
+            ["Cliente Nro.", "Cliente Nro", "NroCliente_Contrato", "Codigo_Cliente", "Código Cliente"],
+        )
+        col_desc = _buscar_columna_gestion(
+            df,
+            ["Descripcion Codigo De Gestion", "Descripción Código De Gestión", "Descripcion Codigo Gestion"],
+        )
+        col_clase = _buscar_columna_gestion(
+            df,
+            ["Clase de Gestion", "Clase de Gestión"],
+        )
+        col_asesor = _buscar_columna_gestion(
+            df,
+            ["Asesor"],
+        )
+        col_grabador = _buscar_columna_gestion(
+            df,
+            ["Grabador"],
+        )
+
+        df[col_cliente] = _serie_texto_gestion(df, col_cliente)
+
+        serie_desc = _serie_texto_gestion(df, col_desc)
+        serie_clase = _serie_texto_gestion(df, col_clase)
+        serie_asesor = _serie_texto_gestion(df, col_asesor)
+        serie_grabador = _serie_texto_gestion(df, col_grabador)
+
+        # C1 - Valores únicos e inconsistencias vacías
+        valores_unicos = (
+            serie_desc.replace("", "(VACÍO)")
+            .value_counts(dropna=False)
+            .reset_index()
+        )
+        valores_unicos.columns = ["Descripcion Codigo De Gestion", "total"]
+        valores_unicos["seleccionado_por_defecto"] = "SI"
+
+        mask_desc_vacia = serie_desc.eq("")
+        df_desc_vacia = df.loc[mask_desc_vacia].copy()
+
+        # C2 - TEL sin Asesor/Grabador
+        mask_tel = serie_clase.str.contains("TEL", case=False, na=False)
+        mask_sin_asesor = serie_asesor.eq("")
+        mask_sin_grabador = serie_grabador.eq("")
+        mask_tel_incompleto = mask_tel & (mask_sin_asesor | mask_sin_grabador)
+
+        df_tel_incompleto = df.loc[mask_tel_incompleto].copy()
+
+        # C3 - Duplicidad TEL por Cliente Nro.
+        serie_cliente = _serie_texto_gestion(df, col_cliente)
+        mask_dup_tel_all = mask_tel & serie_cliente.duplicated(keep=False)
+        mask_dup_tel_eliminar = mask_tel & serie_cliente.duplicated(keep="first")
+
+        df_tel_duplicados = df.loc[mask_dup_tel_all].copy()
+        df_tel_eliminados = df.loc[mask_dup_tel_eliminar].copy()
+
+        df_verificada = df.drop(index=df_tel_eliminados.index).copy().reset_index(drop=True)
+        total_final = len(df_verificada)
+
+        carpeta_verificacion = Path(rutas["subcarpetas"]["02_verificaciones"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_verificacion.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_verificada = carpeta_verificacion / f"{fecha}_Gestion_verificada.xlsx"
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_verificacion_calidad.xlsx"
+
+        ruta_desc_vacia = carpeta_reportes / f"{fecha}_inconsistencias_descripcion_vacia.xlsx"
+        ruta_tel_incompleto = carpeta_reportes / f"{fecha}_tel_sin_asesor_grabador.xlsx"
+        ruta_tel_eliminados = carpeta_reportes / f"{fecha}_tel_duplicados_eliminados.xlsx"
+
+        df_verificada.to_excel(ruta_verificada, index=False)
+
+        if len(df_desc_vacia):
+            df_desc_vacia.to_excel(ruta_desc_vacia, index=False)
+
+        if len(df_tel_incompleto):
+            df_tel_incompleto.to_excel(ruta_tel_incompleto, index=False)
+
+        if len(df_tel_eliminados):
+            df_tel_eliminados.to_excel(ruta_tel_eliminados, index=False)
+
+        resumen = pd.DataFrame(
+            [
+                {"control": "Total inicial", "valor": total_inicial},
+                {"control": "Valores únicos Descripcion Codigo De Gestion", "valor": len(valores_unicos)},
+                {"control": "Descripcion vacía", "valor": len(df_desc_vacia)},
+                {"control": "Registros TEL", "valor": int(mask_tel.sum())},
+                {"control": "TEL sin Asesor o Grabador", "valor": len(df_tel_incompleto)},
+                {"control": "Duplicados TEL detectados", "valor": len(df_tel_duplicados)},
+                {"control": "Duplicados TEL eliminados por defecto", "valor": len(df_tel_eliminados)},
+                {"control": "Total final verificado", "valor": total_final},
+            ]
+        )
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            valores_unicos.to_excel(writer, sheet_name="ValoresDescripcion", index=False)
+            df_desc_vacia.to_excel(writer, sheet_name="DescVacia", index=False)
+            df_tel_incompleto.to_excel(writer, sheet_name="TelSinAsesorGrabador", index=False)
+            df_tel_duplicados.to_excel(writer, sheet_name="TelDuplicados", index=False)
+            df_tel_eliminados.to_excel(writer, sheet_name="TelEliminados", index=False)
+
+        requiere_revision = any(
+            [
+                len(df_desc_vacia) > 0,
+                len(df_tel_incompleto) > 0,
+                len(df_tel_eliminados) > 0,
+            ]
+        )
+
+        return {
+            "ok": True,
+            "requiere_revision": requiere_revision,
+            "fecha": fecha,
+            "ruta_union": str(ruta_union),
+            "ruta_verificada": str(ruta_verificada),
+            "ruta_reporte": str(ruta_reporte),
+            "ruta_desc_vacia": str(ruta_desc_vacia) if len(df_desc_vacia) else "",
+            "ruta_tel_incompleto": str(ruta_tel_incompleto) if len(df_tel_incompleto) else "",
+            "ruta_tel_eliminados": str(ruta_tel_eliminados) if len(df_tel_eliminados) else "",
+            "columnas": {
+                "cliente": col_cliente,
+                "descripcion": col_desc,
+                "clase": col_clase,
+                "asesor": col_asesor,
+                "grabador": col_grabador,
+            },
+            "totales": {
+                "total_inicial": total_inicial,
+                "valores_unicos_descripcion": len(valores_unicos),
+                "descripcion_vacia": len(df_desc_vacia),
+                "registros_tel": int(mask_tel.sum()),
+                "tel_sin_asesor_grabador": len(df_tel_incompleto),
+                "tel_duplicados_detectados": len(df_tel_duplicados),
+                "tel_duplicados_eliminados": len(df_tel_eliminados),
+                "total_final": total_final,
+            },
+            "valores_unicos": valores_unicos.head(300).to_dict(orient="records"),
+            "tel_incompleto_preview": df_tel_incompleto.head(80).to_dict(orient="records"),
+            "tel_duplicados_preview": df_tel_duplicados.head(80).to_dict(orient="records"),
+            "tel_eliminados_preview": df_tel_eliminados.head(80).to_dict(orient="records"),
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "ruta_union": str(ruta_union),
+        }

@@ -197,3 +197,127 @@ def render_unir_archivos_gestion(resultado: dict[str, Any]) -> str:
     html.append("</div>")
 
     return "".join(html)
+
+
+
+def _render_gc_table_from_dicts(rows: list[dict[str, Any]], max_rows: int = 80) -> str:
+    if not rows:
+        return "<div class='log-line success'>✅ Sin registros para mostrar.</div>"
+
+    limited = rows[:max_rows]
+    columns = list(limited[0].keys())
+
+    html = [
+        "<div class='gc-table-wrap'><table class='gc-table gc-table-small'>",
+        "<thead><tr>",
+    ]
+
+    for col in columns:
+        html.append(f"<th>{escape(str(col))}</th>")
+
+    html.append("</tr></thead><tbody>")
+
+    for row in limited:
+        html.append("<tr>")
+
+        for col in columns:
+            html.append(f"<td>{escape(str(row.get(col, '')))}</td>")
+
+        html.append("</tr>")
+
+    html.append("</tbody></table></div>")
+
+    if len(rows) > max_rows:
+        html.append(
+            f"<div class='gc-mini-note'>Mostrando {max_rows} de {len(rows)} registros. Revise el Excel generado para ver todo.</div>"
+        )
+
+    return "".join(html)
+
+
+def render_verificar_calidad_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        return (
+            render_alert("error", f"❌ Error verificando calidad: {resultado.get('error', '')}")
+            + "<div class='gc-result-card'><h4>Archivo unión</h4><p>"
+            + escape(str(resultado.get("ruta_union", "")))
+            + "</p></div>"
+        )
+
+    totales = resultado.get("totales") or {}
+    columnas = resultado.get("columnas") or {}
+    tipo = "warning" if resultado.get("requiere_revision") else "success"
+    mensaje = (
+        "ℹ️ Verificación completada con observaciones. Revise los reportes generados."
+        if resultado.get("requiere_revision")
+        else "✅ Verificación completada sin observaciones críticas."
+    )
+
+    html = [
+        render_alert(tipo, mensaje),
+        "<div class='gc-result-grid'>",
+    ]
+
+    cards = [
+        ("Total inicial", totales.get("total_inicial", 0)),
+        ("Valores únicos descripción", totales.get("valores_unicos_descripcion", 0)),
+        ("Descripción vacía", totales.get("descripcion_vacia", 0)),
+        ("Registros TEL", totales.get("registros_tel", 0)),
+        ("TEL sin Asesor/Grabador", totales.get("tel_sin_asesor_grabador", 0)),
+        ("Duplicados TEL detectados", totales.get("tel_duplicados_detectados", 0)),
+        ("Duplicados TEL eliminados", totales.get("tel_duplicados_eliminados", 0)),
+        ("Total final", totales.get("total_final", 0)),
+    ]
+
+    for titulo, valor in cards:
+        html.append(
+            "<div class='gc-result-card'>"
+            f"<h4>{escape(str(titulo))}</h4>"
+            f"<p><b>{escape(str(valor))}</b></p>"
+            "</div>"
+        )
+
+    html.append("</div>")
+
+    html.append("<h4>Columnas usadas</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Uso</th><th>Columna detectada</th></tr></thead><tbody>")
+
+    for key, value in columnas.items():
+        html.append(f"<tr><td>{escape(str(key))}</td><td>{escape(str(value))}</td></tr>")
+
+    html.append("</tbody></table></div>")
+
+    html.append("<h4>C1. Valores únicos en Descripcion Codigo De Gestion</h4>")
+    html.append("<p class='gc-mini-note'>Todos aparecen seleccionados por defecto para continuar. Las exclusiones interactivas se implementarán en una siguiente iteración si se requiere.</p>")
+    html.append(_render_gc_table_from_dicts(resultado.get("valores_unicos") or [], 300))
+
+    html.append("<h4>C2. Registros TEL sin Asesor o Grabador</h4>")
+    html.append(_render_gc_table_from_dicts(resultado.get("tel_incompleto_preview") or [], 80))
+
+    html.append("<h4>C3. Duplicados TEL por Cliente Nro.</h4>")
+    html.append(_render_gc_table_from_dicts(resultado.get("tel_duplicados_preview") or [], 80))
+
+    html.append("<h4>Registros eliminados por duplicidad TEL</h4>")
+    html.append("<p class='gc-mini-note'>Criterio v1C: se conserva el primer registro y se eliminan los siguientes duplicados. La selección manual se puede agregar en una fase posterior.</p>")
+    html.append(_render_gc_table_from_dicts(resultado.get("tel_eliminados_preview") or [], 80))
+
+    html.append("<h4>Archivos generados</h4>")
+    html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+    html.append("<thead><tr><th>Tipo</th><th>Ruta</th></tr></thead><tbody>")
+
+    files = [
+        ("Archivo verificado", resultado.get("ruta_verificada", "")),
+        ("Reporte verificación", resultado.get("ruta_reporte", "")),
+        ("Descripción vacía", resultado.get("ruta_desc_vacia", "")),
+        ("TEL sin Asesor/Grabador", resultado.get("ruta_tel_incompleto", "")),
+        ("TEL duplicados eliminados", resultado.get("ruta_tel_eliminados", "")),
+    ]
+
+    for tipo_archivo, ruta in files:
+        if ruta:
+            html.append(f"<tr><td>{escape(str(tipo_archivo))}</td><td>{escape(str(ruta))}</td></tr>")
+
+    html.append("</tbody></table></div>")
+
+    return "".join(html)

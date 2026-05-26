@@ -2797,3 +2797,18 @@ body.gc-body .gc-hero,
 body.gc-body .gc-control-panel {
     overflow: visible !important;
 }
+
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1C
+   ============================================================ */
+
+.gc-table-small {
+    font-size: 0.76rem;
+}
+
+.gc-table-small td,
+.gc-table-small th {
+    max-width: 320px;
+    word-break: break-word;
+}

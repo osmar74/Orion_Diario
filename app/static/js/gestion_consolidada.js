@@ -225,6 +225,36 @@
         }
     }
 
+
+    async function gcEjecutarFaseC() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("C", "running", "Verificando calidad de datos.");
+        setHtml("gcResultadoFaseC", htmlLoading("Ejecutando verificaciones de calidad..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/verificar-calidad", formBase());
+            setHtml("gcResultadoFaseC", html);
+
+            const error = String(html).includes("Error verificando calidad");
+            const review = String(html).includes("observaciones");
+
+            actualizarFase(
+                "C",
+                error ? "error" : (review ? "review" : "done"),
+                error ? "Error en verificación." : (review ? "Verificación con observaciones." : "Verificación sin observaciones críticas.")
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseC", htmlError(`Error ejecutando Fase C: ${error.message || error}`));
+            actualizarFase("C", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -252,6 +282,7 @@
     window.gcCargarResumen = gcCargarResumen;
     window.gcEjecutarFaseA = gcEjecutarFaseA;
     window.gcEjecutarFaseB = gcEjecutarFaseB;
+    window.gcEjecutarFaseC = gcEjecutarFaseC;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);
