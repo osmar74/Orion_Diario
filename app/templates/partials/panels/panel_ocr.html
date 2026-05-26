@@ -1,127 +1,137 @@
-<details id="panel-ocr" class="panel-monitor orion-fase-c-panel">
+<details id="panel-ocr-wrapper" class="panel-monitor orion-fase-c-panel" data-orion-workflow-managed="1">
     <summary class="panel-summary-actions">
         <span class="panel-summary-title">
             <span class="panel-icon">📱</span>
             OCR y Totales
         </span>
 
-        <span class="panel-header-actions">
-            <button
-                type="button"
-                id="btnModoOcrOrion"
-                class="ui-btn-blue-sm ui-mode-button active"
-                onclick="event.stopPropagation(); mostrarModoOcrOrion();"
-            >
-                OCR
-            </button>
-
-            <button
-                type="button"
-                id="btnModoManualOrion"
-                class="ui-btn-blue-sm ui-mode-button"
-                onclick="event.stopPropagation(); mostrarModoManualOrion();"
-            >
-                Ingreso manual
-            </button>
-        </span>
+        <span id="wf-status-ocr-global" class="wf-status-chip pending">⚪ Pendiente</span>
     </summary>
 
     <div class="panel-body">
         <div class="orion-fase-c-grid">
-            <section id="orion-ocr-mode" class="orion-step-card ui-mode-section active">
+            <section class="orion-step-card">
                 <div class="orion-step-header">
                     <span class="orion-step-number">1</span>
                     <div>
-                        <h4>Captura por OCR</h4>
-                        <p>Seleccione imágenes del reporte y procese OCR. Luego puede corregir los valores antes de consolidar.</p>
+                        <h4>Modo de captura</h4>
+                        <p>Use OCR para leer imágenes o ingreso manual si ya conoce los totales.</p>
                     </div>
                 </div>
 
-                <div class="orion-file-picker-row">
-                    <input
-                        type="file"
-                        id="ocrFiles"
-                        accept="image/*"
-                        multiple
-                        class="ui-file-native"
-                        onchange="actualizarNombreArchivosOcr()"
+                <div class="orion-mode-tabs">
+                    <button
+                        type="button"
+                        id="btnModoOcrOrion"
+                        class="ui-btn-blue-sm ui-mode-button active"
+                        onclick="mostrarModoOcrWorkflow(); return false;"
                     >
-
-                    <label for="ocrFiles" class="ui-file-browse">
-                        📁 Seleccionar imagen
-                    </label>
-
-                    <span id="ocrFilesResumen" class="ui-file-name">
-                        Ningún archivo seleccionado
-                    </span>
-                </div>
-
-                <button
-                    type="button"
-                    id="btn-ocr"
-                    class="ui-btn-success orion-main-action"
-                    onclick="subirOCR()"
-                >
-                    Procesar OCR
-                    <span class="status-icon"></span>
-                </button>
-
-                <div id="ocr-result-content" class="ui-result-block orion-result-content compact">
-                    Pendiente...
-                </div>
-            </section>
-
-            <section id="orion-manual-mode" class="orion-step-card ui-mode-section">
-                <div class="orion-step-header">
-                    <span class="orion-step-number">1</span>
-                    <div>
-                        <h4>Ingreso manual</h4>
-                        <p>Use esta opción si no desea procesar OCR o si necesita ingresar los totales directamente.</p>
-                    </div>
-                </div>
-
-                <div class="orion-help-text">
-                    Ingrese Orion y Aister manualmente y consolide los valores.
-                </div>
-            </section>
-
-            <section id="manual-totales" class="orion-step-card">
-                <div class="orion-step-header">
-                    <span class="orion-step-number">2</span>
-                    <div>
-                        <h4 id="manual-totales-titulo">Corregir o confirmar totales</h4>
-                        <p>Estos valores actualizarán los badges superiores del Monitor de Ejecución.</p>
-                    </div>
-                </div>
-
-                <div class="orion-total-row">
-                    <label class="ui-mini-label" for="manualOrion">
-                        Orion
-                    </label>
-                    <input
-                        type="number"
-                        id="manualOrion"
-                        placeholder="0"
-                        class="ui-input-80"
-                    >
-
-                    <label class="ui-mini-label" for="manualAister">
-                        Aister
-                    </label>
-                    <input
-                        type="number"
-                        id="manualAister"
-                        placeholder="0"
-                        class="ui-input-80"
-                    >
+                        OCR
+                    </button>
 
                     <button
                         type="button"
-                        class="ui-btn-blue-sm"
-                        onclick="consolidarTotales()"
+                        id="btnModoManualOrion"
+                        class="ui-btn-blue-sm ui-mode-button"
+                        onclick="mostrarModoManualWorkflow(); return false;"
+                    >
+                        Ingreso manual
+                    </button>
+                </div>
+
+                <div id="orion-ocr-mode" class="ui-mode-section active">
+                    <div class="orion-file-picker-row">
+                        <input
+                            type="file"
+                            id="ocrFiles"
+                            accept="image/*"
+                            multiple
+                            class="ui-file-native"
+                            onchange="actualizarNombreArchivosOcrWorkflow()"
+                        >
+
+                        <label for="ocrFiles" class="ui-file-browse">
+                            📁 Seleccionar imagen
+                        </label>
+
+                        <span id="ocrFilesResumen" class="ui-file-name">
+                            Ningún archivo seleccionado
+                        </span>
+                    </div>
+
+                    <button
+                        type="button"
+                        id="btn-wf-ocr-procesar"
+                        class="ui-btn-success orion-main-action"
+                        onclick="ejecutarWorkflowOrion('ocr.procesar', this)"
+                    >
+                        Procesar OCR
+                        <span class="status-icon"></span>
+                    </button>
+
+                    <div class="orion-info-card">
+                        <div>
+                            <b>Estado OCR</b>
+                            <span id="wf-status-ocr-procesar" class="wf-status-chip pending">⚪ Pendiente</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="orion-manual-mode" class="ui-mode-section">
+                    <div class="orion-help-text">
+                        Use esta opción si no desea procesar OCR o si necesita ingresar los totales directamente.
+                    </div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Confirmar totales</h4>
+                        <p>Corrija o ingrese los valores finales antes de consolidar.</p>
+                    </div>
+                </div>
+
+                <div id="manual-totales" class="orion-total-box">
+                    <div class="orion-total-row">
+                        <label class="ui-mini-label" for="manualOrion">
+                            Orion
+                        </label>
+                        <input
+                            type="number"
+                            id="manualOrion"
+                            placeholder="0"
+                            class="ui-input-80"
+                        >
+
+                        <label class="ui-mini-label" for="manualAister">
+                            Aister
+                        </label>
+                        <input
+                            type="number"
+                            id="manualAister"
+                            placeholder="0"
+                            class="ui-input-80"
+                        >
+                    </div>
+
+                    <button
+                        type="button"
+                        id="btn-wf-consolidar-totales"
+                        class="ui-btn-success orion-main-action"
+                        onclick="ejecutarWorkflowOrion('ocr.consolidar', this)"
                     >
                         Consolidar totales
+                        <span class="status-icon"></span>
                     </button>
+
+                    <div class="orion-info-card">
+                        <div>
+                            <b>Estado consolidación</b>
+                            <span id="wf-status-ocr-consolidar" class="wf-status-chip pending">⚪ Pendiente</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -129,8 +139,24 @@
                 <div class="orion-step-header">
                     <span class="orion-step-number result">3</span>
                     <div>
-                        <h4>Resultado de totales</h4>
-                        <p>Resultado de OCR, ingreso manual o consolidación de totales diarios.</p>
+                        <h4>Resultado OCR</h4>
+                        <p>Resultado de lectura OCR y valores detectados.</p>
+                    </div>
+                </div>
+
+                <div id="ocr-result-content" class="ui-result-block orion-result-content compact">
+                    <div class="log-line warning">
+                        ⚠️ OCR pendiente de procesamiento.
+                    </div>
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">4</span>
+                    <div>
+                        <h4>Resultado de consolidación</h4>
+                        <p>Totales confirmados y actualización de badges superiores.</p>
                     </div>
                 </div>
 

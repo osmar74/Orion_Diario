@@ -2436,3 +2436,32 @@ button.is-busy {
         grid-column: auto;
     }
 }
+
+/* ============================================================
+   ORION WORKFLOW ENGINE - FASE C OCR Y TOTALES
+   ============================================================ */
+
+.orion-mode-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ui-mode-section {
+    display: none;
+}
+
+.ui-mode-section.active {
+    display: block;
+}
+
+.orion-total-box {
+    display: grid;
+    gap: 12px;
+}
+
+.orion-fase-c-panel .orion-step-card,
+.orion-fase-c-panel .orion-result-card {
+    border-color: rgba(139, 92, 246, 0.22);
+}

@@ -10,6 +10,24 @@
     const STATE_KEY_PREFIX = "orionDiario.workflow.orion.v1";
 
     const ACTIONS = {
+        "ocr.procesar": {
+            phase: "C",
+            label: "Procesar OCR",
+            panelId: "ocr-result-content",
+            wrapperId: "panel-ocr-wrapper",
+            buttonId: "btn-wf-ocr-procesar",
+            method: "LEGACY_FUNCTION",
+            legacyFunction: "subirOCR",
+        },
+        "ocr.consolidar": {
+            phase: "C",
+            label: "Consolidar Totales",
+            panelId: "ocr-consolidado-resultado",
+            wrapperId: "panel-ocr-wrapper",
+            buttonId: "btn-wf-consolidar-totales",
+            method: "LEGACY_FUNCTION",
+            legacyFunction: "consolidarTotales",
+        },
         "crear.carpetas": {
             phase: "A",
             label: "Crear Carpetas",
@@ -441,6 +459,11 @@ function limpiarChipsViejosFaseD() {
             return;
         }
 
+        if (phase === "C") {
+            actualizarEstadoFaseCDirecto();
+            return;
+        }
+
         if (phase === "D") {
             actualizarEstadoFaseDDirecto();
             return;
@@ -456,6 +479,8 @@ function limpiarChipsViejosFaseD() {
             return;
         }
     }
+
+
 
 
 
@@ -667,6 +692,204 @@ function limpiarChipsViejosFaseD() {
             if (state) {
                 state.textContent = `${icon} ${label}`;
             }
+        }
+    }
+
+
+    const LEGACY_ORION_FUNCTIONS = {
+        subirOCR:
+            typeof window.subirOCR === "function"
+                ? window.subirOCR.bind(window)
+                : null,
+        consolidarTotales:
+            typeof window.consolidarTotales === "function"
+                ? window.consolidarTotales.bind(window)
+                : null,
+    };
+
+    function mostrarModoOcrWorkflow() {
+        const ocr = byId("orion-ocr-mode");
+        const manual = byId("orion-manual-mode");
+        const btnOcr = byId("btnModoOcrOrion");
+        const btnManual = byId("btnModoManualOrion");
+
+        if (ocr) {
+            ocr.classList.add("active");
+        }
+
+        if (manual) {
+            manual.classList.remove("active");
+        }
+
+        if (btnOcr) {
+            btnOcr.classList.add("active");
+        }
+
+        if (btnManual) {
+            btnManual.classList.remove("active");
+        }
+    }
+
+    function mostrarModoManualWorkflow() {
+        const ocr = byId("orion-ocr-mode");
+        const manual = byId("orion-manual-mode");
+        const btnOcr = byId("btnModoOcrOrion");
+        const btnManual = byId("btnModoManualOrion");
+
+        if (ocr) {
+            ocr.classList.remove("active");
+        }
+
+        if (manual) {
+            manual.classList.add("active");
+        }
+
+        if (btnOcr) {
+            btnOcr.classList.remove("active");
+        }
+
+        if (btnManual) {
+            btnManual.classList.add("active");
+        }
+    }
+
+    function actualizarNombreArchivosOcrWorkflow() {
+        const input = byId("ocrFiles");
+        const resumen = byId("ocrFilesResumen");
+
+        if (!input || !resumen) {
+            return;
+        }
+
+        const total = input.files ? input.files.length : 0;
+
+        if (!total) {
+            resumen.textContent = "Ningún archivo seleccionado";
+            return;
+        }
+
+        if (total === 1) {
+            resumen.textContent = input.files[0].name;
+            return;
+        }
+
+        resumen.textContent = `${total} archivos seleccionados`;
+    }
+
+    function validarTotalesWorkflow() {
+        const orion = Number(byId("manualOrion")?.value || 0);
+        const aister = Number(byId("manualAister")?.value || 0);
+
+        return {
+            orion,
+            aister,
+            valido: Number.isFinite(orion) && Number.isFinite(aister) && (orion > 0 || aister > 0),
+        };
+    }
+
+    async function ejecutarLegacyFunction(actionName, boton = null) {
+        const action = ACTIONS[actionName];
+        const fn = LEGACY_ORION_FUNCTIONS[action.legacyFunction];
+
+        if (typeof fn !== "function") {
+            throw new Error(`No está disponible la función legacy ${action.legacyFunction}`);
+        }
+
+        if (actionName === "ocr.procesar") {
+            const input = byId("ocrFiles");
+
+            if (!input || !input.files || !input.files.length) {
+                throw new Error("Seleccione al menos una imagen para procesar OCR.");
+            }
+        }
+
+        if (actionName === "ocr.consolidar") {
+            const totales = validarTotalesWorkflow();
+
+            if (!totales.valido) {
+                throw new Error("Ingrese totales válidos para Orion o Aister.");
+            }
+        }
+
+        const resultado = fn(boton);
+
+        if (resultado && typeof resultado.then === "function") {
+            await resultado;
+        } else {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+
+        const target = panel(actionName);
+        return target ? target.innerHTML : "OK";
+    }
+
+    function calcularEstadoOcrWorkflow() {
+        const estado = leerEstado();
+
+        const procesar = estado["ocr.procesar"]?.status || "pending";
+        const consolidar = estado["ocr.consolidar"]?.status || "pending";
+
+        if (procesar === "running" || consolidar === "running") {
+            return { status: "running", detail: "OCR/Totales en ejecución" };
+        }
+
+        if (procesar === "error" || consolidar === "error") {
+            return { status: "error", detail: "Error en OCR/Totales" };
+        }
+
+        if (consolidar === "done") {
+            return { status: "done", detail: "Totales consolidados" };
+        }
+
+        if (procesar === "done") {
+            return { status: "ready", detail: "OCR procesado, pendiente consolidar" };
+        }
+
+        return { status: "pending", detail: "OCR/Totales pendiente" };
+    }
+
+    function actualizarEstadoFaseCDirecto() {
+        const estado = calcularEstadoOcrWorkflow();
+        const [icon, label, cls] = estadoMeta(estado.status);
+
+        const legacyStatus = estado.status === "ready" ? "info" : estado.status;
+        const legacyLabel = estado.status === "ready" ? "Revisar" : label;
+
+        try {
+            const key = "orionDiario.ui.orion.phaseStatus";
+            const raw = localStorage.getItem(key);
+            const phaseStatus = raw ? JSON.parse(raw) : {};
+
+            phaseStatus.C = {
+                status: legacyStatus,
+                detail: estado.detail || legacyLabel,
+                updatedAt: new Date().toLocaleTimeString(),
+            };
+
+            localStorage.setItem(key, JSON.stringify(phaseStatus));
+        } catch {
+            // No bloquear UI.
+        }
+
+        const sidebarItem = document.querySelector('[data-orion-phase="C"]');
+
+        if (sidebarItem) {
+            sidebarItem.classList.remove("pending", "running", "done", "error", "info");
+            sidebarItem.classList.add(cls);
+
+            const state = sidebarItem.querySelector(".orion-phase-state");
+
+            if (state) {
+                state.textContent = `${icon} ${legacyLabel}`;
+            }
+        }
+
+        const chip = byId("wf-status-ocr-global");
+
+        if (chip) {
+            chip.className = `wf-status-chip ${cls}`;
+            chip.textContent = `${icon} ${legacyLabel}`;
+            chip.title = estado.detail || legacyLabel;
         }
     }
 
@@ -927,8 +1150,13 @@ function limpiarChipsViejosFaseD() {
             }
 
             if (target) {
-                if (action.method === "GET" || action.method === "POST_FORM") {
+                if (
+                    action.method === "GET" ||
+                    action.method === "POST_FORM"
+                ) {
                     target.innerHTML = htmlLoadingWorkflow(action.label);
+                } else if (action.method === "LEGACY_FUNCTION") {
+                    // No borrar el panel antes de OCR/consolidación; la función legacy escribe su propio resultado.
                 } else {
                     const aviso = document.createElement("div");
                     aviso.className = "log-line info";
@@ -948,11 +1176,13 @@ function limpiarChipsViejosFaseD() {
                 });
             } else if (action.method === "POST_FORM") {
                 html = await ejecutarPostForm(actionName, fecha);
+            } else if (action.method === "LEGACY_FUNCTION") {
+                html = await ejecutarLegacyFunction(actionName, boton);
             } else {
                 throw new Error(`Método no soportado: ${action.method}`);
             }
 
-            if (target) {
+            if (target && action.method !== "LEGACY_FUNCTION") {
                 target.innerHTML = html;
             }
 
@@ -977,7 +1207,11 @@ function limpiarChipsViejosFaseD() {
             const mensaje = String(error?.message || error);
 
             if (target) {
-                if (action.method === "GET" || action.method === "POST_FORM") {
+                if (
+                    action.method === "GET" ||
+                    action.method === "POST_FORM" ||
+                    action.method === "LEGACY_FUNCTION"
+                ) {
                     target.innerHTML = htmlErrorWorkflow(mensaje);
                 } else {
                     const aviso = document.createElement("div");
@@ -999,6 +1233,8 @@ function limpiarChipsViejosFaseD() {
             prepararBotonCopiarDistribucion();
         }
     }
+
+
 
 
 
@@ -1065,6 +1301,11 @@ function limpiarChipsViejosFaseD() {
     window.ejecutarWorkflowOrion = ejecutarWorkflowOrion;
     window.abrirWorkflowOrion = abrirWorkflowOrion;
     window.inicializarWorkflowOrion = inicializarWorkflowOrion;
+    window.actualizarEstadoFaseCDirecto = actualizarEstadoFaseCDirecto;
+    window.calcularEstadoOcrWorkflow = calcularEstadoOcrWorkflow;
+    window.actualizarNombreArchivosOcrWorkflow = actualizarNombreArchivosOcrWorkflow;
+    window.mostrarModoManualWorkflow = mostrarModoManualWorkflow;
+    window.mostrarModoOcrWorkflow = mostrarModoOcrWorkflow;
     window.actualizarEstadoFaseSimpleDirecto = actualizarEstadoFaseSimpleDirecto;
     window.calcularEstadoSimpleWorkflow = calcularEstadoSimpleWorkflow;
     window.getConexionCargaWorkflow = getConexionCargaWorkflow;
