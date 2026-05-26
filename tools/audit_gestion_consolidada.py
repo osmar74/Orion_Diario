@@ -54,6 +54,7 @@ def main():
         "/gestion-consolidada",
         "/accion/gestion-consolidada/resumen",
         "/accion/gestion-consolidada/preparar",
+        "/accion/gestion-consolidada/unir",
     ]:
         if item in bp:
             ok(f"Ruta backend OK: {item}")
@@ -64,6 +65,7 @@ def main():
         "gcSeleccionarConexion",
         "gcCargarResumen",
         "gcEjecutarFaseA",
+        "gcEjecutarFaseB",
     ]:
         if item in js:
             ok(f"Función JS OK: {item}")

@@ -7,10 +7,12 @@ from flask import Blueprint, current_app, render_template, request
 from app.services.gestion_consolidada_service import (
     consultar_resumen_sql,
     preparar_proceso,
+    unir_archivos_gestion,
 )
 from app.services.gestion_consolidada_renderer_service import (
     render_preparar_proceso,
     render_resumen_sql,
+    render_unir_archivos_gestion,
 )
 
 
@@ -48,3 +50,13 @@ def accion_gestion_consolidada_preparar():
     resultado = preparar_proceso(_data_dir(), fecha)
 
     return render_preparar_proceso(resultado)
+
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/unir", methods=["POST"])
+def accion_gestion_consolidada_unir():
+    fecha = request.form.get("fecha", "")
+
+    resultado = unir_archivos_gestion(_data_dir(), fecha)
+
+    return render_unir_archivos_gestion(resultado)

@@ -277,3 +277,174 @@ def consultar_resumen_sql(fecha_raw: str, conexion: str) -> dict[str, Any]:
             "datos": {},
             "error": str(exc),
         }
+
+
+
+def _normalizar_columnas_gestion(df: Any, origen: str) -> Any:
+    df = df.copy()
+    df.columns = [str(col).strip() for col in df.columns]
+
+    if origen.upper() == "ORION" and "NroCliente_Contrato" in df.columns:
+        df = df.rename(columns={"NroCliente_Contrato": "Cliente Nro."})
+
+    if "Cliente Nro." not in df.columns:
+        raise ValueError(
+            f"El archivo {origen} no tiene la columna requerida Cliente Nro. "
+            f"Columnas disponibles: {list(df.columns)}"
+        )
+
+    df["Cliente Nro."] = df["Cliente Nro."].astype(str).str.strip()
+
+    return df
+
+
+def _comparar_encabezados_gestion(cols_aster: list[str], cols_orion: list[str]) -> dict[str, Any]:
+    set_aster = set(cols_aster)
+    set_orion = set(cols_orion)
+
+    faltan_en_orion = [col for col in cols_aster if col not in set_orion]
+    sobran_en_orion = [col for col in cols_orion if col not in set_aster]
+    mismo_orden = cols_aster == cols_orion
+    mismo_set = not faltan_en_orion and not sobran_en_orion
+
+    return {
+        "ok": mismo_set,
+        "mismo_orden": mismo_orden,
+        "total_columnas_aster": len(cols_aster),
+        "total_columnas_orion": len(cols_orion),
+        "columnas_aster": cols_aster,
+        "columnas_orion": cols_orion,
+        "faltan_en_orion": faltan_en_orion,
+        "sobran_en_orion": sobran_en_orion,
+    }
+
+
+def unir_archivos_gestion(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
+    """
+    Fase B - Unión de archivos ASTER + ORION.
+
+    Genera:
+    - 01_union/YYYYMMDD_Gestion_union.xlsx
+    - Reportes/YYYYMMDD_reporte_union.xlsx
+    """
+    try:
+        import pandas as pd
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"No se pudo importar pandas: {exc}",
+        }
+
+    rutas = resolver_rutas(data_dir, fecha_raw)
+    fecha = rutas["fecha"]
+
+    ruta_aster = Path(rutas["aster"])
+    ruta_orion = Path(rutas["orion"])
+
+    errores = []
+
+    if not ruta_aster.exists():
+        errores.append(f"No existe archivo ASTER: {ruta_aster}")
+
+    if not ruta_orion.exists():
+        errores.append(f"No existe archivo ORION: {ruta_orion}")
+
+    if errores:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": " | ".join(errores),
+            "ruta_aster": str(ruta_aster),
+            "ruta_orion": str(ruta_orion),
+        }
+
+    try:
+        df_aster_raw = pd.read_excel(ruta_aster)
+        df_orion_raw = pd.read_excel(ruta_orion)
+
+        df_aster = _normalizar_columnas_gestion(df_aster_raw, "ASTER")
+        df_orion = _normalizar_columnas_gestion(df_orion_raw, "ORION")
+
+        encabezados = _comparar_encabezados_gestion(
+            list(df_aster.columns),
+            list(df_orion.columns),
+        )
+
+        if not encabezados["ok"]:
+            return {
+                "ok": False,
+                "fecha": fecha,
+                "error": "Los encabezados de ASTER y ORION no son compatibles.",
+                "encabezados": encabezados,
+                "ruta_aster": str(ruta_aster),
+                "ruta_orion": str(ruta_orion),
+                "total_aster": len(df_aster),
+                "total_orion": len(df_orion),
+            }
+
+        if not encabezados["mismo_orden"]:
+            df_orion = df_orion[list(df_aster.columns)]
+
+        total_aster = len(df_aster)
+        total_orion = len(df_orion)
+
+        df_union = pd.concat([df_aster, df_orion], ignore_index=True)
+        total_union = len(df_union)
+
+        carpeta_union = Path(rutas["subcarpetas"]["01_union"])
+        carpeta_reportes = Path(rutas["subcarpetas"]["Reportes"])
+        carpeta_union.mkdir(parents=True, exist_ok=True)
+        carpeta_reportes.mkdir(parents=True, exist_ok=True)
+
+        ruta_union = carpeta_union / f"{fecha}_Gestion_union.xlsx"
+        ruta_reporte = carpeta_reportes / f"{fecha}_reporte_union.xlsx"
+
+        df_union.to_excel(ruta_union, index=False)
+
+        resumen = pd.DataFrame(
+            [
+                {"concepto": "Total ASTER", "valor": total_aster},
+                {"concepto": "Total ORION", "valor": total_orion},
+                {"concepto": "Total después de unión", "valor": total_union},
+                {"concepto": "Columnas ASTER", "valor": encabezados["total_columnas_aster"]},
+                {"concepto": "Columnas ORION", "valor": encabezados["total_columnas_orion"]},
+                {"concepto": "Encabezados compatibles", "valor": "SI"},
+                {"concepto": "Mismo orden de columnas", "valor": "SI" if encabezados["mismo_orden"] else "NO - ORION fue reordenado"},
+                {"concepto": "Archivo unión", "valor": str(ruta_union)},
+            ]
+        )
+
+        columnas = pd.DataFrame(
+            {
+                "orden": list(range(1, len(df_aster.columns) + 1)),
+                "columna_final": list(df_aster.columns),
+            }
+        )
+
+        with pd.ExcelWriter(ruta_reporte) as writer:
+            resumen.to_excel(writer, sheet_name="Resumen", index=False)
+            columnas.to_excel(writer, sheet_name="Columnas", index=False)
+
+        return {
+            "ok": True,
+            "fecha": fecha,
+            "ruta_aster": str(ruta_aster),
+            "ruta_orion": str(ruta_orion),
+            "ruta_union": str(ruta_union),
+            "ruta_reporte": str(ruta_reporte),
+            "archivo_union": ruta_union.name,
+            "archivo_reporte": ruta_reporte.name,
+            "total_aster": total_aster,
+            "total_orion": total_orion,
+            "total_union": total_union,
+            "encabezados": encabezados,
+            "columnas": list(df_aster.columns),
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "fecha": fecha,
+            "error": str(exc),
+            "ruta_aster": str(ruta_aster),
+            "ruta_orion": str(ruta_orion),
+        }

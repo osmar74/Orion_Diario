@@ -196,6 +196,35 @@
         }
     }
 
+
+    async function gcEjecutarFaseB() {
+        const fecha = getFecha();
+
+        if (!fecha) {
+            alert("Ingrese una fecha válida antes de ejecutar.");
+            return;
+        }
+
+        actualizarFase("B", "running", "Uniendo archivos ASTER + ORION.");
+        setHtml("gcResultadoFaseB", htmlLoading("Uniendo archivos ASTER + ORION..."));
+
+        try {
+            const html = await postHtml("/accion/gestion-consolidada/unir", formBase());
+            setHtml("gcResultadoFaseB", html);
+
+            const ok = String(html).includes("Unión ASTER + ORION completada correctamente");
+
+            actualizarFase(
+                "B",
+                ok ? "done" : "error",
+                ok ? "Archivo de unión generado." : "Error o inconsistencias en unión."
+            );
+        } catch (error) {
+            setHtml("gcResultadoFaseB", htmlError(`Error ejecutando Fase B: ${error.message || error}`));
+            actualizarFase("B", "error", String(error.message || error));
+        }
+    }
+
     function inicializarGestionConsolidada() {
         const fechaInput = byId("gcFechaProceso");
         const savedConnection = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
@@ -222,6 +251,7 @@
     window.gcSeleccionarConexion = gcSeleccionarConexion;
     window.gcCargarResumen = gcCargarResumen;
     window.gcEjecutarFaseA = gcEjecutarFaseA;
+    window.gcEjecutarFaseB = gcEjecutarFaseB;
     window.gcActualizarFase = actualizarFase;
 
     document.addEventListener("DOMContentLoaded", inicializarGestionConsolidada);

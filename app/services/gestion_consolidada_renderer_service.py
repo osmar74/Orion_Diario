@@ -124,3 +124,76 @@ def render_preparar_proceso(resultado: dict[str, Any]) -> str:
     html.append("</tbody></table></div>")
 
     return "".join(html)
+
+
+
+def render_unir_archivos_gestion(resultado: dict[str, Any]) -> str:
+    if not resultado.get("ok"):
+        html = [
+            render_alert("error", f"❌ Error en unión de archivos: {resultado.get('error', '')}"),
+            "<div class='gc-result-grid'>",
+            "<div class='gc-result-card'><h4>Archivo ASTER</h4><p>",
+            escape(str(resultado.get("ruta_aster", ""))),
+            "</p></div>",
+            "<div class='gc-result-card'><h4>Archivo ORION</h4><p>",
+            escape(str(resultado.get("ruta_orion", ""))),
+            "</p></div>",
+            "</div>",
+        ]
+
+        encabezados = resultado.get("encabezados") or {}
+
+        if encabezados:
+            html.append("<h4>Detalle de encabezados incompatibles</h4>")
+            html.append("<div class='gc-table-wrap'><table class='gc-table'>")
+            html.append("<thead><tr><th>Tipo</th><th>Columna</th></tr></thead><tbody>")
+
+            for col in encabezados.get("faltan_en_orion", []):
+                html.append(f"<tr><td>Falta en ORION</td><td>{escape(str(col))}</td></tr>")
+
+            for col in encabezados.get("sobran_en_orion", []):
+                html.append(f"<tr><td>Sobra en ORION</td><td>{escape(str(col))}</td></tr>")
+
+            html.append("</tbody></table></div>")
+
+        return "".join(html)
+
+    html = [
+        render_alert("success", "✅ Unión ASTER + ORION completada correctamente."),
+        "<div class='gc-result-grid'>",
+        "<div class='gc-result-card'><h4>Total ASTER</h4><p><b>",
+        escape(str(resultado.get("total_aster", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total ORION</h4><p><b>",
+        escape(str(resultado.get("total_orion", 0))),
+        "</b></p></div>",
+        "<div class='gc-result-card'><h4>Total unión</h4><p><b>",
+        escape(str(resultado.get("total_union", 0))),
+        "</b></p></div>",
+        "</div>",
+        "<h4>Archivos generados</h4>",
+        "<div class='gc-table-wrap'><table class='gc-table'>",
+        "<thead><tr><th>Tipo</th><th>Nombre</th><th>Ruta</th></tr></thead><tbody>",
+        f"<tr><td>Unión</td><td>{escape(str(resultado.get('archivo_union', '')))}</td><td>{escape(str(resultado.get('ruta_union', '')))}</td></tr>",
+        f"<tr><td>Reporte</td><td>{escape(str(resultado.get('archivo_reporte', '')))}</td><td>{escape(str(resultado.get('ruta_reporte', '')))}</td></tr>",
+        "</tbody></table></div>",
+        "<h4>Encabezados finales</h4>",
+        "<div class='gc-table-wrap'><table class='gc-table'>",
+        "<thead><tr><th>#</th><th>Columna</th></tr></thead><tbody>",
+    ]
+
+    for idx, col in enumerate(resultado.get("columnas", []), start=1):
+        html.append(f"<tr><td>{idx}</td><td>{escape(str(col))}</td></tr>")
+
+    html.append("</tbody></table></div>")
+
+    encabezados = resultado.get("encabezados") or {}
+
+    html.append("<div class='gc-mini-note'>")
+    html.append(
+        "Encabezados compatibles: <b>SI</b> | "
+        f"Mismo orden original: <b>{'SI' if encabezados.get('mismo_orden') else 'NO, ORION fue reordenado'}</b>"
+    )
+    html.append("</div>")
+
+    return "".join(html)
