@@ -2140,6 +2140,75 @@ function htmlEsNotFoundOrion(html) {
 }
 
 window.htmlEsNotFoundOrion = htmlEsNotFoundOrion;
+/* ============================================================
+   ORION LEGACY COMPATIBILITY - DISTRIBUCIÓN
+   Estas funciones evitan ReferenceError de exports antiguos.
+   La Fase D real ahora la controla app/static/js/orion_workflow.js
+   ============================================================ */
+
+function obtenerPanelResultadoDistribucionOrion() {
+    return (
+        document.getElementById("panel-distribuir") ||
+        document.querySelector("#panel-distribuir-wrapper .orion-result-content") ||
+        document.querySelector("#panel-distribuir-wrapper")
+    );
+}
+
+function obtenerChecksDistribucionOrion() {
+    const root =
+        document.getElementById("panel-distribuir") ||
+        document.getElementById("panel-distribuir-wrapper") ||
+        document;
+
+    return Array.from(root.querySelectorAll("input[type='checkbox']:checked"));
+}
+
+function valorCheckboxDistribucionOrion(check) {
+    if (!check) {
+        return "";
+    }
+
+    return (
+        check.dataset?.archivo ||
+        check.dataset?.ruta ||
+        check.dataset?.path ||
+        check.value ||
+        ""
+    );
+}
+
+function obtenerSeleccionadosDistribucionOrion() {
+    return obtenerChecksDistribucionOrion()
+        .map((check) => ({
+            categoria: check.dataset?.categoria || "",
+            archivo: check.dataset?.archivo || valorCheckboxDistribucionOrion(check),
+        }))
+        .filter((item) => item.categoria && item.archivo && item.archivo !== "on");
+}
+
+function htmlEsNotFoundOrion(html) {
+    const texto = String(html || "").toLowerCase();
+
+    return (
+        texto.includes("not found") ||
+        texto.includes("404") ||
+        texto.includes("requested url was not found")
+    );
+}
+
+function actualizarEstadoDistribucionOrionDesdeHtml(html) {
+    const exito =
+        typeof esRespuestaExitosa === "function"
+            ? esRespuestaExitosa(html)
+            : !htmlEsNotFoundOrion(html);
+
+    if (typeof actualizarEstadoFaseOrion === "function") {
+        actualizarEstadoFaseOrion("D", exito ? "done" : "error", exito ? "Completado" : "Error");
+    }
+
+    return exito;
+}
+
 window.valorCheckboxDistribucionOrion = valorCheckboxDistribucionOrion;
 window.obtenerSeleccionadosDistribucionOrion = obtenerSeleccionadosDistribucionOrion;
 window.accionOrionDesdeSummary = accionOrionDesdeSummary;
