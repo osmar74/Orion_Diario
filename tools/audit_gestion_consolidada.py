@@ -123,6 +123,33 @@ def main():
         else:
             errors += fail(f"Falta UX: {item}")
 
+
+    print("\n[5] v1J - acceso pantalla principal")
+    index = read(APP / "templates" / "index.html")
+    header = read(APP / "templates" / "partials" / "header.html")
+    launcher = APP / "templates" / "partials" / "consolidar_gestion_launcher.html"
+    css = read(APP / "static" / "css" / "deepblack.css")
+
+    if launcher.exists():
+        ok("Launcher Consolidar Gestión existe")
+    else:
+        errors += fail("No existe partial consolidar_gestion_launcher.html")
+
+    if "/gestion-consolidada" in index or "gestion_consolidada.vista_gestion_consolidada" in index:
+        ok("Index contiene acceso a Consolidar Gestión")
+    else:
+        errors += fail("Index no contiene acceso a Consolidar Gestión")
+
+    if "Consolidar Gestión" in header or "gestion_consolidada.vista_gestion_consolidada" in header:
+        ok("Header contiene acceso a Consolidar Gestión")
+    else:
+        print("⚠️ Header no contiene acceso a Consolidar Gestión; si la pantalla principal ya tiene launcher, no es crítico.")
+
+    if "CONSOLIDAR GESTIÓN v1J" in css:
+        ok("CSS v1J presente")
+    else:
+        errors += fail("Falta CSS v1J")
+
     print("\n" + "=" * 100)
     if errors:
         print(f"❌ Auditoría Consolidar Gestión con {errors} pendiente(s).")
