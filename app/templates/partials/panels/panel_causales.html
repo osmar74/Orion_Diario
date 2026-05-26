@@ -1,4 +1,67 @@
-<details class="panel-monitor" id="panel-causales">
-    <summary><span class="panel-icon">⚪</span> 📋 Procesar Causales</summary>
-    <div class="panel-body">Pendiente...</div>
+<details id="panel-causales-wrapper" class="panel-monitor orion-fase-f-panel" data-orion-workflow-managed="1">
+    <summary>
+        <span class="panel-icon">📄</span>
+        Procesar Causales
+        <span id="wf-status-procesar-causales" class="wf-status-chip pending">⚪ Pendiente</span>
+    </summary>
+
+    <div class="panel-body">
+        <div class="orion-fase-f-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Archivos Causales distribuidos</h4>
+                        <p>Procesa los archivos de Causales copiados desde red hacia la carpeta local diaria.</p>
+                    </div>
+                </div>
+
+                <div class="orion-checklist">
+                    <div>✅ Requiere archivos en carpeta Causales</div>
+                    <div>✅ Normaliza y filtra registros</div>
+                    <div>✅ Genera Causales_Consolidado.xlsx</div>
+                    <div>✅ Deja listo el consolidado para carga SQL Server</div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar procesamiento</h4>
+                        <p>Ejecute este proceso desde el panel central. El estado se actualizará solo para este panel.</p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="ui-btn-success orion-main-action"
+                    onclick="ejecutarWorkflowOrion('procesar.causales', this)"
+                >
+                    Procesar Causales
+                    <span class="status-icon"></span>
+                </button>
+
+                <div class="orion-help-text">
+                    El panel izquierdo solo muestra navegación y estado global.
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado</h4>
+                        <p>Resultado detallado del proceso ejecutado.</p>
+                    </div>
+                </div>
+
+                <div id="panel-causales" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Procesar Causales pendiente de ejecución.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

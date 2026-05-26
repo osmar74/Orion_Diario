@@ -1,4 +1,67 @@
-<details class="panel-monitor" id="panel-comparar">
-    <summary><span class="panel-icon">⚪</span> 🔍 Comparación</summary>
-    <div class="panel-body">Pendiente...</div>
+<details id="panel-comparar-wrapper" class="panel-monitor orion-fase-f-panel" data-orion-workflow-managed="1">
+    <summary>
+        <span class="panel-icon">⚖️</span>
+        Comparar Lotes
+        <span id="wf-status-procesar-comparar" class="wf-status-chip pending">⚪ Pendiente</span>
+    </summary>
+
+    <div class="panel-body">
+        <div class="orion-fase-f-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Validación cruzada</h4>
+                        <p>Compara Discador contra Lotes para detectar diferencias antes de cargar consolidados.</p>
+                    </div>
+                </div>
+
+                <div class="orion-checklist">
+                    <div>✅ Requiere Discador consolidado</div>
+                    <div>✅ Requiere Lotes consolidado</div>
+                    <div>✅ Detecta faltantes en Discador</div>
+                    <div>✅ Detecta faltantes en Lotes</div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar procesamiento</h4>
+                        <p>Ejecute este proceso desde el panel central. El estado se actualizará solo para este panel.</p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="ui-btn-success orion-main-action"
+                    onclick="ejecutarWorkflowOrion('procesar.comparar', this)"
+                >
+                    Comparar Lotes
+                    <span class="status-icon"></span>
+                </button>
+
+                <div class="orion-help-text">
+                    El panel izquierdo solo muestra navegación y estado global.
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado</h4>
+                        <p>Resultado detallado del proceso ejecutado.</p>
+                    </div>
+                </div>
+
+                <div id="panel-comparar" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Comparar Lotes pendiente de ejecución.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

@@ -1,4 +1,67 @@
-<details class="panel-monitor" id="panel-discador">
-    <summary><span class="panel-icon">⚪</span> ⚙️ Procesar Discador</summary>
-    <div class="panel-body">Pendiente...</div>
+<details id="panel-discador-wrapper" class="panel-monitor orion-fase-f-panel" data-orion-workflow-managed="1">
+    <summary>
+        <span class="panel-icon">📞</span>
+        Procesar Discador
+        <span id="wf-status-procesar-discador" class="wf-status-chip pending">⚪ Pendiente</span>
+    </summary>
+
+    <div class="panel-body">
+        <div class="orion-fase-f-grid">
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">1</span>
+                    <div>
+                        <h4>Archivo Discador distribuido</h4>
+                        <p>Procesa el archivo Discador copiado en la estructura diaria ORION.</p>
+                    </div>
+                </div>
+
+                <div class="orion-checklist">
+                    <div>✅ Requiere Fase D completada</div>
+                    <div>✅ Busca archivo en Discador o Consolidados</div>
+                    <div>✅ Limpia y consolida información del Discador</div>
+                    <div>✅ Actualiza el total procesado para cuadre</div>
+                </div>
+            </section>
+
+            <section class="orion-step-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number">2</span>
+                    <div>
+                        <h4>Ejecutar procesamiento</h4>
+                        <p>Ejecute este proceso desde el panel central. El estado se actualizará solo para este panel.</p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="ui-btn-success orion-main-action"
+                    onclick="ejecutarWorkflowOrion('procesar.discador', this)"
+                >
+                    Procesar Discador
+                    <span class="status-icon"></span>
+                </button>
+
+                <div class="orion-help-text">
+                    El panel izquierdo solo muestra navegación y estado global.
+                </div>
+            </section>
+
+            <section class="orion-result-card">
+                <div class="orion-step-header">
+                    <span class="orion-step-number result">3</span>
+                    <div>
+                        <h4>Resultado</h4>
+                        <p>Resultado detallado del proceso ejecutado.</p>
+                    </div>
+                </div>
+
+                <div id="panel-discador" class="ui-result-block orion-result-content">
+                    <div class="log-line warning">
+                        ⚠️ Procesar Discador pendiente de ejecución.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 </details>

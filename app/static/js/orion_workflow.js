@@ -28,6 +28,43 @@
             method: "POST_JSON",
             endpoint: "/accion/distribuir-seleccionados",
         },
+
+        "procesar.discador": {
+            phase: "F",
+            label: "Procesar Discador",
+            panelId: "panel-discador",
+            wrapperId: "panel-discador-wrapper",
+            buttonId: "",
+            method: "GET",
+            endpoint: "/accion/procesar-discador",
+        },
+        "procesar.causales": {
+            phase: "F",
+            label: "Procesar Causales",
+            panelId: "panel-causales",
+            wrapperId: "panel-causales-wrapper",
+            buttonId: "",
+            method: "GET",
+            endpoint: "/accion/procesar-causales",
+        },
+        "procesar.lotes": {
+            phase: "F",
+            label: "Procesar Lotes",
+            panelId: "panel-lotes",
+            wrapperId: "panel-lotes-wrapper",
+            buttonId: "",
+            method: "GET",
+            endpoint: "/accion/procesar-lotes",
+        },
+        "procesar.comparar": {
+            phase: "F",
+            label: "Comparar Lotes",
+            panelId: "panel-comparar",
+            wrapperId: "panel-comparar-wrapper",
+            buttonId: "",
+            method: "GET",
+            endpoint: "/accion/comparar-lotes",
+        },
     };
 
     function byId(id) {
@@ -151,8 +188,10 @@
 
         guardarEstado(estado);
         renderEstadoWorkflow(actionName);
-        actualizarEstadoFaseDDirecto();
+        actualizarEstadoWorkflowDirecto(action.phase);
     }
+
+
 
 
 
@@ -237,6 +276,88 @@ function limpiarChipsViejosFaseD() {
 
 
 
+
+
+    function calcularEstadoProcesamiento() {
+        const estado = leerEstado();
+
+        const acciones = [
+            "procesar.discador",
+            "procesar.causales",
+            "procesar.lotes",
+            "procesar.comparar",
+        ];
+
+        const estados = acciones.map((accion) => estado[accion]?.status || "pending");
+
+        if (estados.includes("running")) {
+            return { status: "running", detail: "Procesamiento en ejecución" };
+        }
+
+        if (estados.includes("error")) {
+            return { status: "error", detail: "Error en procesamiento" };
+        }
+
+        if (estados.every((item) => item === "done")) {
+            return { status: "done", detail: "Procesamiento completado" };
+        }
+
+        if (estados.some((item) => item === "done")) {
+            return { status: "ready", detail: "Procesamiento parcial" };
+        }
+
+        return { status: "pending", detail: "Procesamiento pendiente" };
+    }
+
+    function actualizarEstadoFaseFDirecto() {
+        const estado = calcularEstadoProcesamiento();
+        const [icon, label, cls] = estadoMeta(estado.status);
+
+        const legacyStatus = estado.status === "ready" ? "info" : estado.status;
+        const legacyLabel = estado.status === "ready" ? "Revisar" : label;
+
+        try {
+            const key = "orionDiario.ui.orion.phaseStatus";
+            const raw = localStorage.getItem(key);
+            const phaseStatus = raw ? JSON.parse(raw) : {};
+
+            phaseStatus.F = {
+                status: legacyStatus,
+                detail: estado.detail || legacyLabel,
+                updatedAt: new Date().toLocaleTimeString(),
+            };
+
+            localStorage.setItem(key, JSON.stringify(phaseStatus));
+        } catch {
+            // No bloquear UI por fallo de localStorage.
+        }
+
+        const sidebarItem = document.querySelector('[data-orion-phase="F"]');
+
+        if (sidebarItem) {
+            sidebarItem.classList.remove("pending", "running", "done", "error", "info");
+            sidebarItem.classList.add(cls);
+
+            const state = sidebarItem.querySelector(".orion-phase-state");
+
+            if (state) {
+                state.textContent = `${icon} ${legacyLabel}`;
+            }
+        }
+    }
+
+    function actualizarEstadoWorkflowDirecto(phase) {
+        if (phase === "D") {
+            actualizarEstadoFaseDDirecto();
+        actualizarEstadoFaseFDirecto();
+            return;
+        }
+
+        if (phase === "F") {
+            actualizarEstadoFaseFDirecto();
+            return;
+        }
+    }
 
     function renderEstadoWorkflow(actionName) {
         const action = ACTIONS[actionName];
@@ -629,6 +750,9 @@ function limpiarChipsViejosFaseD() {
     window.ejecutarWorkflowOrion = ejecutarWorkflowOrion;
     window.abrirWorkflowOrion = abrirWorkflowOrion;
     window.inicializarWorkflowOrion = inicializarWorkflowOrion;
+    window.actualizarEstadoWorkflowDirecto = actualizarEstadoWorkflowDirecto;
+    window.actualizarEstadoFaseFDirecto = actualizarEstadoFaseFDirecto;
+    window.calcularEstadoProcesamiento = calcularEstadoProcesamiento;
     window.limpiarEstadoWorkflowLegacyGlobal = limpiarEstadoWorkflowLegacyGlobal;
     window.getWorkflowStateKey = getWorkflowStateKey;
 

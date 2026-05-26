@@ -1,9 +1,25 @@
 <details>
     <summary>⚙️ Fase F: Procesamiento</summary>
+
     <div class="fase-actions">
-        <button onclick="ejecutarAccion('/accion/procesar-discador', this)" id="btn-disc">Procesar Discador <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/procesar-causales', this)" id="btn-caus">Procesar Causales <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/procesar-lotes', this)" id="btn-lotes">Procesar Lotes <span class="status-icon">⚪</span></button>
-        <button onclick="ejecutarAccion('/accion/comparar-lotes', this)" id="btn-comparar">Comparar Lotes <span class="status-icon">⚪</span></button>
+        <div class="log-line info">
+            Procese Discador, Causales y Lotes. Luego ejecute la comparación antes de cargar consolidados.
+        </div>
+
+        <button type="button" onclick="abrirWorkflowOrion('procesar.discador'); return false;">
+            Ir a Procesar Discador
+        </button>
+
+        <button type="button" onclick="abrirWorkflowOrion('procesar.causales'); return false;">
+            Ir a Procesar Causales
+        </button>
+
+        <button type="button" onclick="abrirWorkflowOrion('procesar.lotes'); return false;">
+            Ir a Procesar Lotes
+        </button>
+
+        <button type="button" onclick="abrirWorkflowOrion('procesar.comparar'); return false;">
+            Ir a Comparar Lotes
+        </button>
     </div>
 </details>
