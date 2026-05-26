@@ -1,3 +1,4 @@
+from app.controllers.gestion_consolidada_blueprint import gestion_consolidada_bp
 from flask import Flask
 
 from app.config import SECRET_KEY
@@ -20,5 +21,7 @@ def create_app():
     app.register_blueprint(proc_bp)
     app.register_blueprint(carga_bp)
     app.register_blueprint(aster_bp)
+
+    app.register_blueprint(gestion_consolidada_bp)
 
     return app
