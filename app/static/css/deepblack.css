@@ -3680,3 +3680,400 @@ body.gc-body .gc-process-panels #gcResultadoFaseI .gc-values-grid-six {
         width: 100%;
     }
 }
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1K - Integración en pantalla principal
+   ============================================================ */
+
+.gc-main-temp-hidden {
+    display: none !important;
+}
+
+.gc-main-embedded-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.gc-main-embedded-layout > .gc-main-temp-hidden {
+    display: none !important;
+}
+
+.gc-main-embed-host {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: calc(100vh - 138px) !important;
+    min-height: 680px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.gc-main-embed-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.gc-main-embed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.28));
+    border-bottom: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.gc-main-embed-header h2 {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 1rem;
+}
+
+.gc-main-embed-header p {
+    margin: 2px 0 0 0;
+    color: #94a3b8;
+    font-size: 0.74rem;
+}
+
+.gc-main-embed-header a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    color: #dbeafe;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    background: rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(96, 165, 250, 0.34);
+}
+
+.gc-main-embed-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    background: #05070a;
+}
+
+/* Modo embebido del módulo: elimina encabezado duplicado y ajusta alto */
+body.gc-body.gc-embedded .gc-hero {
+    display: none !important;
+}
+
+body.gc-body.gc-embedded .gc-shell {
+    padding: 8px !important;
+}
+
+body.gc-body.gc-embedded .gc-control-panel {
+    margin-top: 0 !important;
+}
+
+@media (max-width: 1100px) {
+    .gc-main-embed-host {
+        height: auto !important;
+        min-height: 720px !important;
+    }
+
+    .gc-main-embed-frame {
+        min-height: 720px !important;
+    }
+
+    .gc-main-embed-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1K.1 - Embed JS estable
+   ============================================================ */
+
+.gc-main-sidebar-hidden {
+    display: none !important;
+}
+
+.gc-main-consolidar-active {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.gc-main-consolidar-active .gc-main-embed-host {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: calc(100vh - 145px) !important;
+    min-height: 680px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+.gc-main-embed-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.gc-main-embed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.28));
+    border-bottom: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.gc-main-embed-header h2 {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 1rem;
+}
+
+.gc-main-embed-header p {
+    margin: 2px 0 0 0;
+    color: #94a3b8;
+    font-size: 0.74rem;
+}
+
+.gc-main-embed-header a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    color: #dbeafe;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    background: rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(96, 165, 250, 0.34);
+}
+
+.gc-main-embed-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    background: #05070a;
+}
+
+/* Modo embebido del módulo: elimina encabezado duplicado */
+body.gc-body.gc-embedded .gc-hero {
+    display: none !important;
+}
+
+body.gc-body.gc-embedded .gc-shell {
+    padding: 8px !important;
+}
+
+body.gc-body.gc-embedded .gc-control-panel {
+    margin-top: 0 !important;
+}
+
+@media (max-width: 1100px) {
+    .gc-main-consolidar-active .gc-main-embed-host {
+        height: auto !important;
+        min-height: 720px !important;
+    }
+
+    .gc-main-embed-frame {
+        min-height: 720px !important;
+    }
+
+    .gc-main-embed-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1K.2 - Layout embed corregido
+   ============================================================ */
+
+.gc-main-temp-hidden {
+    display: none !important;
+}
+
+.gc-main-consolidar-common {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.gc-main-consolidar-monitor-column {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+.gc-main-embed-host {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: calc(100vh - 142px) !important;
+    min-height: 720px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.gc-main-embed-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.gc-main-embed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.28));
+    border-bottom: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.gc-main-embed-header h2 {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 1rem;
+}
+
+.gc-main-embed-header p {
+    margin: 2px 0 0 0;
+    color: #94a3b8;
+    font-size: 0.74rem;
+}
+
+.gc-main-embed-header a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    color: #dbeafe;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    background: rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(96, 165, 250, 0.34);
+}
+
+.gc-main-embed-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    background: #05070a;
+}
+
+/* Modo embebido: quitar encabezado duplicado */
+body.gc-body.gc-embedded .gc-hero {
+    display: none !important;
+}
+
+body.gc-body.gc-embedded .gc-shell {
+    padding: 8px !important;
+}
+
+/* Forzar Estado de fases lateral dentro del iframe, aunque el iframe sea angosto */
+body.gc-body.gc-embedded .gc-work-layout {
+    display: grid !important;
+    grid-template-columns: 215px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+}
+
+body.gc-body.gc-embedded .gc-phase-sidebar {
+    display: block !important;
+    position: static !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section {
+    height: 100% !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+}
+
+body.gc-body.gc-embedded .gc-process-panels {
+    min-width: 0 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+}
+
+/* Anular el responsive previo solo para el iframe embebido */
+@media (max-width: 1180px) {
+    body.gc-body.gc-embedded .gc-work-layout {
+        grid-template-columns: 215px minmax(0, 1fr) !important;
+        overflow: hidden !important;
+    }
+
+    body.gc-body.gc-embedded .gc-phase-sidebar,
+    body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section,
+    body.gc-body.gc-embedded .gc-process-panels {
+        height: 100% !important;
+        max-height: none !important;
+    }
+}
+
+@media (max-width: 900px) {
+    body.gc-body.gc-embedded .gc-work-layout {
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+    }
+
+    body.gc-body.gc-embedded .gc-phase-sidebar,
+    body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section,
+    body.gc-body.gc-embedded .gc-process-panels {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .gc-main-embed-host {
+        height: auto !important;
+        min-height: 760px !important;
+    }
+
+    .gc-main-embed-frame {
+        min-height: 760px !important;
+    }
+}

@@ -135,10 +135,15 @@ def main():
     else:
         errors += fail("No existe partial consolidar_gestion_launcher.html")
 
-    if "/gestion-consolidada" in index or "gestion_consolidada.vista_gestion_consolidada" in index:
-        ok("Index contiene acceso a Consolidar Gestión")
+    if (
+        "/gestion-consolidada" in index
+        or "gestion_consolidada.vista_gestion_consolidada" in index
+        or "btnModuloConsolidar" in header
+        or "Consolidar Gestión" in header
+    ):
+        ok("Pantalla principal contiene acceso a Consolidar Gestión")
     else:
-        errors += fail("Index no contiene acceso a Consolidar Gestión")
+        errors += fail("Pantalla principal no contiene acceso a Consolidar Gestión")
 
     if "Consolidar Gestión" in header or "gestion_consolidada.vista_gestion_consolidada" in header:
         ok("Header contiene acceso a Consolidar Gestión")
@@ -149,6 +154,39 @@ def main():
         ok("CSS v1J presente")
     else:
         errors += fail("Falta CSS v1J")
+
+
+    print("\n[6] v1K - integración pantalla principal")
+    base = read(APP / "templates" / "base.html")
+    bp = read(APP / "controllers" / "gestion_consolidada_blueprint.py")
+    tpl = read(APP / "templates" / "gestion_consolidada.html")
+    css = read(APP / "static" / "css" / "deepblack.css")
+    js_embed = APP / "static" / "js" / "gestion_consolidada_main_embed.js"
+
+    if js_embed.exists():
+        ok("JS embed pantalla principal existe")
+    else:
+        errors += fail("No existe gestion_consolidada_main_embed.js")
+
+    if "gestion_consolidada_main_embed.js" in base:
+        ok("base.html carga JS embed")
+    else:
+        errors += fail("base.html no carga JS embed")
+
+    if "embedded = request.args.get" in bp:
+        ok("Blueprint soporta embedded=1")
+    else:
+        errors += fail("Blueprint no soporta embedded=1")
+
+    if "gc-embedded" in tpl:
+        ok("Template soporta modo embebido")
+    else:
+        errors += fail("Template no soporta modo embebido")
+
+    if "CONSOLIDAR GESTIÓN v1K" in css:
+        ok("CSS v1K presente")
+    else:
+        errors += fail("Falta CSS v1K")
 
     print("\n" + "=" * 100)
     if errors:
