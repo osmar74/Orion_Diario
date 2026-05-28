@@ -1,376 +1,465 @@
 from pathlib import Path
-import re
 
 
-WORKFLOW_JS = Path("app/static/js/orion_workflow.js")
-MAIN_JS = Path("app/static/js/main.js")
+JS = Path("app/static/js/gestion_consolidada_main_embed.js")
+CSS = Path("app/static/css/deepblack.css")
+AUDIT = Path("tools/audit_gestion_consolidada.py")
 
 
-def encontrar_funcion(texto: str, nombre: str):
-    patron = re.compile(rf"(?:async\s+)?function\s+{re.escape(nombre)}\s*\(")
-    match = patron.search(texto)
+JS.write_text(
+    r'''/* ============================================================
+   CONSOLIDAR GESTIÓN v1K.2
+   Embed real en pantalla principal:
+   - Oculta paneles temporales.
+   - Expande monitor a todo el ancho.
+   - Mantiene Estado de fases lateral dentro del iframe.
+   ============================================================ */
 
-    if not match:
-        return -1, -1
+(function () {
+    "use strict";
 
-    inicio = match.start()
-    llave_inicio = texto.find("{", match.end())
+    var EMBED_URL = "/gestion-consolidada?embedded=1";
+    var FRAME_ID = "gc-main-embedded-frame";
+    var originalSeleccionarModulo = null;
+    var hiddenElements = [];
 
-    profundidad = 0
-    en_string = None
-    escape = False
-    en_template = False
-
-    for i in range(llave_inicio, len(texto)):
-        ch = texto[i]
-
-        if escape:
-            escape = False
-            continue
-
-        if ch == "\\":
-            escape = True
-            continue
-
-        if en_string:
-            if ch == en_string:
-                en_string = None
-            continue
-
-        if ch in ("'", '"'):
-            en_string = ch
-            continue
-
-        if ch == "`":
-            en_template = not en_template
-            continue
-
-        if en_template:
-            continue
-
-        if ch == "{":
-            profundidad += 1
-        elif ch == "}":
-            profundidad -= 1
-
-            if profundidad == 0:
-                return inicio, i + 1
-
-    return -1, -1
-
-
-def reemplazar_funcion(texto: str, nombre: str, nueva: str) -> str:
-    inicio, fin = encontrar_funcion(texto, nombre)
-
-    if inicio == -1 or fin == -1:
-        raise RuntimeError(f"No se encontró la función {nombre}.")
-
-    return texto[:inicio] + nueva.strip() + "\n\n" + texto[fin:]
-
-
-js = WORKFLOW_JS.read_text(encoding="utf-8")
-
-
-# ============================================================
-# 1) Normalizar fechas más flexible
-# ============================================================
-
-nueva_normalizar = r'''function normalizarFechaWorkflow(valor) {
-        const v = String(valor || "").trim();
-
-        if (!v) {
-            return "";
-        }
-
-        // Aceptar YYYY-MM-DD y convertir a YYYYMM_DD para endpoints ORION.
-        const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-
-        if (iso) {
-            return `${iso[1]}${iso[2]}_${iso[3]}`;
-        }
-
-        // Aceptar YYYYMMDD y convertir a YYYYMM_DD.
-        const ymd = v.match(/^(\d{4})(\d{2})(\d{2})$/);
-
-        if (ymd) {
-            return `${ymd[1]}${ymd[2]}_${ymd[3]}`;
-        }
-
-        // Aceptar YYYYMM_DD.
-        if (/^\d{6}_\d{2}$/.test(v)) {
-            return v;
-        }
-
-        if (typeof window.normalizarFechaOrion === "function") {
-            return window.normalizarFechaOrion(v);
-        }
-
-        return v;
-    }'''
-
-js = reemplazar_funcion(js, "normalizarFechaWorkflow", nueva_normalizar)
-
-
-# ============================================================
-# 2) Helper específico para Consolidado Gestión Orion
-# ============================================================
-
-helper = r'''
-    function obtenerFechaConsolidadoWorkflow() {
-        const consFecha = byId("consFecha");
-        const consMeses = byId("consMeses");
-
-        let fecha = String(consFecha?.value || "").trim();
-        let meses = String(consMeses?.value || "").trim();
-
-        const fechaProceso = normalizarFechaWorkflow(getFechaOrionWorkflow());
-        const limpiaProceso = fechaProceso.replace("_", "");
-
-        if (!fecha && /^\d{8}$/.test(limpiaProceso)) {
-            fecha = `${limpiaProceso.slice(0, 4)}-${limpiaProceso.slice(4, 6)}-${limpiaProceso.slice(6, 8)}`;
-
-            if (consFecha) {
-                consFecha.value = fecha;
-            }
-        }
-
-        if (!meses && /^\d{8}$/.test(limpiaProceso)) {
-            meses = limpiaProceso.slice(0, 6);
-
-            if (consMeses) {
-                consMeses.value = meses;
-            }
-        }
-
-        if (/^\d{8}$/.test(fecha)) {
-            fecha = `${fecha.slice(0, 4)}-${fecha.slice(4, 6)}-${fecha.slice(6, 8)}`;
-
-            if (consFecha) {
-                consFecha.value = fecha;
-            }
-        }
-
-        if (/^\d{6}_\d{2}$/.test(fecha)) {
-            const limpia = fecha.replace("_", "");
-            fecha = `${limpia.slice(0, 4)}-${limpia.slice(4, 6)}-${limpia.slice(6, 8)}`;
-
-            if (consFecha) {
-                consFecha.value = fecha;
-            }
-        }
-
-        const fechaValida = /^\d{4}-\d{2}-\d{2}$/.test(fecha);
-        const mesesValido = /^\d{6}$/.test(meses);
-
-        return {
-            fecha,
-            meses,
-            valido: fechaValida && mesesValido,
-        };
+    function byId(id) {
+        return document.getElementById(id);
     }
+
+    function textOf(el) {
+        return String((el && (el.innerText || el.textContent)) || "").replace(/\s+/g, " ").trim();
+    }
+
+    function hasText(el, text) {
+        return textOf(el).includes(text);
+    }
+
+    function findByText(text) {
+        var nodes = Array.from(document.querySelectorAll("aside, section, article, div, main"));
+
+        return nodes.find(function (el) {
+            return hasText(el, text);
+        }) || null;
+    }
+
+    function findLauncherPanel() {
+        var btn = Array.from(document.querySelectorAll("a, button")).find(function (el) {
+            return hasText(el, "Abrir Consolidar Gestión");
+        });
+
+        if (btn) {
+            return btn.closest("section, article, aside, .gc-home-launcher, .panel, .card, div") || btn;
+        }
+
+        var textPanel = findByText("Tercera fase del proceso");
+
+        if (textPanel) {
+            return textPanel.closest("section, article, aside, .gc-home-launcher, .panel, .card, div") || textPanel;
+        }
+
+        return null;
+    }
+
+    function ancestors(el) {
+        var list = [];
+
+        while (el) {
+            list.push(el);
+            el = el.parentElement;
+        }
+
+        return list;
+    }
+
+    function commonAncestor(a, b) {
+        if (!a || !b) {
+            return null;
+        }
+
+        var aa = ancestors(a);
+        var bb = ancestors(b);
+
+        return aa.find(function (node) {
+            return bb.includes(node);
+        }) || null;
+    }
+
+    function childUnder(parent, el) {
+        if (!parent || !el) {
+            return null;
+        }
+
+        var current = el;
+
+        while (current && current.parentElement !== parent) {
+            current = current.parentElement;
+        }
+
+        return current;
+    }
+
+    function hideElement(el) {
+        if (!el || el === document.body || el === document.documentElement) {
+            return;
+        }
+
+        if (!hiddenElements.includes(el)) {
+            hiddenElements.push(el);
+        }
+
+        el.classList.add("gc-main-temp-hidden");
+        el.setAttribute("aria-hidden", "true");
+    }
+
+    function restoreHiddenElements() {
+        hiddenElements.forEach(function (el) {
+            el.classList.remove("gc-main-temp-hidden");
+            el.removeAttribute("aria-hidden");
+        });
+
+        hiddenElements = [];
+
+        document.querySelectorAll(".gc-main-consolidar-common").forEach(function (el) {
+            el.classList.remove("gc-main-consolidar-common");
+        });
+
+        document.querySelectorAll(".gc-main-consolidar-monitor-column").forEach(function (el) {
+            el.classList.remove("gc-main-consolidar-monitor-column");
+        });
+    }
+
+    function setTituloConsolidar() {
+        var titulo =
+            document.querySelector(".monitor-header h2") ||
+            document.querySelector(".monitor h2") ||
+            document.querySelector("main h2");
+
+        if (titulo) {
+            titulo.textContent = "📊 Monitor de ejecución de Consolidar Gestión";
+        }
+    }
+
+    function crearHtmlEmbed() {
+        var html = "";
+
+        html += "<section class=\"gc-main-embed-shell\">";
+        html += "  <div class=\"gc-main-embed-header\">";
+        html += "    <div>";
+        html += "      <h2>📊 Consolidar Gestión</h2>";
+        html += "      <p>Proceso completo A-I integrado en la pantalla principal.</p>";
+        html += "    </div>";
+        html += "    <a href=\"/gestion-consolidada\" target=\"_blank\" rel=\"noopener\">";
+        html += "      Abrir en pestaña completa";
+        html += "    </a>";
+        html += "  </div>";
+        html += "  <iframe";
+        html += "    id=\"" + FRAME_ID + "\"";
+        html += "    class=\"gc-main-embed-frame\"";
+        html += "    src=\"" + EMBED_URL + "\"";
+        html += "    title=\"Consolidar Gestión\"";
+        html += "    loading=\"eager\">";
+        html += "  </iframe>";
+        html += "</section>";
+
+        return html;
+    }
+
+    function ocultarTemporalesYExpandir(host) {
+        var launcher = findLauncherPanel();
+        var sidebarTemp = findByText("Fases y Pasos para Consolidar Gestión");
+        var monitorTemp = findByText("Módulo en preparación.") || findByText("Este módulo queda reservado para consolidar gestiones");
+
+        var referencias = [launcher, sidebarTemp, monitorTemp].filter(Boolean);
+
+        referencias.forEach(function (ref) {
+            var common = commonAncestor(host, ref);
+
+            if (!common) {
+                return;
+            }
+
+            var hostChild = childUnder(common, host);
+            var refChild = childUnder(common, ref);
+
+            if (common && hostChild && refChild && hostChild !== refChild) {
+                common.classList.add("gc-main-consolidar-common");
+                hostChild.classList.add("gc-main-consolidar-monitor-column");
+                hideElement(refChild);
+            }
+        });
+
+        // Fallback para el panel azul temporal cuando queda como hermano directo visible.
+        var launcherFallback = findLauncherPanel();
+
+        if (launcherFallback && !launcherFallback.contains(host)) {
+            var panel = launcherFallback.closest("section, article, aside, .panel, .card, .gc-home-launcher, div") || launcherFallback;
+            hideElement(panel);
+        }
+    }
+
+    function integrarConsolidarGestion() {
+        var host = byId("monitor-content");
+
+        if (!host) {
+            return false;
+        }
+
+        setTituloConsolidar();
+        ocultarTemporalesYExpandir(host);
+
+        host.classList.add("gc-main-embed-host");
+
+        if (!host.querySelector("#" + FRAME_ID)) {
+            host.innerHTML = crearHtmlEmbed();
+        }
+
+        return true;
+    }
+
+    function envolverSeleccionarModulo() {
+        if (typeof window.seleccionarModulo !== "function") {
+            return;
+        }
+
+        if (window.__gcSeleccionarModuloWrappedV1K2) {
+            return;
+        }
+
+        originalSeleccionarModulo = window.seleccionarModulo;
+
+        window.seleccionarModulo = function (modulo) {
+            var resultado = originalSeleccionarModulo.apply(this, arguments);
+
+            window.setTimeout(function () {
+                if (String(modulo || "").toLowerCase() === "consolidar") {
+                    integrarConsolidarGestion();
+                } else {
+                    restoreHiddenElements();
+                }
+            }, 120);
+
+            return resultado;
+        };
+
+        window.__gcSeleccionarModuloWrappedV1K2 = true;
+    }
+
+    function inicializar() {
+        envolverSeleccionarModulo();
+
+        var btn = byId("btnModuloConsolidar");
+
+        if (btn) {
+            btn.addEventListener("click", function () {
+                window.setTimeout(integrarConsolidarGestion, 120);
+                window.setTimeout(integrarConsolidarGestion, 500);
+            });
+        }
+
+        window.setTimeout(function () {
+            if (btn && (btn.classList.contains("active") || btn.classList.contains("selected"))) {
+                integrarConsolidarGestion();
+            }
+        }, 300);
+    }
+
+    document.addEventListener("DOMContentLoaded", inicializar);
+
+    window.integrarConsolidarGestionPantallaPrincipal = integrarConsolidarGestion;
+})();
+''',
+    encoding="utf-8",
+)
+
+
+css = CSS.read_text(encoding="utf-8")
+
+bloque_css = r'''
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1K.2 - Layout embed corregido
+   ============================================================ */
+
+.gc-main-temp-hidden {
+    display: none !important;
+}
+
+.gc-main-consolidar-common {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.gc-main-consolidar-monitor-column {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+.gc-main-embed-host {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: calc(100vh - 142px) !important;
+    min-height: 720px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.gc-main-embed-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.gc-main-embed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.28));
+    border-bottom: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.gc-main-embed-header h2 {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 1rem;
+}
+
+.gc-main-embed-header p {
+    margin: 2px 0 0 0;
+    color: #94a3b8;
+    font-size: 0.74rem;
+}
+
+.gc-main-embed-header a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    color: #dbeafe;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    background: rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(96, 165, 250, 0.34);
+}
+
+.gc-main-embed-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    background: #05070a;
+}
+
+/* Modo embebido: quitar encabezado duplicado */
+body.gc-body.gc-embedded .gc-hero {
+    display: none !important;
+}
+
+body.gc-body.gc-embedded .gc-shell {
+    padding: 8px !important;
+}
+
+/* Forzar Estado de fases lateral dentro del iframe, aunque el iframe sea angosto */
+body.gc-body.gc-embedded .gc-work-layout {
+    display: grid !important;
+    grid-template-columns: 215px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+}
+
+body.gc-body.gc-embedded .gc-phase-sidebar {
+    display: block !important;
+    position: static !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section {
+    height: 100% !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+}
+
+body.gc-body.gc-embedded .gc-process-panels {
+    min-width: 0 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+}
+
+/* Anular el responsive previo solo para el iframe embebido */
+@media (max-width: 1180px) {
+    body.gc-body.gc-embedded .gc-work-layout {
+        grid-template-columns: 215px minmax(0, 1fr) !important;
+        overflow: hidden !important;
+    }
+
+    body.gc-body.gc-embedded .gc-phase-sidebar,
+    body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section,
+    body.gc-body.gc-embedded .gc-process-panels {
+        height: 100% !important;
+        max-height: none !important;
+    }
+}
+
+@media (max-width: 900px) {
+    body.gc-body.gc-embedded .gc-work-layout {
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+    }
+
+    body.gc-body.gc-embedded .gc-phase-sidebar,
+    body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section,
+    body.gc-body.gc-embedded .gc-process-panels {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .gc-main-embed-host {
+        height: auto !important;
+        min-height: 760px !important;
+    }
+
+    .gc-main-embed-frame {
+        min-height: 760px !important;
+    }
+}
 '''
 
-if "function obtenerFechaConsolidadoWorkflow()" not in js:
-    marker = "    async function ejecutarLegacyFunction"
-    if marker not in js:
-        raise RuntimeError("No se encontró ejecutarLegacyFunction.")
+if "CONSOLIDAR GESTIÓN v1K.2" not in css:
+    css = css.rstrip() + "\n\n" + bloque_css.strip() + "\n"
 
-    js = js.replace(marker, helper + "\n" + marker, 1)
+CSS.write_text(css, encoding="utf-8")
 
 
-# ============================================================
-# 3) ejecutarWorkflowOrion: no bloquear Consolidado por fecha general
-# ============================================================
+audit = AUDIT.read_text(encoding="utf-8")
 
-nueva_ejecutar = r'''async function ejecutarWorkflowOrion(actionName, boton = null) {
-        const action = ACTIONS[actionName];
-
-        if (!action) {
-            console.warn("Workflow ORION no registrado:", actionName);
-            return "";
-        }
-
-        abrirPanel(actionName);
-
-        let fecha = normalizarFechaWorkflow(getFechaOrionWorkflow());
-
-        if (actionName === "consolidado.gestion.consultar") {
-            inicializarConsolidadoWorkflow();
-
-            const params = obtenerFechaConsolidadoWorkflow();
-
-            if (!params.valido) {
-                alert("Ingrese una fecha válida y un mes de gestión válido para el consolidado.");
-                return "";
-            }
-
-            // Para esta acción, la función legacy usa consFecha y consMeses.
-            // Solo damos un valor interno para no bloquear el workflow.
-            fecha = normalizarFechaWorkflow(params.fecha);
-        }
-
-        if (!fecha) {
-            alert("Ingrese una fecha válida antes de ejecutar.");
-            return "";
-        }
-
-        const target = panel(actionName);
-
-        setEstado(actionName, "running", action.label);
-        setButtonBusy(actionName, true);
-
-        let seleccionados = [];
-
-        try {
-            if (action.method === "POST_JSON") {
-                seleccionados = obtenerSeleccionadosDistribucion();
-
-                if (!seleccionados.length) {
-                    throw new Error("Seleccione al menos un archivo para copiar.");
-                }
-            }
-
-            if (target) {
-                if (
-                    action.method === "GET" ||
-                    action.method === "POST_FORM"
-                ) {
-                    target.innerHTML = htmlLoadingWorkflow(action.label);
-                } else if (action.method === "LEGACY_FUNCTION") {
-                    // No borrar el panel antes de OCR/consolidación; la función legacy escribe su propio resultado.
-                } else {
-                    const aviso = document.createElement("div");
-                    aviso.className = "log-line info";
-                    aviso.textContent = "⏳ Copiando archivos seleccionados...";
-                    target.prepend(aviso);
-                }
-            }
-
-            let html = "";
-
-            if (action.method === "GET") {
-                html = await ejecutarGet(actionName, fecha);
-            } else if (action.method === "POST_JSON") {
-                html = await ejecutarPostJson(actionName, {
-                    fecha,
-                    seleccionados,
-                });
-            } else if (action.method === "POST_FORM") {
-                html = await ejecutarPostForm(actionName, fecha);
-            } else if (action.method === "LEGACY_FUNCTION") {
-                html = await ejecutarLegacyFunction(actionName, boton);
-            } else {
-                throw new Error(`Método no soportado: ${action.method}`);
-            }
-
-            if (target && action.method !== "LEGACY_FUNCTION") {
-                target.innerHTML = html;
-            }
-
-            if (actionName === "distribuir.preparar") {
-                prepararBotonCopiarDistribucion();
-            }
-
-            const ok = esRespuestaExitosaWorkflow(html);
-
-            setEstado(
-                actionName,
-                ok ? "done" : "error",
-                ok ? "Completado" : "Error"
-            );
-
-            if (typeof window.actualizarIconoBoton === "function" && boton) {
-                window.actualizarIconoBoton(boton, ok);
-            }
-
-            return html;
-        } catch (error) {
-            const mensaje = String(error?.message || error);
-
-            if (target) {
-                if (
-                    action.method === "GET" ||
-                    action.method === "POST_FORM" ||
-                    action.method === "LEGACY_FUNCTION"
-                ) {
-                    target.innerHTML = htmlErrorWorkflow(mensaje);
-                } else {
-                    const aviso = document.createElement("div");
-                    aviso.className = "log-line error";
-                    aviso.textContent = `❌ ${mensaje}`;
-                    target.prepend(aviso);
-                }
-            }
-
-            setEstado(actionName, "error", mensaje);
-
-            if (typeof window.actualizarIconoBoton === "function" && boton) {
-                window.actualizarIconoBoton(boton, false);
-            }
-
-            return "";
-        } finally {
-            setButtonBusy(actionName, false);
-            prepararBotonCopiarDistribucion();
-        }
-    }'''
-
-js = reemplazar_funcion(js, "ejecutarWorkflowOrion", nueva_ejecutar)
-
-
-# ============================================================
-# 4) inicializarConsolidadoWorkflow debe rellenar fecha/mes aunque la fecha venga con _
-# ============================================================
-
-nueva_init_consolidado = r'''function inicializarConsolidadoWorkflow() {
-        asegurarAliasesResultadoConsolidadoWorkflow();
-        seleccionarConexionConsolidadoWorkflow(CONEXION_CONSOLIDADO_WORKFLOW);
-
-        const fechaProceso = normalizarFechaWorkflow(getFechaOrionWorkflow());
-        const consFecha = byId("consFecha");
-        const consMeses = byId("consMeses");
-
-        const limpia = fechaProceso.replace("_", "");
-
-        if (fechaProceso && consFecha && !String(consFecha.value || "").trim()) {
-            if (/^\d{8}$/.test(limpia)) {
-                consFecha.value = `${limpia.slice(0, 4)}-${limpia.slice(4, 6)}-${limpia.slice(6, 8)}`;
-            }
-        }
-
-        if (fechaProceso && consMeses && !String(consMeses.value || "").trim()) {
-            if (/^\d{8}$/.test(limpia)) {
-                consMeses.value = limpia.slice(0, 6);
-            }
-        }
-    }'''
-
-js = reemplazar_funcion(js, "inicializarConsolidadoWorkflow", nueva_init_consolidado)
-
-
-# Export debug
-linea = "    window.obtenerFechaConsolidadoWorkflow = obtenerFechaConsolidadoWorkflow;"
-if linea not in js:
-    js = js.replace(
-        "    window.inicializarWorkflowOrion = inicializarWorkflowOrion;",
-        "    window.inicializarWorkflowOrion = inicializarWorkflowOrion;\n" + linea,
+if "CONSOLIDAR GESTIÓN v1K.2" not in audit:
+    audit = audit.replace(
+        '''        "CONSOLIDAR GESTIÓN v1K.1",''',
+        '''        "CONSOLIDAR GESTIÓN v1K.1",
+        "CONSOLIDAR GESTIÓN v1K.2",''',
         1,
     )
 
-WORKFLOW_JS.write_text(js, encoding="utf-8")
+AUDIT.write_text(audit, encoding="utf-8")
 
-
-# ============================================================
-# 5) Cache
-# ============================================================
-
-main = MAIN_JS.read_text(encoding="utf-8")
-main = re.sub(
-    r'const UI_VIEW_CACHE_VERSION = "v\d+";',
-    'const UI_VIEW_CACHE_VERSION = "v45";',
-    main,
-    count=1,
-)
-MAIN_JS.write_text(main, encoding="utf-8")
-
-print("Fix aplicado: Consolidado Gestión Orion usa consFecha/consMeses sin bloquear por fecha general.")
+print("Fix v1K.2 aplicado: oculta panel temporal izquierdo y fuerza Estado de fases lateral en embed.")
