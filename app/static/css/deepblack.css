@@ -4077,3 +4077,151 @@ body.gc-body.gc-embedded .gc-process-panels {
         min-height: 760px !important;
     }
 }
+
+/* ============================================================
+   CONSOLIDAR GESTIÓN v1K.3 - Limpieza integración final
+   ============================================================ */
+
+/* El launcher temporal ya no debe mostrarse en ORION/ASTER */
+.gc-home-launcher,
+[data-gc-home-launcher="1"] {
+    display: none !important;
+}
+
+.gc-main-temp-hidden {
+    display: none !important;
+}
+
+/* Cuando Consolidar Gestión está activo, el layout queda en una sola columna */
+body.gc-consolidar-active .gc-main-layout-clean {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* Quitar el panel externo "Monitor de ejecución..." y dejar solo el módulo */
+body.gc-consolidar-active .gc-main-monitor-clean {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+}
+
+/* Oculta encabezados/controles externos del monitor, dejando solo monitor-content */
+body.gc-consolidar-active .gc-main-monitor-clean > *:not(#monitor-content):not(.monitor-content):not([data-monitor-content]) {
+    display: none !important;
+}
+
+body.gc-consolidar-active .gc-main-embed-host {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: calc(100vh - 90px) !important;
+    min-height: 760px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.gc-main-embed-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.gc-main-embed-frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    background: #05070a;
+}
+
+/* Modo embebido del módulo real */
+body.gc-body.gc-embedded .gc-hero {
+    display: none !important;
+}
+
+body.gc-body.gc-embedded .gc-shell {
+    padding: 8px !important;
+}
+
+/* Forzar Estado de fases a la izquierda dentro del iframe */
+body.gc-body.gc-embedded .gc-work-layout {
+    display: grid !important;
+    grid-template-columns: 215px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+}
+
+body.gc-body.gc-embedded .gc-phase-sidebar {
+    display: block !important;
+    position: static !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section {
+    height: 100% !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+}
+
+body.gc-body.gc-embedded .gc-process-panels {
+    min-width: 0 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+}
+
+/* Anular responsive anterior dentro del iframe */
+@media (max-width: 1180px) {
+    body.gc-body.gc-embedded .gc-work-layout {
+        grid-template-columns: 215px minmax(0, 1fr) !important;
+        overflow: hidden !important;
+    }
+
+    body.gc-body.gc-embedded .gc-phase-sidebar,
+    body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section,
+    body.gc-body.gc-embedded .gc-process-panels {
+        height: 100% !important;
+        max-height: none !important;
+    }
+}
+
+@media (max-width: 900px) {
+    body.gc-body.gc-embedded .gc-work-layout {
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+    }
+
+    body.gc-body.gc-embedded .gc-phase-sidebar,
+    body.gc-body.gc-embedded .gc-phase-sidebar .gc-state-section,
+    body.gc-body.gc-embedded .gc-process-panels {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    body.gc-consolidar-active .gc-main-embed-host {
+        height: auto !important;
+        min-height: 780px !important;
+    }
+
+    .gc-main-embed-frame {
+        min-height: 780px !important;
+    }
+}

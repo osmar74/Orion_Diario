@@ -1,9 +1,10 @@
 /* ============================================================
-   CONSOLIDAR GESTIÓN v1K.2
-   Embed real en pantalla principal:
-   - Oculta paneles temporales.
-   - Expande monitor a todo el ancho.
-   - Mantiene Estado de fases lateral dentro del iframe.
+   CONSOLIDAR GESTIÓN v1K.3
+   Limpieza final de integración:
+   - Quita launcher temporal.
+   - Oculta panel izquierdo temporal.
+   - Usa el monitor principal como contenedor limpio.
+   - No afecta ORION ni ASTER.
    ============================================================ */
 
 (function () {
@@ -19,75 +20,113 @@
     }
 
     function textOf(el) {
-        return String((el && (el.innerText || el.textContent)) || "").replace(/\s+/g, " ").trim();
+        return String((el && (el.innerText || el.textContent)) || "")
+            .replace(/\s+/g, " ")
+            .trim();
     }
 
     function hasText(el, text) {
         return textOf(el).includes(text);
     }
 
-    function findByText(text) {
-        var nodes = Array.from(document.querySelectorAll("aside, section, article, div, main"));
+    function allCandidates() {
+        return Array.from(document.querySelectorAll(
+            "aside, section, article, main, div, .panel, .card, .module-panel, .content-panel, .gc-home-launcher"
+        ));
+    }
 
-        return nodes.find(function (el) {
-            return hasText(el, text);
-        }) || null;
+    function findPanelsByText(text) {
+        var found = [];
+
+        allCandidates().forEach(function (el) {
+            if (!hasText(el, text)) {
+                return;
+            }
+
+            var rect = el.getBoundingClientRect();
+            var area = Math.max(0, rect.width) * Math.max(0, rect.height);
+
+            found.push({
+                el: el,
+                area: area,
+                width: rect.width,
+                height: rect.height
+            });
+        });
+
+        found.sort(function (a, b) {
+            return a.area - b.area;
+        });
+
+        return found.map(function (item) {
+            return item.el;
+        });
+    }
+
+    function findBestPanelByText(text) {
+        var panels = findPanelsByText(text);
+
+        if (!panels.length) {
+            return null;
+        }
+
+        // Preferir paneles grandes pero no body/html.
+        var large = panels.filter(function (el) {
+            var rect = el.getBoundingClientRect();
+            return (
+                el !== document.body &&
+                el !== document.documentElement &&
+                rect.width >= 180 &&
+                rect.height >= 80
+            );
+        });
+
+        if (large.length) {
+            return large[0];
+        }
+
+        return panels[0];
     }
 
     function findLauncherPanel() {
+        var launcher = document.querySelector(".gc-home-launcher, [data-gc-home-launcher='1']");
+
+        if (launcher) {
+            return launcher;
+        }
+
+        var byText = findBestPanelByText("Tercera fase del proceso");
+
+        if (byText) {
+            return byText;
+        }
+
         var btn = Array.from(document.querySelectorAll("a, button")).find(function (el) {
             return hasText(el, "Abrir Consolidar Gestión");
         });
 
-        if (btn) {
-            return btn.closest("section, article, aside, .gc-home-launcher, .panel, .card, div") || btn;
-        }
-
-        var textPanel = findByText("Tercera fase del proceso");
-
-        if (textPanel) {
-            return textPanel.closest("section, article, aside, .gc-home-launcher, .panel, .card, div") || textPanel;
-        }
-
-        return null;
-    }
-
-    function ancestors(el) {
-        var list = [];
-
-        while (el) {
-            list.push(el);
-            el = el.parentElement;
-        }
-
-        return list;
-    }
-
-    function commonAncestor(a, b) {
-        if (!a || !b) {
+        if (!btn) {
             return null;
         }
 
-        var aa = ancestors(a);
-        var bb = ancestors(b);
+        var parent = btn;
 
-        return aa.find(function (node) {
-            return bb.includes(node);
-        }) || null;
-    }
+        for (var i = 0; i < 8 && parent; i += 1) {
+            var rect = parent.getBoundingClientRect();
 
-    function childUnder(parent, el) {
-        if (!parent || !el) {
-            return null;
+            if (
+                parent !== document.body &&
+                parent !== document.documentElement &&
+                rect.width >= 300 &&
+                rect.height >= 100
+            ) {
+                return parent;
+            }
+
+            parent = parent.parentElement;
         }
 
-        var current = el;
-
-        while (current && current.parentElement !== parent) {
-            current = current.parentElement;
-        }
-
-        return current;
+        return btn;
     }
 
     function hideElement(el) {
@@ -105,45 +144,89 @@
 
     function restoreHiddenElements() {
         hiddenElements.forEach(function (el) {
+            if (!el) {
+                return;
+            }
+
             el.classList.remove("gc-main-temp-hidden");
             el.removeAttribute("aria-hidden");
         });
 
         hiddenElements = [];
 
-        document.querySelectorAll(".gc-main-consolidar-common").forEach(function (el) {
-            el.classList.remove("gc-main-consolidar-common");
+        document.body.classList.remove("gc-consolidar-active");
+
+        document.querySelectorAll(".gc-main-monitor-clean").forEach(function (el) {
+            el.classList.remove("gc-main-monitor-clean");
         });
 
-        document.querySelectorAll(".gc-main-consolidar-monitor-column").forEach(function (el) {
-            el.classList.remove("gc-main-consolidar-monitor-column");
+        document.querySelectorAll(".gc-main-layout-clean").forEach(function (el) {
+            el.classList.remove("gc-main-layout-clean");
         });
     }
 
-    function setTituloConsolidar() {
-        var titulo =
-            document.querySelector(".monitor-header h2") ||
-            document.querySelector(".monitor h2") ||
-            document.querySelector("main h2");
+    function findMonitorHost() {
+        return (
+            byId("monitor-content") ||
+            document.querySelector("[data-monitor-content]") ||
+            document.querySelector(".monitor-content")
+        );
+    }
 
-        if (titulo) {
-            titulo.textContent = "📊 Monitor de ejecución de Consolidar Gestión";
+    function findMonitorContainer(host) {
+        if (!host) {
+            return null;
         }
+
+        var parent = host.parentElement;
+
+        for (var i = 0; i < 8 && parent; i += 1) {
+            var texto = textOf(parent);
+
+            if (
+                texto.includes("Monitor de ejecución") ||
+                parent.classList.contains("monitor") ||
+                parent.classList.contains("monitor-panel") ||
+                parent.classList.contains("panel-monitor")
+            ) {
+                return parent;
+            }
+
+            parent = parent.parentElement;
+        }
+
+        return host.parentElement;
+    }
+
+    function findMainLayout(host) {
+        if (!host) {
+            return null;
+        }
+
+        var parent = host.parentElement;
+
+        for (var i = 0; i < 10 && parent; i += 1) {
+            var rect = parent.getBoundingClientRect();
+
+            if (
+                parent !== document.body &&
+                parent !== document.documentElement &&
+                rect.width > 800 &&
+                rect.height > 400
+            ) {
+                return parent;
+            }
+
+            parent = parent.parentElement;
+        }
+
+        return null;
     }
 
     function crearHtmlEmbed() {
         var html = "";
 
         html += "<section class=\"gc-main-embed-shell\">";
-        html += "  <div class=\"gc-main-embed-header\">";
-        html += "    <div>";
-        html += "      <h2>📊 Consolidar Gestión</h2>";
-        html += "      <p>Proceso completo A-I integrado en la pantalla principal.</p>";
-        html += "    </div>";
-        html += "    <a href=\"/gestion-consolidada\" target=\"_blank\" rel=\"noopener\">";
-        html += "      Abrir en pestaña completa";
-        html += "    </a>";
-        html += "  </div>";
         html += "  <iframe";
         html += "    id=\"" + FRAME_ID + "\"";
         html += "    class=\"gc-main-embed-frame\"";
@@ -156,48 +239,41 @@
         return html;
     }
 
-    function ocultarTemporalesYExpandir(host) {
+    function ocultarPanelesTemporales() {
+        var sidebarTemp = findBestPanelByText("Fases y Pasos para Consolidar Gestión");
         var launcher = findLauncherPanel();
-        var sidebarTemp = findByText("Fases y Pasos para Consolidar Gestión");
-        var monitorTemp = findByText("Módulo en preparación.") || findByText("Este módulo queda reservado para consolidar gestiones");
 
-        var referencias = [launcher, sidebarTemp, monitorTemp].filter(Boolean);
+        hideElement(sidebarTemp);
+        hideElement(launcher);
 
-        referencias.forEach(function (ref) {
-            var common = commonAncestor(host, ref);
-
-            if (!common) {
-                return;
-            }
-
-            var hostChild = childUnder(common, host);
-            var refChild = childUnder(common, ref);
-
-            if (common && hostChild && refChild && hostChild !== refChild) {
-                common.classList.add("gc-main-consolidar-common");
-                hostChild.classList.add("gc-main-consolidar-monitor-column");
-                hideElement(refChild);
-            }
+        // Ocultar cualquier launcher residual que esté suelto.
+        document.querySelectorAll(".gc-home-launcher, [data-gc-home-launcher='1']").forEach(function (el) {
+            hideElement(el);
         });
-
-        // Fallback para el panel azul temporal cuando queda como hermano directo visible.
-        var launcherFallback = findLauncherPanel();
-
-        if (launcherFallback && !launcherFallback.contains(host)) {
-            var panel = launcherFallback.closest("section, article, aside, .panel, .card, .gc-home-launcher, div") || launcherFallback;
-            hideElement(panel);
-        }
     }
 
     function integrarConsolidarGestion() {
-        var host = byId("monitor-content");
+        var host = findMonitorHost();
 
         if (!host) {
             return false;
         }
 
-        setTituloConsolidar();
-        ocultarTemporalesYExpandir(host);
+        document.body.classList.add("gc-consolidar-active");
+
+        ocultarPanelesTemporales();
+
+        var monitorContainer = findMonitorContainer(host);
+
+        if (monitorContainer) {
+            monitorContainer.classList.add("gc-main-monitor-clean");
+        }
+
+        var mainLayout = findMainLayout(host);
+
+        if (mainLayout) {
+            mainLayout.classList.add("gc-main-layout-clean");
+        }
 
         host.classList.add("gc-main-embed-host");
 
@@ -213,7 +289,7 @@
             return;
         }
 
-        if (window.__gcSeleccionarModuloWrappedV1K2) {
+        if (window.__gcSeleccionarModuloWrappedV1K3) {
             return;
         }
 
@@ -221,35 +297,64 @@
 
         window.seleccionarModulo = function (modulo) {
             var resultado = originalSeleccionarModulo.apply(this, arguments);
+            var nombre = String(modulo || "").toLowerCase();
 
             window.setTimeout(function () {
-                if (String(modulo || "").toLowerCase() === "consolidar") {
+                if (nombre === "consolidar") {
                     integrarConsolidarGestion();
+                    window.setTimeout(integrarConsolidarGestion, 350);
                 } else {
                     restoreHiddenElements();
                 }
-            }, 120);
+            }, 100);
 
             return resultado;
         };
 
-        window.__gcSeleccionarModuloWrappedV1K2 = true;
+        window.__gcSeleccionarModuloWrappedV1K3 = true;
+    }
+
+    function bindBotonConsolidar() {
+        var botones = Array.from(document.querySelectorAll("button, a"));
+
+        botones.forEach(function (btn) {
+            if (!hasText(btn, "Consolidar Gestión")) {
+                return;
+            }
+
+            if (btn.__gcBindConsolidar) {
+                return;
+            }
+
+            btn.__gcBindConsolidar = true;
+
+            btn.addEventListener("click", function () {
+                window.setTimeout(integrarConsolidarGestion, 120);
+                window.setTimeout(integrarConsolidarGestion, 450);
+            });
+        });
     }
 
     function inicializar() {
         envolverSeleccionarModulo();
+        bindBotonConsolidar();
 
-        var btn = byId("btnModuloConsolidar");
+        window.setTimeout(bindBotonConsolidar, 500);
 
-        if (btn) {
-            btn.addEventListener("click", function () {
-                window.setTimeout(integrarConsolidarGestion, 120);
-                window.setTimeout(integrarConsolidarGestion, 500);
-            });
-        }
-
+        // Si la pestaña Consolidar quedó activa al recargar.
         window.setTimeout(function () {
-            if (btn && (btn.classList.contains("active") || btn.classList.contains("selected"))) {
+            var active = Array.from(document.querySelectorAll("button, a")).find(function (el) {
+                return (
+                    hasText(el, "Consolidar Gestión") &&
+                    (
+                        el.classList.contains("active") ||
+                        el.classList.contains("selected") ||
+                        el.getAttribute("aria-selected") === "true"
+                    )
+                );
+            });
+
+            if (active) {
                 integrarConsolidarGestion();
             }
         }, 300);
