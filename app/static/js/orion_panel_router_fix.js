@@ -2,28 +2,29 @@
     "use strict";
 
     /*
-      Orion Panel Router Fix v2
+      Orion Panel Router Fix v3
 
-      Diagnóstico:
-      - OrionPanelFix.findPanel("consolidar") devolvía null.
-      - Eso significa que el panel Consolidar Gestión no estaba oculto,
-        sino que ya no existía en el DOM después de navegar varias veces.
+      Problema corregido:
+      - v2 daba falso positivo porque leía textos del header/navbar:
+        "Consolidar Gestión", "Inicio", "Logs", "Reset".
+      - La pantalla podía estar vacía, pero el fix respondía already_visible.
 
-      Solución:
-      - No intenta mostrar un panel inexistente.
-      - Si al hacer clic en Consolidar Gestión el contenido queda vacío,
+      Estrategia v3:
+      - Detecta contenido real debajo del header.
+      - Si se presiona "Consolidar Gestión" y el área real queda vacía,
         ejecuta automáticamente:
             Inicio -> Consolidar Gestión
-      - Esto reproduce la acción manual que ya comprobaste que funciona.
+      - No considera el header/navbar como contenido válido.
     */
 
-    var VERSION = "v2.0.0";
+    var VERSION = "v3.0.0";
     var DEBUG = false;
+
     var repairing = false;
     var lastAction = null;
-    var lastRepairAt = 0;
     var repairCount = 0;
-    var MAX_REPAIRS = 3;
+    var lastRepairAt = 0;
+    var MAX_REPAIRS = 5;
 
     function log() {
         if (!DEBUG) return;
@@ -58,6 +59,7 @@
             "class",
             "name",
             "href",
+            "onclick",
             "data-panel",
             "data-target",
             "data-section",
@@ -91,7 +93,7 @@
 
         if (!t) return null;
 
-        if (t === "inicio" || t.includes(" inicio ")) {
+        if (t === "inicio") {
             return "inicio";
         }
 
@@ -111,7 +113,7 @@
             return "consolidar";
         }
 
-        if (t === "logs" || t.includes(" logs ")) {
+        if (t === "logs") {
             return "logs";
         }
 
@@ -134,22 +136,12 @@
         return null;
     }
 
-    function isNavElement(el) {
-        if (!el) return false;
-
-        return !!(
-            el.closest("nav") ||
-            el.closest("header") ||
-            el.closest(".navbar") ||
-            el.closest(".sidebar") ||
-            el.closest(".menu") ||
-            el.closest(".nav") ||
-            el.closest(".tabs")
-        );
-    }
-
     function getButtons() {
-        return Array.from(document.querySelectorAll("button, a, [role='button'], input[type='button'], input[type='submit']"));
+        return Array.from(
+            document.querySelectorAll(
+                "button, a, [role='button'], input[type='button'], input[type='submit']"
+            )
+        );
     }
 
     function findButton(action) {
@@ -168,11 +160,11 @@
         var btn = findButton(action);
 
         if (!btn) {
-            log("No se encontró botón", action);
+            console.warn("[OrionPanelFix] No se encontró botón:", action);
             return false;
         }
 
-        log("Click programático", action, btn);
+        log("Click programático:", action, btn);
 
         btn.dispatchEvent(new MouseEvent("click", {
             bubbles: true,
@@ -183,189 +175,245 @@
         return true;
     }
 
-    function getNonNavText() {
-        var clone = document.body.cloneNode(true);
+    function getHeaderBottom() {
+        var candidates = Array.from(document.querySelectorAll(
+            "header, nav, .navbar, .topbar, .app-header, .main-header, .orion-header, .sidebar, .menu, .nav"
+        ));
 
-        Array.from(clone.querySelectorAll("nav, header, .navbar, .sidebar, .menu, .nav, .tabs, script, style"))
-            .forEach(function (el) {
-                el.remove();
-            });
+        var maxBottom = 0;
 
-        return normalizeText(clone.innerText || clone.textContent || "");
-    }
+        candidates.forEach(function (el) {
+            var rect = el.getBoundingClientRect();
 
-    function pageHasMeaningfulContent() {
-        var t = getNonNavText();
+            if (rect.width <= 0 || rect.height <= 0) return;
 
-        var removable = [
-            "orion procesos",
-            "gestion diaria orion",
-            "gestion diaria aster",
-            "consolidar gestion",
-            "inicio",
-            "logs",
-            "reset"
-        ];
-
-        removable.forEach(function (x) {
-            t = t.replaceAll(normalizeText(x), "");
+            if (rect.top < 260) {
+                maxBottom = Math.max(maxBottom, rect.bottom);
+            }
         });
 
-        t = normalizeText(t);
+        /*
+          Fallback para tu layout:
+          El header visual ocupa aprox. hasta y=200.
+          Si no se detecta por clases, usamos 205.
+        */
+        if (maxBottom < 120) {
+            maxBottom = 205;
+        }
 
-        return t.length > 20;
+        return maxBottom;
     }
 
-    function pageLooksEmpty() {
-        return !pageHasMeaningfulContent();
+    function isVisible(el) {
+        if (!el) return false;
+
+        var style = window.getComputedStyle(el);
+
+        if (style.display === "none") return false;
+        if (style.visibility === "hidden") return false;
+        if (style.opacity === "0") return false;
+
+        var rect = el.getBoundingClientRect();
+
+        if (rect.width <= 0 || rect.height <= 0) return false;
+
+        return true;
     }
 
-    function pageLooksLikeConsolidar() {
-        var t = getNonNavText();
+    function isNavigationLike(el) {
+        if (!el) return false;
 
-        return (
-            t.includes("consolidar") ||
-            t.includes("consolidacion") ||
-            t.includes("gestion consolidada") ||
-            t.includes("fase") ||
-            t.includes("consolidado")
+        return !!(
+            el.closest("header") ||
+            el.closest("nav") ||
+            el.closest(".navbar") ||
+            el.closest(".topbar") ||
+            el.closest(".app-header") ||
+            el.closest(".main-header") ||
+            el.closest(".orion-header") ||
+            el.closest(".sidebar") ||
+            el.closest(".menu") ||
+            el.closest(".nav")
         );
     }
 
-    function isProbablyPanel(el) {
-        if (!el || !el.tagName) return false;
-        if (isNavElement(el)) return false;
+    function getRealContentElements() {
+        var headerBottom = getHeaderBottom();
 
-        var meta = metaOf(el);
-
-        return (
-            el.matches("main, section, article") ||
-            el.getAttribute("role") === "tabpanel" ||
-            el.hasAttribute("data-panel") ||
-            el.hasAttribute("data-section") ||
-            el.hasAttribute("data-view") ||
-            meta.includes("panel") ||
-            meta.includes("content") ||
-            meta.includes("contenido") ||
-            meta.includes("vista") ||
-            meta.includes("seccion") ||
-            meta.includes("section") ||
-            meta.includes("consolidar") ||
-            meta.includes("consolidacion") ||
-            meta.includes("gestion consolidada")
-        );
-    }
-
-    function getPanelCandidates() {
         var selectors = [
             "main",
             "section",
             "article",
-            "[role='tabpanel']",
-            "[data-panel]",
-            "[data-section]",
-            "[data-view]",
-            ".panel",
-            ".tab-pane",
-            ".page",
-            ".view",
+            ".container",
+            ".container-fluid",
             ".content",
-            ".content-panel",
-            ".section-panel",
-            "div[id*='panel']",
-            "div[class*='panel']",
-            "div[id*='contenido']",
-            "div[class*='contenido']",
-            "div[id*='content']",
-            "div[class*='content']",
-            "div[id*='consolidar']",
-            "div[class*='consolidar']",
-            "div[id*='consolidacion']",
-            "div[class*='consolidacion']"
+            ".main-content",
+            ".page-content",
+            ".panel",
+            ".card",
+            ".row",
+            ".col",
+            ".col-md-12",
+            ".col-lg-12",
+            "table",
+            "form",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "p",
+            "div"
         ];
 
-        var found = [];
+        var nodes = Array.from(document.querySelectorAll(selectors.join(",")));
 
-        selectors.forEach(function (selector) {
-            document.querySelectorAll(selector).forEach(function (el) {
-                if (found.indexOf(el) === -1 && isProbablyPanel(el)) {
-                    found.push(el);
-                }
+        var valid = [];
+
+        nodes.forEach(function (el) {
+            if (!isVisible(el)) return;
+            if (isNavigationLike(el)) return;
+
+            var rect = el.getBoundingClientRect();
+
+            if (rect.bottom <= headerBottom + 10) return;
+            if (rect.top < headerBottom - 20 && rect.height < 80) return;
+
+            var txt = normalizeText(el.innerText || el.textContent || "");
+
+            /*
+              El texto de botones/navbar no cuenta como contenido.
+            */
+            var cleaned = txt;
+
+            [
+                "orion procesos",
+                "gestion diaria orion",
+                "gestion diaria aster",
+                "consolidar gestion",
+                "inicio",
+                "logs",
+                "reset"
+            ].forEach(function (x) {
+                cleaned = cleaned.replaceAll(normalizeText(x), "");
             });
+
+            cleaned = normalizeText(cleaned);
+
+            if (cleaned.length >= 8 || rect.height >= 80) {
+                valid.push({
+                    el: el,
+                    text: cleaned,
+                    rect: {
+                        top: rect.top,
+                        bottom: rect.bottom,
+                        width: rect.width,
+                        height: rect.height
+                    }
+                });
+            }
         });
 
-        return found;
+        return valid;
     }
 
-    function findPanel(action) {
-        var candidates = getPanelCandidates();
-        var best = null;
-        var bestScore = 0;
+    function getRealContentText() {
+        var elements = getRealContentElements();
 
-        candidates.forEach(function (el) {
-            var meta = metaOf(el);
-            var score = 0;
+        return normalizeText(
+            elements
+                .map(function (x) { return x.text; })
+                .filter(Boolean)
+                .join(" ")
+        );
+    }
 
-            if (action === "consolidar") {
-                if (meta.includes("consolidar")) score += 100;
-                if (meta.includes("consolidacion")) score += 80;
-                if (meta.includes("gestion consolidada")) score += 80;
-            }
+    function pageHasRealContent() {
+        var elements = getRealContentElements();
+        var text = getRealContentText();
 
-            if (action === "inicio" && meta.includes("inicio")) score += 100;
-            if (action === "orion" && meta.includes("orion")) score += 100;
-            if (action === "aster" && meta.includes("aster")) score += 100;
+        if (text.length >= 15) return true;
 
-            if (score > bestScore) {
-                best = el;
-                bestScore = score;
-            }
+        /*
+          Si hay un bloque visual grande debajo del header, también cuenta,
+          pero solo si no es body/html.
+        */
+        var hasLargeBlock = elements.some(function (x) {
+            var tag = x.el.tagName.toLowerCase();
+            if (tag === "body" || tag === "html") return false;
+            return x.rect.height >= 120 && x.rect.width >= 300;
         });
 
-        return bestScore > 0 ? best : null;
+        return hasLargeBlock;
+    }
+
+    function pageLooksEmpty() {
+        return !pageHasRealContent();
+    }
+
+    function pageLooksLikeConsolidar() {
+        var text = getRealContentText();
+
+        return (
+            text.includes("monitor de ejecucion") ||
+            text.includes("consolidacion") ||
+            text.includes("consolidar") ||
+            text.includes("gestion consolidada") ||
+            text.includes("orion --") ||
+            text.includes("aister --") ||
+            text.includes("aster --") ||
+            text.includes("sin verificar")
+        );
     }
 
     function repairConsolidarIfNeeded(reason) {
         var now = Date.now();
 
+        var empty = pageLooksEmpty();
+        var looksConsolidar = pageLooksLikeConsolidar();
+
         if (repairing) {
             return {
                 ok: false,
                 status: "already_repairing",
-                version: VERSION
+                version: VERSION,
+                empty: empty,
+                looksConsolidar: looksConsolidar
             };
         }
 
-        if (pageLooksLikeConsolidar() && !pageLooksEmpty()) {
+        /*
+          Esta es la corrección principal contra el falso positivo:
+          Solo está visible si hay contenido real debajo del header
+          Y ese contenido parece ser de Consolidar.
+        */
+        if (!empty && looksConsolidar) {
             return {
                 ok: true,
                 status: "already_visible",
-                version: VERSION
+                version: VERSION,
+                empty: empty,
+                looksConsolidar: looksConsolidar
             };
         }
 
-        if (!pageLooksEmpty() && lastAction !== "consolidar") {
-            return {
-                ok: true,
-                status: "page_not_empty",
-                version: VERSION
-            };
-        }
-
-        if (now - lastRepairAt < 600) {
+        if (now - lastRepairAt < 500) {
             return {
                 ok: false,
                 status: "too_soon",
-                version: VERSION
+                version: VERSION,
+                empty: empty,
+                looksConsolidar: looksConsolidar
             };
         }
 
         if (repairCount >= MAX_REPAIRS) {
-            console.warn("[OrionPanelFix] Límite de reparaciones alcanzado. Revisa el router original.");
+            console.warn("[OrionPanelFix] Límite de reparaciones alcanzado.");
             return {
                 ok: false,
                 status: "max_repairs_reached",
-                version: VERSION
+                version: VERSION,
+                empty: empty,
+                looksConsolidar: looksConsolidar
             };
         }
 
@@ -373,7 +421,7 @@
         var consolidarBtn = findButton("consolidar");
 
         if (!inicioBtn || !consolidarBtn) {
-            console.warn("[OrionPanelFix] No se encontraron botones necesarios.", {
+            console.warn("[OrionPanelFix] Faltan botones para reparar.", {
                 inicio: !!inicioBtn,
                 consolidar: !!consolidarBtn
             });
@@ -381,9 +429,11 @@
             return {
                 ok: false,
                 status: "missing_buttons",
+                version: VERSION,
                 inicio: !!inicioBtn,
                 consolidar: !!consolidarBtn,
-                version: VERSION
+                empty: empty,
+                looksConsolidar: looksConsolidar
             };
         }
 
@@ -391,53 +441,74 @@
         lastRepairAt = now;
         repairCount += 1;
 
-        console.warn("[OrionPanelFix] Restaurando Consolidar Gestión con secuencia Inicio -> Consolidar.", {
-            reason: reason || "manual_or_empty_panel",
-            repairCount: repairCount
+        console.warn("[OrionPanelFix] Reparando panel Consolidar: Inicio -> Consolidar.", {
+            reason: reason || "manual",
+            repairCount: repairCount,
+            empty: empty,
+            looksConsolidar: looksConsolidar
         });
 
         clickButton("inicio");
 
         window.setTimeout(function () {
             clickButton("consolidar");
-        }, 250);
+        }, 300);
 
         window.setTimeout(function () {
             repairing = false;
 
-            if (pageLooksEmpty()) {
-                console.warn("[OrionPanelFix] El panel sigue vacío después del intento de reparación.");
+            var stillEmpty = pageLooksEmpty();
+            var stillLooksConsolidar = pageLooksLikeConsolidar();
+
+            if (stillEmpty || !stillLooksConsolidar) {
+                console.warn("[OrionPanelFix] El panel aún no quedó correcto después de reparar.", {
+                    stillEmpty: stillEmpty,
+                    stillLooksConsolidar: stillLooksConsolidar,
+                    realContentText: getRealContentText()
+                });
             }
-        }, 900);
+        }, 1200);
 
         return {
             ok: true,
             status: "repair_started",
             version: VERSION,
-            repairCount: repairCount
+            repairCount: repairCount,
+            empty: empty,
+            looksConsolidar: looksConsolidar
         };
     }
 
-    function scheduleCheck(action) {
+    function scheduleConsolidarCheck() {
         window.setTimeout(function () {
-            if (action !== "consolidar") return;
+            if (lastAction !== "consolidar") return;
 
             if (pageLooksEmpty() || !pageLooksLikeConsolidar()) {
-                repairConsolidarIfNeeded("after_consolidar_click");
+                repairConsolidarIfNeeded("check_300ms_after_consolidar");
             }
-        }, 350);
+        }, 300);
 
         window.setTimeout(function () {
-            if (action !== "consolidar") return;
+            if (lastAction !== "consolidar") return;
 
             if (pageLooksEmpty() || !pageLooksLikeConsolidar()) {
-                repairConsolidarIfNeeded("late_check_after_consolidar_click");
+                repairConsolidarIfNeeded("check_900ms_after_consolidar");
             }
-        }, 1000);
+        }, 900);
+
+        window.setTimeout(function () {
+            if (lastAction !== "consolidar") return;
+
+            if (pageLooksEmpty() || !pageLooksLikeConsolidar()) {
+                repairConsolidarIfNeeded("check_1600ms_after_consolidar");
+            }
+        }, 1600);
     }
 
     document.addEventListener("click", function (event) {
-        var trigger = event.target.closest("button, a, [role='button'], input[type='button'], input[type='submit']");
+        var trigger = event.target.closest(
+            "button, a, [role='button'], input[type='button'], input[type='submit']"
+        );
 
         if (!trigger) return;
 
@@ -453,37 +524,57 @@
 
         log("click detectado", action);
 
-        scheduleCheck(action);
+        if (action === "consolidar") {
+            scheduleConsolidarCheck();
+        }
     }, true);
 
     window.OrionPanelFix = {
         version: VERSION,
-        findPanel: findPanel,
-        repairConsolidarIfNeeded: repairConsolidarIfNeeded,
-        clickButton: clickButton,
+
         findButton: findButton,
+        clickButton: clickButton,
+
+        getHeaderBottom: getHeaderBottom,
+        getRealContentElements: getRealContentElements,
+        getRealContentText: getRealContentText,
+
+        pageHasRealContent: pageHasRealContent,
         pageLooksEmpty: pageLooksEmpty,
         pageLooksLikeConsolidar: pageLooksLikeConsolidar,
-        getNonNavText: getNonNavText,
+
+        repairConsolidarIfNeeded: repairConsolidarIfNeeded,
+
         debug: function () {
             return {
                 version: VERSION,
                 lastAction: lastAction,
                 repairing: repairing,
                 repairCount: repairCount,
+                headerBottom: getHeaderBottom(),
+                pageHasRealContent: pageHasRealContent(),
                 pageLooksEmpty: pageLooksEmpty(),
                 pageLooksLikeConsolidar: pageLooksLikeConsolidar(),
-                nonNavText: getNonNavText(),
+                realContentText: getRealContentText(),
+                realContentElements: getRealContentElements().map(function (x) {
+                    return {
+                        tag: x.el.tagName,
+                        id: x.el.id,
+                        className: x.el.className,
+                        text: x.text,
+                        rect: x.rect
+                    };
+                }),
                 buttons: getButtons().map(function (b) {
                     return {
                         text: textOf(b),
                         meta: metaOf(b),
                         action: detectActionFromElement(b)
                     };
-                }),
-                panelConsolidar: findPanel("consolidar")
+                })
             };
         },
+
         setDebug: function (value) {
             DEBUG = !!value;
             return {
