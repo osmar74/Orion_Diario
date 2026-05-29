@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from typing import Any
+from app.services.aster_source_service import consultar_entidades_sql_aster_origen
 
 from app.services.aster_file_service import normalizar_fecha_aster
 from app.services.sql_loader import cargar_sql
@@ -83,88 +84,13 @@ def obtener_config_mysql_aster() -> dict[str, Any]:
     return config
 
 
-def consultar_entidades_sql_aster(
-    fecha_raw: str,
-) -> dict[str, Any]:
+def consultar_entidades_sql_aster(fecha_sql: str, conexion: str = "local") -> dict[str, Any]:
     """
-    Ejecuta consulta MySQL ASTER para obtener entidades del día.
-
-    Retorna:
-    - fecha_sql
-    - resultados
-    - total_entidades
-    - total_registros
+    Consulta entidades ASTER desde el origen según conexión:
+    - LOCAL: SQL Server gestioncomercial_dev.dbo.comentarios
+    - REMOTO: MySQL gestioncomercial.comentarios
     """
-    try:
-        import pymysql
-    except ImportError as exc:
-        return {
-            "success": False,
-            "error": "No está instalado PyMySQL. Ejecute: pip install PyMySQL",
-            "exception": str(exc),
-        }
-
-    try:
-        fecha_sql = normalizar_fecha_sql_aster(fecha_raw)
-    except Exception as exc:
-        return {
-            "success": False,
-            "error": f"Fecha ASTER inválida: {exc}",
-        }
-
-    try:
-        config = obtener_config_mysql_aster()
-
-        sql = cargar_sql("aster/entidades/count_distinct_data_por_entidad.sql")
-
-        conexion = pymysql.connect(
-            host=config["host"],
-            user=config["user"],
-            password=config["password"],
-            database=config["database"],
-            port=config["port"],
-            charset=config["charset"],
-            cursorclass=pymysql.cursors.DictCursor,
-        )
-
-        try:
-            with conexion.cursor() as cursor:
-                cursor.execute(sql, (fecha_sql,))
-                filas = cursor.fetchall()
-        finally:
-            conexion.close()
-
-    except Exception as exc:
-        return {
-            "success": False,
-            "fecha_sql": fecha_sql,
-            "error": f"Error consultando entidades ASTER en MySQL: {exc}",
-        }
-
-    resultados: list[dict[str, Any]] = []
-
-    for fila in filas:
-        entidad = str(fila.get("entidad") or "").strip()
-        numero = int(fila.get("numero") or 0)
-
-        if not entidad:
-            continue
-
-        resultados.append(
-            {
-                "entidad": entidad,
-                "numero": numero,
-                "SSS": f"'{entidad}'",
-            }
-        )
-
-    total_registros = sum(int(fila["numero"]) for fila in resultados)
-
-    return {
-        "success": True,
-        "fecha_sql": fecha_sql,
-        "resultados": resultados,
-        "total_entidades": len(resultados),
-        "total_registros": total_registros,
-    }
-    
+    return consultar_entidades_sql_aster_origen(
+        fecha_sql=fecha_sql,
+        conexion=conexion,
+    )

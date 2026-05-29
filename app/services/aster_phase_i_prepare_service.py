@@ -22,10 +22,17 @@ import pandas as pd
 from app.services.aster_file_service import normalizar_fecha_aster
 from app.services.aster_sqlserver_service import obtener_columnas_sqlserver_tabla
 from app.services.daily_paths import ruta_aster_subcarpeta
+from app.services.aster_source_service import (
+    columnas_comentarios_origen_fase_i,
+    columnas_usuarios_origen_fase_i,
+    contar_comentarios_origen_fase_i,
+    contar_usuarios_origen_fase_i,
+    probar_origen_aster,
+)
 from app.services.sql_loader import cargar_sql
 
 
-def columnas_mysql_usuarios_fase_i() -> list[str]:
+def columnas_usuarios_origen_fase_i() -> list[str]:
     return [
         "id",
         "usuario",
@@ -40,7 +47,7 @@ def columnas_mysql_usuarios_fase_i() -> list[str]:
     ]
 
 
-def columnas_mysql_comentarios_fase_i() -> list[str]:
+def columnas_comentarios_origen_fase_i() -> list[str]:
     return [
         "id",
         "data",
@@ -400,12 +407,13 @@ def preparar_fase_i_aster(
         fecha_yyyymmdd=fecha_yyyymmdd,
     )
 
-    total_usuarios = contar_usuarios_mysql_fase_i(db_usuarios)
+    total_usuarios = contar_usuarios_origen_fase_i(db_usuarios=db_usuarios, conexion=conexion_normalizada)
 
-    total_comentarios = contar_comentarios_mysql_fase_i(
+    total_comentarios = contar_comentarios_origen_fase_i(
         db_gestion=db_gestion,
         fecha_yyyymmdd=fecha_yyyymmdd,
         entidades=entidades,
+        conexion=conexion_normalizada,
     )
 
     columnas_sql_usuarios = obtener_columnas_sqlserver_tabla(
@@ -427,12 +435,12 @@ def preparar_fase_i_aster(
     )
 
     comparacion_usuarios = comparar_columnas_fase_i(
-        columnas_mysql_usuarios_fase_i(),
+        columnas_usuarios_origen_fase_i(),
         columnas_sql_usuarios,
     )
 
     comparacion_comentarios = comparar_columnas_fase_i(
-        columnas_mysql_comentarios_fase_i(),
+        columnas_comentarios_origen_fase_i(),
         columnas_sql_comentarios,
     )
 
@@ -448,3 +456,104 @@ def preparar_fase_i_aster(
         "comparacion_usuarios": comparacion_usuarios,
         "comparacion_comentarios": comparacion_comentarios,
     }
+
+# === FIX_COMPAT_COLUMNAS_MYSQL_FASE_I_BEGIN ===
+# Fix de compatibilidad local ASTER Fase I.
+# Motivo:
+#   aster_phase_i_execution_service.py importa funciones columnas_mysql_*_fase_i
+#   que no estaban definidas en aster_phase_i_prepare_service.py.
+#
+# Este bloque NO toca base de datos.
+# Solo agrega funciones auxiliares para que los imports funcionen.
+# Fecha de generación: 2026-05-29 16:16:44.381981
+
+
+def _resolver_columnas_fase_i_compat(nombre_base, columnas_fallback):
+    """
+    Devuelve columnas de Fase I usando primero funciones/constantes existentes.
+    Si no existen, usa columnas_fallback.
+    """
+
+    candidatos_funcion = [
+        f"columnas_sqlserver_{nombre_base}_fase_i",
+        f"columnas_{nombre_base}_fase_i",
+    ]
+
+    for nombre_funcion in candidatos_funcion:
+        funcion = globals().get(nombre_funcion)
+        if callable(funcion):
+            return funcion()
+
+    candidatos_constante = [
+        f"COLUMNAS_{nombre_base.upper()}_FASE_I",
+        f"COLUMNAS_{nombre_base.upper()}",
+    ]
+
+    for nombre_constante in candidatos_constante:
+        valor = globals().get(nombre_constante)
+        if valor is not None:
+            return valor
+
+    return list(columnas_fallback)
+
+
+_COLUMNAS_COMENTARIOS_FASE_I_FALLBACK = [
+    "id",
+    "data",
+    "fecha",
+    "comentario",
+    "resultado1",
+    "resultado2",
+    "entidad",
+    "usuario",
+    "fechaagenda",
+    "unico",
+    "fechainicio",
+    "telefono",
+    "uniqueid",
+    "linkedid",
+    "datafijos",
+    "datapers",
+]
+
+
+_COLUMNAS_USUARIOS_FASE_I_FALLBACK = [
+    "usuario",
+    "interno",
+    "grupos",
+    "permisosr2",
+    "seleccion",
+    "filtrar",
+    "pausaragente",
+    "agente",
+    "modificarinterno",
+    "modificaragente",
+    "callback",
+]
+
+
+if "columnas_mysql_comentarios_fase_i" not in globals():
+    def columnas_mysql_comentarios_fase_i():
+        return _resolver_columnas_fase_i_compat(
+            "comentarios",
+            _COLUMNAS_COMENTARIOS_FASE_I_FALLBACK
+        )
+
+
+if "columnas_mysql_usuarios_fase_i" not in globals():
+    def columnas_mysql_usuarios_fase_i():
+        return _resolver_columnas_fase_i_compat(
+            "usuarios",
+            _COLUMNAS_USUARIOS_FASE_I_FALLBACK
+        )
+
+
+if "columnas_mysql_crm_fase_i" not in globals():
+    def columnas_mysql_crm_fase_i():
+        """
+        Compatibilidad con el nombre legacy crm.
+        En local SQL Server, la estructura equivalente es dbo.usuarios.
+        """
+        return columnas_mysql_usuarios_fase_i()
+
+# === FIX_COMPAT_COLUMNAS_MYSQL_FASE_I_END ===

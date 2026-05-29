@@ -44,6 +44,10 @@ from app.services.aster_phase_i_prepare_service import (
     obtener_fecha_fase_i,
     validar_sql_mysql_solo_select,
 )
+from app.services.aster_source_service import (
+    leer_comentarios_origen_fase_i,
+    leer_usuarios_origen_fase_i,
+)
 from app.services.aster_sqlserver_service import (
     obtener_cadena_sqlserver_aster,
     obtener_columnas_sqlserver_tabla,
@@ -96,79 +100,38 @@ def agregar_paso_pipeline_fase_i(
     )
 
 
-def leer_usuarios_mysql_fase_i(db_usuarios: str) -> pd.DataFrame:
+def leer_usuarios_mysql_fase_i(
+    db_usuarios: str,
+    conexion: str = "local",
+) -> pd.DataFrame:
     """
-    Lee usuarios desde MySQL usuarios.crm.
-    Solo SELECT.
+    Lee usuarios desde origen ASTER.
+    LOCAL: SQL Server gestioncomercial_dev.dbo.crm.
+    REMOTO: MySQL usuarios.crm.
     """
-    columnas = columnas_mysql_usuarios_fase_i()
-
-    columnas_sql = ", ".join(
-        f"`{col}` AS `{col}`"
-        for col in columnas
+    return leer_usuarios_origen_fase_i(
+        db_usuarios=db_usuarios,
+        conexion=conexion,
     )
-
-    sql = cargar_sql("aster/fase_i/mysql_select_usuarios.sql").format(
-        columnas=columnas_sql
-    )
-
-    validar_sql_mysql_solo_select(sql)
-
-    conn = conectar_mysql_fase_i(db_usuarios)
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(sql)
-            filas = cursor.fetchall()
-
-        return pd.DataFrame(filas, columns=columnas)
-
-    finally:
-        conn.close()
 
 
 def leer_comentarios_mysql_fase_i(
     db_gestion: str,
     fecha_yyyymmdd: str,
     entidades: list[str],
+    conexion: str = "local",
 ) -> pd.DataFrame:
     """
-    Lee comentarios desde MySQL gestioncomercial.comentarios.
-
-    Regla importante:
-    - Excluye usuario SystemUser.
+    Lee comentarios desde origen ASTER.
+    LOCAL: SQL Server gestioncomercial_dev.dbo.comentarios.
+    REMOTO: MySQL gestioncomercial.comentarios.
     """
-    columnas = columnas_mysql_comentarios_fase_i()
-
-    if not entidades:
-        return pd.DataFrame(columns=columnas)
-
-    columnas_sql = ", ".join(
-        f"`{col}` AS `{col}`"
-        for col in columnas
+    return leer_comentarios_origen_fase_i(
+        db_gestion=db_gestion,
+        fecha_yyyymmdd=fecha_yyyymmdd,
+        entidades=entidades,
+        conexion=conexion,
     )
-
-    fecha_sql = datetime.strptime(fecha_yyyymmdd, "%Y%m%d").strftime("%Y-%m-%d")
-    placeholders = ", ".join(["%s"] * len(entidades))
-
-    sql = cargar_sql("aster/fase_i/mysql_select_comentarios.sql").format(
-        columnas=columnas_sql,
-        placeholders=placeholders,
-    )
-
-    validar_sql_mysql_solo_select(sql)
-
-    conn = conectar_mysql_fase_i(db_gestion)
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(sql, [fecha_sql, *entidades])
-            filas = cursor.fetchall()
-
-        return pd.DataFrame(filas, columns=columnas)
-
-    finally:
-        conn.close()
 
 
 def transformar_comentarios_fase_i(df: pd.DataFrame) -> pd.DataFrame:
@@ -589,7 +552,7 @@ def ejecutar_fase_i_aster(
             len(entidades),
         )
 
-        df_usuarios = leer_usuarios_mysql_fase_i(db_usuarios)
+        df_usuarios = leer_usuarios_mysql_fase_i(db_usuarios, conexion_normalizada)
 
         agregar_paso_pipeline_fase_i(
             pipeline,
