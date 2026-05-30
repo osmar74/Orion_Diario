@@ -1,5 +1,12 @@
+
 (function () {
     "use strict";
+
+    const DEFAULT_RUTAS = [
+        "\\\\10.24.90.118\\Vencorp\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion",
+        "Z:\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion",
+        "D:\\Develop\\ETL\\Nicaragua_Proceso\\unidad_red_orion\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion"
+    ];
 
     const DEFAULT_STATE = {
         conexion: "local",
@@ -7,16 +14,60 @@
         mesGestion: "abril",
         rutasBase: [],
         contexto: null,
-        estadisticas: null
+        estadisticas: null,
+        phaseStatus: {},
+        phaseResults: {}
     };
 
-    const state = loadState();
+    const ORION_V2_ACTION_MAP = {
+        "crear.carpetas": { method: "GET", endpoint: "/accion/crear-carpetas" },
+        "verificar.red": { method: "GET", endpoint: "/accion/verificar-red" },
+        "distribuir.preparar": { method: "GET", endpoint: "/accion/distribuir" },
+
+        "distribuir.copiar": {
+            blocked: true,
+            message: "La copia requiere selección previa de archivos. Por ahora ejecútela desde la pantalla Orion actual."
+        },
+
+        "procesar.discador": { method: "GET", endpoint: "/accion/procesar-discador" },
+        "procesar.causales": { method: "GET", endpoint: "/accion/procesar-causales" },
+        "procesar.lotes": { method: "GET", endpoint: "/accion/procesar-lotes" },
+
+        "ocr.procesar": {
+            blocked: true,
+            message: "OCR requiere carga de imágenes. Por ahora ejecútelo desde la pantalla Orion actual."
+        },
+
+        "ocr.consolidar": {
+            blocked: true,
+            message: "La consolidación OCR requiere totales manuales. Se conectará en el siguiente paso."
+        },
+
+        "carga.causales.verificar": { method: "POST", endpoint: "/accion/verificar-carga", tipo: "causales" },
+        "carga.causales.insertar": { method: "POST", endpoint: "/accion/insertar-datos", tipo: "causales" },
+
+        "carga.lotes.verificar": { method: "POST", endpoint: "/accion/verificar-carga", tipo: "lote" },
+        "carga.lotes.insertar": { method: "POST", endpoint: "/accion/insertar-datos", tipo: "lote" },
+
+        "carga.discador.verificar": { method: "POST", endpoint: "/accion/verificar-carga", tipo: "discador" },
+        "carga.discador.insertar": { method: "POST", endpoint: "/accion/insertar-datos", tipo: "discador" },
+
+        "consolidado.gestion.consultar": { method: "POST", endpoint: "/accion/consolidar-consulta" }
+    };
 
     const $ = (selector) => document.querySelector(selector);
 
+    let state = loadState();
+
     function loadState() {
         try {
-            return { ...DEFAULT_STATE, ...JSON.parse(localStorage.getItem("orion_diario_v2_state") || "{}") };
+            const raw = JSON.parse(localStorage.getItem("orion_diario_v2_state") || "{}");
+            return {
+                ...DEFAULT_STATE,
+                ...raw,
+                phaseStatus: raw.phaseStatus || {},
+                phaseResults: raw.phaseResults || {}
+            };
         } catch {
             return { ...DEFAULT_STATE };
         }
@@ -24,6 +75,15 @@
 
     function saveState() {
         localStorage.setItem("orion_diario_v2_state", JSON.stringify(state));
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
     }
 
     function fmt(value) {
@@ -38,10 +98,51 @@
         return value;
     }
 
+    function ensureDebugPanel() {
+        let panel = document.getElementById("odv2-debug-panel");
+
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "odv2-debug-panel";
+            panel.className = "odv2-debug-panel";
+            panel.innerHTML = "Listo.";
+            document.body.appendChild(panel);
+        }
+
+        return panel;
+    }
+
+    function debug(message, type = "info") {
+        const panel = ensureDebugPanel();
+        panel.className = "odv2-debug-panel " + type;
+        panel.innerHTML = escapeHtml(message);
+        console.log("[Orion Diario V2]", message);
+    }
+
+    function restoreInputs() {
+        const fecha = $("#odv2-fecha-proceso");
+        const mes = $("#odv2-mes-gestion");
+
+        if (fecha) fecha.value = state.fechaProceso;
+        if (mes) mes.value = state.mesGestion;
+
+        setActiveConnection();
+    }
+
     function collectInputs() {
-        state.fechaProceso = $("#odv2-fecha-proceso").value.trim();
-        state.mesGestion = $("#odv2-mes-gestion").value.trim();
+        const fecha = $("#odv2-fecha-proceso");
+        const mes = $("#odv2-mes-gestion");
+
+        if (fecha) state.fechaProceso = fecha.value.trim() || state.fechaProceso;
+        if (mes) state.mesGestion = mes.value.trim() || state.mesGestion;
+
         saveState();
+    }
+
+    function setActiveConnection() {
+        document.querySelectorAll("[data-conn]").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.conn === state.conexion);
+        });
     }
 
     function getParams(includeRoutes) {
@@ -53,118 +154,334 @@
             conexion: state.conexion
         });
 
-        if (includeRoutes && state.rutasBase.length) {
-            state.rutasBase.forEach(r => params.append("rutas_base", r));
+        if (includeRoutes) {
+            const rutas = state.rutasBase && state.rutasBase.length ? state.rutasBase : DEFAULT_RUTAS;
+            rutas.forEach(r => params.append("rutas_base", r));
         }
 
         return params;
     }
 
-    function setActiveConnection() {
-        document.querySelectorAll("[data-conn]").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.conn === state.conexion);
-        });
+    function setGlobalStatus(text, status) {
+        const el = $("#odv2-global-status");
+        if (!el) return;
+
+        el.textContent = text;
+        el.className = "odv2-status-pill " + (status || "");
     }
 
-    function restoreInputs() {
-        $("#odv2-fecha-proceso").value = state.fechaProceso;
-        $("#odv2-mes-gestion").value = state.mesGestion;
-        setActiveConnection();
+    async function fetchJson(url) {
+        const res = await fetch(url, { credentials: "same-origin" });
+        const text = await res.text();
+
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("Respuesta no es JSON. HTTP " + res.status + ": " + text.slice(0, 300));
+        }
+
+        if (!res.ok) {
+            throw new Error(data.error || data.message || "HTTP " + res.status);
+        }
+
+        return data;
     }
 
     async function loadContext() {
-        const res = await fetch("/api/orion-diario-v2/contexto?" + getParams(true).toString());
-        state.contexto = await res.json();
-        state.estadisticas = null;
-        saveState();
-        renderContext();
-        clearStats();
+        try {
+            debug("Cargando contexto Orion...", "info");
+            setGlobalStatus("Cargando contexto", "running");
+
+            const url = "/api/orion-diario-v2/contexto?" + getParams(true).toString();
+            const data = await fetchJson(url);
+
+            state.contexto = data;
+            state.estadisticas = null;
+
+            if (!state.rutasBase.length && Array.isArray(data.rutas_red)) {
+                state.rutasBase = data.rutas_red.map(r => r.base);
+            }
+
+            saveState();
+            renderContext();
+            clearStats();
+
+            setGlobalStatus(data.conexion === "local" ? "Local activo" : "Remoto activo", "ok");
+            debug("Contexto cargado correctamente.", "success");
+
+        } catch (error) {
+            setGlobalStatus("Error contexto", "error");
+            debug("Error cargando contexto: " + (error.message || error), "error");
+        }
     }
 
     async function loadStats() {
-        const res = await fetch("/api/orion-diario-v2/estadisticas?" + getParams(true).toString());
-        state.estadisticas = await res.json();
-        state.contexto = state.estadisticas;
-        saveState();
-        renderContext();
-        renderStats();
+        try {
+            debug("Ejecutando panel estadístico...", "info");
+            setGlobalStatus("Calculando estadísticas", "running");
+
+            const url = "/api/orion-diario-v2/estadisticas?" + getParams(true).toString();
+            const data = await fetchJson(url);
+
+            state.estadisticas = data;
+            state.contexto = data;
+
+            if (!state.rutasBase.length && Array.isArray(data.rutas_red)) {
+                state.rutasBase = data.rutas_red.map(r => r.base);
+            }
+
+            saveState();
+            renderContext();
+            renderStats();
+
+            setGlobalStatus(data.conexion === "local" ? "Local activo" : "Remoto activo", "ok");
+            debug("Panel estadístico ejecutado correctamente.", "success");
+
+        } catch (error) {
+            setGlobalStatus("Error estadísticas", "error");
+            debug("Error ejecutando estadísticas: " + (error.message || error), "error");
+        }
+    }
+
+    function clearStats() {
+        const msg = $("#odv2-metrics-message");
+        const metrics = $("#odv2-metrics");
+        const bars = $("#odv2-bars");
+        const conn = $("#odv2-connections");
+
+        if (msg) msg.style.display = "block";
+        if (metrics) metrics.innerHTML = "";
+        if (bars) bars.innerHTML = "";
+        if (conn) conn.innerHTML = '<div class="odv2-empty">Ejecute el panel estadístico para ver información de conexión.</div>';
     }
 
     function renderContext() {
         const data = state.contexto;
         if (!data) return;
 
-        $("#odv2-global-status").textContent = data.conexion === "local" ? "Local activo" : "Remoto activo";
-        $("#odv2-global-status").classList.add("ok");
+        const fecha = $("#odv2-fecha-proceso");
+        const mes = $("#odv2-mes-gestion");
 
-        $("#odv2-fecha-proceso").value = data.fecha_proceso || state.fechaProceso;
-        $("#odv2-mes-gestion").value = data.mes_gestion || state.mesGestion;
+        if (fecha) fecha.value = data.fecha_proceso || state.fechaProceso;
+        if (mes) mes.value = data.mes_gestion || state.mesGestion;
 
-        state.fechaProceso = $("#odv2-fecha-proceso").value;
-        state.mesGestion = $("#odv2-mes-gestion").value;
-
-        if (!state.rutasBase.length && Array.isArray(data.rutas_red)) {
-            state.rutasBase = data.rutas_red.map(r => r.base);
-        }
+        state.fechaProceso = fecha ? fecha.value : state.fechaProceso;
+        state.mesGestion = mes ? mes.value : state.mesGestion;
 
         renderSidebar(data);
         renderRoutes(data);
         renderLocalServers(data);
         renderPhaseBoard(data);
-    }
-
-    function clearStats() {
-        $("#odv2-metrics-message").style.display = "block";
-        $("#odv2-metrics").innerHTML = "";
-        $("#odv2-bars").innerHTML = "";
-        $("#odv2-connections").innerHTML = '<div class="odv2-empty">Ejecute el panel estadístico para ver información de conexión.</div>';
+        saveState();
     }
 
     function renderStats() {
         const data = state.estadisticas;
         if (!data) return;
 
-        $("#odv2-metrics-message").style.display = "none";
+        const msg = $("#odv2-metrics-message");
+        if (msg) msg.style.display = "none";
+
         renderMetrics(data);
         renderBars(data);
         renderConnections(data);
     }
 
+    function getPhaseStatus(action) {
+        return state.phaseStatus[action] || { status: "pending", label: "Pendiente" };
+    }
+
+    function setPhaseStatus(action, status, label) {
+        state.phaseStatus[action] = { status, label };
+        saveState();
+
+        const el = document.getElementById(phaseStatusId(action));
+        if (el) {
+            el.className = "odv2-phase-status " + status;
+            el.textContent = label;
+        }
+
+        renderSidebar(state.contexto || {});
+    }
+
+    function setPhaseResult(action, html) {
+        state.phaseResults[action] = html;
+        saveState();
+
+        const el = document.getElementById(phaseResultId(action));
+        if (el) el.innerHTML = html;
+    }
+
+    function phaseResultId(actionName) {
+        return "odv2-result-" + String(actionName || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+    }
+
+    function phaseStatusId(actionName) {
+        return "odv2-status-" + String(actionName || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+    }
+
+    function looksLikeError(html) {
+        const text = String(html || "").toLowerCase();
+
+        return (
+            text.includes("❌") ||
+            text.includes("error") ||
+            text.includes("traceback") ||
+            text.includes("falló") ||
+            text.includes("fallo") ||
+            text.includes("no se encontró") ||
+            text.includes("exception")
+        );
+    }
+
+    function buildWorkflowForm(meta) {
+        collectInputs();
+
+        const form = new FormData();
+        form.append("fecha", state.fechaProceso);
+        form.append("fecha_proceso", state.fechaProceso);
+        form.append("mes_gestion", state.mesGestion);
+        form.append("conexion", state.conexion);
+
+        if (meta.tipo) {
+            form.append("tipo", meta.tipo);
+        }
+
+        return form;
+    }
+
+    async function executeWorkflowAction(actionName, button) {
+        const meta = ORION_V2_ACTION_MAP[actionName];
+
+        if (!meta) {
+            setPhaseResult(actionName, `<div class="odv2-result-warning">Acción no mapeada: ${escapeHtml(actionName)}</div>`);
+            setPhaseStatus(actionName, "warning", "Sin mapa");
+            return;
+        }
+
+        if (meta.blocked) {
+            setPhaseResult(actionName, `<div class="odv2-result-warning">${escapeHtml(meta.message)}</div>`);
+            setPhaseStatus(actionName, "warning", "Pendiente");
+            return;
+        }
+
+        try {
+            collectInputs();
+
+            button.disabled = true;
+            button.classList.add("loading");
+
+            setPhaseStatus(actionName, "running", "Ejecutando");
+            setPhaseResult(actionName, `<div class="odv2-result-loading">Ejecutando ${escapeHtml(actionName)}...</div>`);
+
+            let response;
+
+            if (meta.method === "GET") {
+                const params = new URLSearchParams({
+                    fecha: state.fechaProceso,
+                    fecha_proceso: state.fechaProceso,
+                    mes_gestion: state.mesGestion,
+                    conexion: state.conexion,
+                    _: Date.now().toString()
+                });
+
+                response = await fetch(meta.endpoint + "?" + params.toString(), {
+                    method: "GET",
+                    credentials: "same-origin"
+                });
+            } else {
+                response = await fetch(meta.endpoint + "?_=" + Date.now(), {
+                    method: "POST",
+                    body: buildWorkflowForm(meta),
+                    credentials: "same-origin"
+                });
+            }
+
+            const html = await response.text();
+            const error = !response.ok || looksLikeError(html);
+
+            const wrapped = `
+                <div class="odv2-result-toolbar">
+                    <strong>${escapeHtml(actionName)}</strong>
+                    <span>HTTP ${response.status}</span>
+                </div>
+                <div class="odv2-result-html">${html}</div>
+            `;
+
+            setPhaseResult(actionName, wrapped);
+            setPhaseStatus(actionName, error ? "error" : "success", error ? "Error" : "Correcto");
+
+            debug(
+                error ? "La fase devolvió advertencia/error: " + actionName : "Fase ejecutada correctamente: " + actionName,
+                error ? "error" : "success"
+            );
+
+            // IMPORTANTE:
+            // No llamar loadStats() aquí, porque reconstruye el tablero y borra resultados.
+            // El panel estadístico se ejecuta solo con su botón, como pidió el usuario.
+
+        } catch (error) {
+            setPhaseResult(actionName, `<div class="odv2-result-error">Error ejecutando ${escapeHtml(actionName)}: ${escapeHtml(error.message || error)}</div>`);
+            setPhaseStatus(actionName, "error", "Error");
+            debug("Error ejecutando fase " + actionName + ": " + (error.message || error), "error");
+        } finally {
+            button.disabled = false;
+            button.classList.remove("loading");
+        }
+    }
+
     function renderSidebar(data) {
         const root = $("#odv2-sidebar-phases");
+        if (!root) return;
+
+        if (!data.fases || !data.fases.length) {
+            root.innerHTML = '<div class="odv2-empty">Cargue contexto para ver fases.</div>';
+            return;
+        }
+
         root.innerHTML = "";
 
         data.fases.forEach(f => {
+            const action = f.accion || "";
+            const st = getPhaseStatus(action);
+
             const div = document.createElement("div");
             div.className = "odv2-phase-mini";
             div.innerHTML = `
-                <span><b>${f.codigo}</b>${f.nombre}</span>
-                <span class="odv2-badge">${f.badge}</span>
+                <span><b>${escapeHtml(f.codigo)}</b>${escapeHtml(f.nombre)}</span>
+                <span class="odv2-badge ${escapeHtml(st.status)}">${escapeHtml(st.label)}</span>
             `;
+
             root.appendChild(div);
         });
     }
 
     function renderRoutes(data) {
         const root = $("#odv2-routes");
+        if (!root) return;
+
         root.innerHTML = "";
 
-        data.rutas_red.forEach(r => {
-            const div = document.createElement("div");
-            div.className = "odv2-route";
-            div.innerHTML = `
-                <small>${r.nombre}</small>
-                <strong>Base:</strong> ${r.base}<br>
-                <strong>Mes gestión:</strong> ${r.ruta_mes}
-            `;
-            root.appendChild(div);
-        });
+        if (Array.isArray(data.rutas_red)) {
+            data.rutas_red.forEach(r => {
+                const div = document.createElement("div");
+                div.className = "odv2-route";
+                div.innerHTML = `
+                    <small>${escapeHtml(r.nombre)}</small>
+                    <strong>Base:</strong> ${escapeHtml(r.base)}<br>
+                    <strong>Mes gestión:</strong> ${escapeHtml(r.ruta_mes)}
+                `;
+                root.appendChild(div);
+            });
+        }
 
         if (data.rutas_locales) {
             Object.entries(data.rutas_locales).forEach(([k, v]) => {
                 const div = document.createElement("div");
                 div.className = "odv2-route";
-                div.innerHTML = `<small>${k}</small>${v}`;
+                div.innerHTML = `<small>${escapeHtml(k)}</small>${escapeHtml(v)}`;
                 root.appendChild(div);
             });
         }
@@ -174,6 +491,7 @@
 
     function renderLocalServers(data) {
         const root = $("#odv2-local-servers");
+        if (!root) return;
 
         if (!data.servidores_locales || !data.servidores_locales.length) {
             root.innerHTML = '<div class="odv2-empty">Esta información solo se muestra para conexión LOCAL.</div>';
@@ -193,10 +511,10 @@
                 <tbody>
                     ${data.servidores_locales.map(s => `
                         <tr>
-                            <td>${s.tipo}</td>
-                            <td>${s.servidor}</td>
-                            <td>${s.base_datos || "--"}</td>
-                            <td>${s.uso || "--"}</td>
+                            <td>${escapeHtml(s.tipo)}</td>
+                            <td>${escapeHtml(s.servidor)}</td>
+                            <td>${escapeHtml(s.base_datos || "--")}</td>
+                            <td>${escapeHtml(s.uso || "--")}</td>
                         </tr>
                     `).join("")}
                 </tbody>
@@ -206,78 +524,149 @@
 
     function renderPhaseBoard(data) {
         const root = $("#odv2-phase-board");
+        if (!root) return;
+
+        if (!data.fases || !data.fases.length) {
+            root.innerHTML = '<div class="odv2-empty">Cargue contexto para ver fases.</div>';
+            return;
+        }
+
         root.innerHTML = "";
 
         data.fases.forEach(f => {
+            const action = f.accion || "";
+            const st = getPhaseStatus(action);
+            const resultHtml = state.phaseResults[action] || '<div class="odv2-empty">Resultado pendiente.</div>';
+
             const item = document.createElement("div");
             item.className = "odv2-phase";
+
             item.innerHTML = `
                 <div class="odv2-phase-head">
-                    <span>${f.codigo} — ${f.nombre}</span>
-                    <span>${f.badge}</span>
+                    <span>${escapeHtml(f.codigo)} — ${escapeHtml(f.nombre)}</span>
+                    <span id="${phaseStatusId(action)}" class="odv2-phase-status ${escapeHtml(st.status)}">${escapeHtml(st.label)}</span>
                 </div>
                 <div class="odv2-phase-body">
                     <div>
-                        <strong>${f.grupo}</strong><br>
-                        ${f.descripcion}
+                        <strong>${escapeHtml(f.grupo)}</strong><br>
+                        ${escapeHtml(f.descripcion)}
+                        <div class="odv2-phase-action-code">${escapeHtml(action)}</div>
                     </div>
-                    <button class="odv2-run" data-phase="${f.codigo}" data-action="${f.accion}">Ejecutar fase</button>
+                    <button class="odv2-run" data-phase="${escapeHtml(f.codigo)}" data-action="${escapeHtml(action)}">Ejecutar fase</button>
+                </div>
+                <div class="odv2-phase-result" id="${phaseResultId(action)}">
+                    ${resultHtml}
                 </div>
             `;
+
             root.appendChild(item);
         });
 
         root.querySelectorAll(".odv2-run").forEach(btn => {
             btn.addEventListener("click", () => {
-                alert("Fase " + btn.dataset.phase + " todavía no vinculada en v2. La pantalla actual sigue funcionando.");
+                executeWorkflowAction(btn.dataset.action, btn);
             });
         });
     }
 
     function renderMetrics(data) {
         const root = $("#odv2-metrics");
+        if (!root) return;
+
         root.innerHTML = "";
 
         data.metricas.forEach(m => {
             const card = document.createElement("div");
             card.className = "odv2-metric";
             card.innerHTML = `
-                <small>${m.titulo}</small>
+                <small>${escapeHtml(m.titulo)}</small>
                 <strong>${fmt(m.valor)}</strong>
-                <span>${m.detalle || ""}</span>
+                <span>${escapeHtml(m.detalle || "")}</span>
             `;
             root.appendChild(card);
         });
     }
 
+    
     function renderBars(data) {
         const root = $("#odv2-bars");
+        if (!root) return;
+
         root.innerHTML = "";
 
-        const values = data.metricas
-            .map(x => Number(x.valor || 0))
-            .filter(x => !Number.isNaN(x));
+        const metricas = (data.metricas || [])
+            .map(m => ({
+                titulo: String(m.titulo || ""),
+                valor: Number(m.valor || 0),
+                detalle: String(m.detalle || "")
+            }))
+            .filter(m => !Number.isNaN(m.valor));
 
-        const max = Math.max(...values, 1);
+        const total = metricas.reduce((acc, item) => acc + Math.max(0, item.valor), 0);
 
-        data.metricas.forEach(m => {
-            const value = Number(m.valor || 0);
-            const pct = Math.max(3, Math.round((value / max) * 100));
+        if (!metricas.length || total <= 0) {
+            root.innerHTML = '<div class="odv2-empty">No hay datos suficientes para graficar.</div>';
+            return;
+        }
 
-            const row = document.createElement("div");
-            row.className = "odv2-bar-row";
-            row.innerHTML = `
-                <label><span>${m.titulo}</span><span>${fmt(m.valor)}</span></label>
-                <div class="odv2-bar-track">
-                    <div class="odv2-bar-fill" style="width:${pct}%"></div>
-                </div>
-            `;
-            root.appendChild(row);
+        const colors = [
+            "#0ea5ff",
+            "#22c55e",
+            "#f59e0b",
+            "#a855f7",
+            "#ef4444",
+            "#14b8a6"
+        ];
+
+        let start = 0;
+
+        const segments = metricas.map((m, idx) => {
+            const pct = Math.max(0, m.valor) / total * 100;
+            const end = start + pct;
+            const color = colors[idx % colors.length];
+            const segment = `${color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+            start = end;
+            return segment;
         });
+
+        const pie = document.createElement("div");
+        pie.className = "odv2-pie-wrap";
+        pie.innerHTML = `
+            <div class="odv2-pie" style="background: conic-gradient(${segments.join(", ")});">
+                <div class="odv2-pie-center">
+                    <strong>${fmt(total)}</strong>
+                    <span>Total</span>
+                </div>
+            </div>
+            <div class="odv2-pie-legend">
+                ${metricas.map((m, idx) => {
+                    const pct = total > 0 ? (Math.max(0, m.valor) / total * 100) : 0;
+                    const color = colors[idx % colors.length];
+
+                    return `
+                        <div class="odv2-pie-legend-row">
+                            <i style="background:${color}"></i>
+                            <span>${escapeHtml(m.titulo)}</span>
+                            <b>${fmt(m.valor)}</b>
+                            <em>${pct.toFixed(1)}%</em>
+                        </div>
+                    `;
+                }).join("")}
+            </div>
+        `;
+
+        root.appendChild(pie);
     }
+
 
     function renderConnections(data) {
         const root = $("#odv2-connections");
+        if (!root) return;
+
+        if (!data.conexiones || !data.conexiones.length) {
+            root.innerHTML = '<div class="odv2-empty">No hay conexiones para mostrar.</div>';
+            return;
+        }
 
         root.innerHTML = `
             <table class="odv2-table">
@@ -297,15 +686,15 @@
                 <tbody>
                     ${data.conexiones.map(c => `
                         <tr>
-                            <td>${c.proceso}</td>
-                            <td>${c.origen}</td>
-                            <td>${c.destino}</td>
-                            <td>${c.servidor}</td>
-                            <td>${c.base_datos}</td>
-                            <td>${c.tabla}</td>
-                            <td>${c.ruta}</td>
+                            <td>${escapeHtml(c.proceso)}</td>
+                            <td>${escapeHtml(c.origen)}</td>
+                            <td>${escapeHtml(c.destino)}</td>
+                            <td>${escapeHtml(c.servidor)}</td>
+                            <td>${escapeHtml(c.base_datos)}</td>
+                            <td>${escapeHtml(c.tabla)}</td>
+                            <td>${escapeHtml(c.ruta)}</td>
                             <td>${fmt(c.total)}</td>
-                            <td>${c.estado}</td>
+                            <td>${escapeHtml(c.estado)}</td>
                         </tr>
                     `).join("")}
                 </tbody>
@@ -315,50 +704,62 @@
 
     function renderPathsForm() {
         const root = $("#odv2-paths-form");
+        if (!root) return;
+
         root.innerHTML = "";
 
-        const rutas = state.rutasBase.length ? state.rutasBase : [
-            "\\\\10.24.90.118\\Vencorp\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion",
-            "Z:\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion",
-            "D:\\Develop\\ETL\\Nicaragua_Proceso\\unidad_red_orion\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion"
-        ];
+        const rutas = state.rutasBase && state.rutasBase.length ? state.rutasBase : DEFAULT_RUTAS;
 
         rutas.forEach((ruta, idx) => {
             const div = document.createElement("div");
             div.className = "odv2-field";
             div.innerHTML = `
                 <label>Ruta base ${idx + 1}</label>
-                <input data-path-index="${idx}" value="${String(ruta).replaceAll('"', "&quot;")}">
+                <input data-path-index="${idx}" value="${escapeHtml(ruta)}">
             `;
             root.appendChild(div);
         });
     }
 
     function setupModal() {
-        $("#odv2-edit-paths").addEventListener("click", () => {
-            renderPathsForm();
-            $("#odv2-paths-modal").classList.add("show");
-        });
+        const edit = $("#odv2-edit-paths");
+        const close = $("#odv2-close-modal");
+        const save = $("#odv2-save-paths");
+        const reset = $("#odv2-reset-paths");
+        const modal = $("#odv2-paths-modal");
 
-        $("#odv2-close-modal").addEventListener("click", () => {
-            $("#odv2-paths-modal").classList.remove("show");
-        });
+        if (edit && modal) {
+            edit.addEventListener("click", () => {
+                renderPathsForm();
+                modal.classList.add("show");
+            });
+        }
 
-        $("#odv2-save-paths").addEventListener("click", () => {
-            state.rutasBase = Array.from(document.querySelectorAll("[data-path-index]"))
-                .map(input => input.value.trim())
-                .filter(Boolean);
+        if (close && modal) {
+            close.addEventListener("click", () => {
+                modal.classList.remove("show");
+            });
+        }
 
-            saveState();
-            $("#odv2-paths-modal").classList.remove("show");
-            loadContext();
-        });
+        if (save && modal) {
+            save.addEventListener("click", () => {
+                state.rutasBase = Array.from(document.querySelectorAll("[data-path-index]"))
+                    .map(input => input.value.trim())
+                    .filter(Boolean);
 
-        $("#odv2-reset-paths").addEventListener("click", () => {
-            state.rutasBase = [];
-            saveState();
-            renderPathsForm();
-        });
+                saveState();
+                modal.classList.remove("show");
+                loadContext();
+            });
+        }
+
+        if (reset) {
+            reset.addEventListener("click", () => {
+                state.rutasBase = [];
+                saveState();
+                renderPathsForm();
+            });
+        }
     }
 
     function setupCollapsibles() {
@@ -378,27 +779,43 @@
         });
     }
 
-    function init() {
-        restoreInputs();
-
+    function setupEvents() {
         document.querySelectorAll("[data-conn]").forEach(btn => {
             btn.addEventListener("click", () => {
                 state.conexion = btn.dataset.conn;
                 saveState();
                 setActiveConnection();
-                loadContext();
+                debug("Conexión seleccionada: " + state.conexion, "info");
             });
         });
 
-        $("#odv2-load-context").addEventListener("click", loadContext);
-        $("#odv2-load-stats").addEventListener("click", loadStats);
+        const btnContext = $("#odv2-load-context");
+        if (btnContext) {
+            btnContext.addEventListener("click", loadContext);
+        }
 
+        const btnStats = $("#odv2-load-stats");
+        if (btnStats) {
+            btnStats.addEventListener("click", loadStats);
+        }
+    }
+
+    function init() {
+        restoreInputs();
+        setupEvents();
         setupModal();
         setupCollapsibles();
+        ensureDebugPanel();
 
         if (state.contexto) {
             renderContext();
         }
+
+        if (state.estadisticas) {
+            renderStats();
+        }
+
+        debug("Orion Diario V2 JS cargado. Presione Cargar contexto.", "info");
     }
 
     document.addEventListener("DOMContentLoaded", init);

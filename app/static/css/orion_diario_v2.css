@@ -414,3 +414,460 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* === ORION_DIARIO_V2_WORKFLOW_BRIDGE_BEGIN === */
+
+.odv2-phase-status {
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 900;
+    background: #1f2937;
+    color: var(--yellow);
+}
+
+.odv2-phase-status.running {
+    background: #172554;
+    color: #93c5fd;
+}
+
+.odv2-phase-status.success {
+    background: #052e16;
+    color: #86efac;
+}
+
+.odv2-phase-status.error {
+    background: #450a0a;
+    color: #fca5a5;
+}
+
+.odv2-phase-status.warning {
+    background: #422006;
+    color: #facc15;
+}
+
+.odv2-phase-action-code {
+    margin-top: 8px;
+    color: var(--cyan);
+    font-size: 12px;
+    font-family: Consolas, monospace;
+}
+
+.odv2-phase-result {
+    border-top: 1px solid #243755;
+    padding: 12px 16px;
+    background: #07111f;
+}
+
+.odv2-result-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    color: var(--cyan);
+}
+
+.odv2-result-html {
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 12px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.odv2-result-loading,
+.odv2-result-warning,
+.odv2-result-error {
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 800;
+}
+
+.odv2-result-loading {
+    background: #082f49;
+    color: #7dd3fc;
+    border: 1px solid #0369a1;
+}
+
+.odv2-result-warning {
+    background: #422006;
+    color: #facc15;
+    border: 1px solid #a16207;
+}
+
+.odv2-result-error {
+    background: #450a0a;
+    color: #fca5a5;
+    border: 1px solid #b91c1c;
+}
+
+.odv2-run.loading {
+    opacity: .65;
+    cursor: wait;
+}
+
+/* === ORION_DIARIO_V2_WORKFLOW_BRIDGE_END === */
+
+/* === ORION_DIARIO_V2_JS_V3_DEBUG_BEGIN === */
+
+.odv2-debug-panel {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 99999;
+    max-width: 520px;
+    background: #0b1222;
+    border: 1px solid #334155;
+    color: #dbeafe;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 18px 36px rgba(0,0,0,.35);
+}
+
+.odv2-debug-panel.success {
+    border-color: #22c55e;
+    color: #86efac;
+}
+
+.odv2-debug-panel.error {
+    border-color: #ef4444;
+    color: #fca5a5;
+}
+
+.odv2-debug-panel.info {
+    border-color: #0ea5ff;
+    color: #7dd3fc;
+}
+
+.odv2-status-pill.running {
+    color: #93c5fd;
+    border-color: #2563eb;
+}
+
+.odv2-status-pill.error {
+    color: #fca5a5;
+    border-color: #ef4444;
+}
+
+.odv2-phase-status {
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 900;
+    background: #1f2937;
+    color: var(--yellow);
+}
+
+.odv2-phase-status.running {
+    background: #172554;
+    color: #93c5fd;
+}
+
+.odv2-phase-status.success {
+    background: #052e16;
+    color: #86efac;
+}
+
+.odv2-phase-status.error {
+    background: #450a0a;
+    color: #fca5a5;
+}
+
+.odv2-phase-status.warning {
+    background: #422006;
+    color: #facc15;
+}
+
+.odv2-badge.success {
+    color: #86efac;
+}
+
+.odv2-badge.error {
+    color: #fca5a5;
+}
+
+.odv2-badge.running {
+    color: #93c5fd;
+}
+
+.odv2-phase-action-code {
+    margin-top: 8px;
+    color: var(--cyan);
+    font-size: 12px;
+    font-family: Consolas, monospace;
+}
+
+.odv2-phase-result {
+    border-top: 1px solid #243755;
+    padding: 12px 16px;
+    background: #07111f;
+}
+
+.odv2-result-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    color: var(--cyan);
+}
+
+.odv2-result-html {
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 12px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.odv2-result-loading,
+.odv2-result-warning,
+.odv2-result-error {
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 800;
+}
+
+.odv2-result-loading {
+    background: #082f49;
+    color: #7dd3fc;
+    border: 1px solid #0369a1;
+}
+
+.odv2-result-warning {
+    background: #422006;
+    color: #facc15;
+    border: 1px solid #a16207;
+}
+
+.odv2-result-error {
+    background: #450a0a;
+    color: #fca5a5;
+    border: 1px solid #b91c1c;
+}
+
+.odv2-run.loading {
+    opacity: .65;
+    cursor: wait;
+}
+
+/* === ORION_DIARIO_V2_JS_V3_DEBUG_END === */
+
+/* === ORION_DIARIO_V2_VISUAL_TWEAKS_BEGIN === */
+
+/* Panel estadístico más compacto */
+.odv2-metrics {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.odv2-metric {
+    min-height: 92px;
+    padding: 11px 12px;
+    border-radius: 13px;
+}
+
+.odv2-metric small {
+    font-size: 11px;
+    line-height: 1.1;
+}
+
+.odv2-metric strong {
+    margin-top: 5px;
+    font-size: 21px;
+    line-height: 1.05;
+}
+
+.odv2-metric span {
+    margin-top: 5px;
+    font-size: 10.5px;
+    line-height: 1.25;
+}
+
+/* Pie / donut compacto */
+.odv2-pie-wrap {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.odv2-pie {
+    width: 154px;
+    height: 154px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid #263752;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 18px 34px rgba(0,0,0,.25);
+}
+
+.odv2-pie-center {
+    width: 92px;
+    height: 92px;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 8px;
+}
+
+.odv2-pie-center strong {
+    display: block;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--text);
+}
+
+.odv2-pie-center span {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.odv2-pie-legend {
+    display: grid;
+    gap: 7px;
+}
+
+.odv2-pie-legend-row {
+    display: grid;
+    grid-template-columns: 12px 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 9px;
+    padding: 7px 9px;
+    font-size: 12px;
+}
+
+.odv2-pie-legend-row i {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+}
+
+.odv2-pie-legend-row span {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.odv2-pie-legend-row b {
+    color: var(--cyan);
+    font-weight: 900;
+}
+
+.odv2-pie-legend-row em {
+    color: var(--muted);
+    font-style: normal;
+    font-size: 11px;
+}
+
+/* Resultados de fases con tablas estilo origen/destino/BD/tabla */
+.odv2-phase-result {
+    font-size: 12px;
+}
+
+.odv2-result-html {
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.odv2-result-html table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+
+.odv2-result-html table th,
+.odv2-result-html table td {
+    border-bottom: 1px solid #263752;
+    padding: 8px 9px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.odv2-result-html table th {
+    color: var(--cyan);
+    background: #0b1222;
+    font-size: 11.5px;
+    font-weight: 900;
+}
+
+.odv2-result-html table td {
+    color: var(--text);
+}
+
+.odv2-result-html table tr:last-child td {
+    border-bottom: 0;
+}
+
+.odv2-result-html .log-line,
+.odv2-result-html .ui-result-block,
+.odv2-result-html .orion-result-content,
+.odv2-result-html .orion-info-card,
+.odv2-result-html .orion-checklist {
+    font-size: 12px !important;
+}
+
+.odv2-result-html .log-line {
+    border-radius: 9px;
+    padding: 7px 9px;
+    margin: 5px 0;
+}
+
+/* Compactar badges de fases y panel lateral */
+.odv2-phase-status {
+    padding: 3px 7px;
+    font-size: 10.5px;
+}
+
+.odv2-badge {
+    font-size: 10.5px;
+}
+
+.odv2-phase-mini {
+    padding: 8px 9px;
+    font-size: 12px;
+}
+
+.odv2-phase-mini b {
+    padding: 3px 6px;
+    font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+    .odv2-pie-wrap {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+
+    .odv2-pie-legend {
+        width: 100%;
+    }
+}
+
+/* === ORION_DIARIO_V2_VISUAL_TWEAKS_END === */
