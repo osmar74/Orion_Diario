@@ -18,17 +18,18 @@ import pandas as pd
 
 
 COLUMNAS_USUARIOS_FASE_I = [
-    "id",
-    "usuario",
-    "pass",
-    "perfil",
-    "nombre",
-    "owned_by",
-    "type",
-    "web",
-    "created_at",
-    "updated_at",
-]
+        "usuario",
+        "interno",
+        "grupos",
+        "permisosr2",
+        "seleccion",
+        "filtrar",
+        "pausaragente",
+        "agente",
+        "modificarinterno",
+        "modificaragente",
+        "callback",
+    ]
 
 
 COLUMNAS_COMENTARIOS_FASE_I = [
@@ -454,3 +455,86 @@ def consultar_entidades_sql_aster_origen(
         "total_entidades": len(resultados),
         "total_registros": sum(int(item["numero"]) for item in resultados),
     }
+
+# === FIX_ASTER_PHASE_I_REQUIRED_ID_USUARIOS_BEGIN ===
+# Fix local ASTER Fase I:
+#
+# En gestioncomercial_dev.dbo.usuarios no existe la columna id.
+# La columna lógica para usuarios local es usuario.
+#
+# Este helper evita que la validación bloquee Fase I por faltar id
+# cuando la conexión es local.
+#
+# Fecha generación: 2026-05-30 09:44:58.461653
+
+
+def _aster_phase_i_es_local_required_id_fix(scope=None):
+    scope = scope or {}
+
+    conexion = (
+        scope.get("conexion")
+        or scope.get("modo")
+        or scope.get("origen")
+        or scope.get("tipo_conexion")
+        or "local"
+    )
+
+    conexion = str(conexion or "local").strip().lower()
+
+    return conexion in [
+        "local",
+        "sqlserver",
+        "sql_server",
+        "dev",
+        "desarrollo",
+    ]
+
+
+def _aster_phase_i_filtrar_faltantes_usuarios_local(faltantes, scope=None):
+    """
+    En local, dbo.usuarios no tiene id.
+    Por tanto, si la única columna faltante es id, no debe bloquear la Fase I.
+    """
+    if not faltantes:
+        return faltantes
+
+    faltantes_lista = list(faltantes)
+
+    if not _aster_phase_i_es_local_required_id_fix(scope):
+        return faltantes_lista
+
+    ignorables_local = {
+        "id",
+    }
+
+    filtrados = [
+        col for col in faltantes_lista
+        if str(col).strip().lower() not in ignorables_local
+    ]
+
+    return filtrados
+
+
+def _aster_phase_i_columnas_requeridas_usuarios_local(columnas=None, scope=None):
+    """
+    Normaliza columnas requeridas para usuarios local.
+    Si aparece id, se elimina.
+    Si no aparece usuario, se agrega como mínimo requerido.
+    """
+    columnas = list(columnas or [])
+
+    if not _aster_phase_i_es_local_required_id_fix(scope):
+        return columnas
+
+    columnas = [
+        col for col in columnas
+        if str(col).strip().lower() != "id"
+    ]
+
+    if "usuario" not in [str(c).strip().lower() for c in columnas]:
+        columnas.insert(0, "usuario")
+
+    return columnas
+
+
+# === FIX_ASTER_PHASE_I_REQUIRED_ID_USUARIOS_END ===

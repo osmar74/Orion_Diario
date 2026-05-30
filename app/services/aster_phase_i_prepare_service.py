@@ -557,3 +557,197 @@ if "columnas_mysql_crm_fase_i" not in globals():
         return columnas_mysql_usuarios_fase_i()
 
 # === FIX_COMPAT_COLUMNAS_MYSQL_FASE_I_END ===
+
+# === FIX_ASTER_PHASE_I_LOCAL_COLUMNS_BEGIN ===
+# Override final de columnas ASTER Fase I para origen LOCAL SQL Server.
+#
+# Motivo:
+#   En local, gestioncomercial_dev.dbo.usuarios NO tiene columnas legacy:
+#   id, pass, perfil, nombre, owned_by, type, web, created_at, updated_at.
+#
+#   La tabla local real tiene:
+#   usuario, interno, grupos, permisosr2, seleccion, filtrar,
+#   pausaragente, agente, modificarinterno, modificaragente, callback.
+#
+# Fecha generación: 2026-05-30 09:40:41.146844
+
+
+ASTER_FASE_I_COLUMNAS_USUARIOS_LOCAL = [
+    "usuario",
+    "interno",
+    "grupos",
+    "permisosr2",
+    "seleccion",
+    "filtrar",
+    "pausaragente",
+    "agente",
+    "modificarinterno",
+    "modificaragente",
+    "callback",
+]
+
+
+ASTER_FASE_I_COLUMNAS_COMENTARIOS_LOCAL = [
+    "id",
+    "data",
+    "fecha",
+    "comentario",
+    "resultado1",
+    "resultado2",
+    "entidad",
+    "usuario",
+    "fechaagenda",
+    "unico",
+    "fechainicio",
+    "telefono",
+    "uniqueid",
+    "linkedid",
+    "datafijos",
+    "datapers",
+]
+
+
+def columnas_sqlserver_usuarios_fase_i():
+    """
+    Columnas reales de gestioncomercial_dev.dbo.usuarios.
+    """
+    return list(ASTER_FASE_I_COLUMNAS_USUARIOS_LOCAL)
+
+
+def columnas_sqlserver_crm_fase_i():
+    """
+    Alias local legacy.
+    En local, crm equivale a usuarios.
+    """
+    return columnas_sqlserver_usuarios_fase_i()
+
+
+def columnas_sqlserver_comentarios_fase_i():
+    """
+    Columnas reales de gestioncomercial_dev.dbo.comentarios.
+    """
+    return list(ASTER_FASE_I_COLUMNAS_COMENTARIOS_LOCAL)
+
+
+# Overrides seguros para llamadas legacy que todavía usan nombres mysql_*.
+# En local deben devolver columnas SQL Server reales.
+def columnas_mysql_usuarios_fase_i():
+    return columnas_sqlserver_usuarios_fase_i()
+
+
+def columnas_mysql_crm_fase_i():
+    return columnas_sqlserver_usuarios_fase_i()
+
+
+def columnas_mysql_comentarios_fase_i():
+    return columnas_sqlserver_comentarios_fase_i()
+
+
+def columnas_usuarios_fase_i_por_conexion(conexion="local"):
+    """
+    Selector explícito por conexión.
+    Para pruebas locales, siempre usa columnas reales SQL Server.
+    """
+    modo = str(conexion or "local").strip().lower()
+
+    if modo in ["local", "sqlserver", "sql_server", "dev", "desarrollo"]:
+        return columnas_sqlserver_usuarios_fase_i()
+
+    # Fallback remoto: se mantiene compatible con el set local para no romper
+    # si el pipeline espera el mismo shape.
+    return columnas_sqlserver_usuarios_fase_i()
+
+
+def columnas_comentarios_fase_i_por_conexion(conexion="local"):
+    modo = str(conexion or "local").strip().lower()
+
+    if modo in ["local", "sqlserver", "sql_server", "dev", "desarrollo"]:
+        return columnas_sqlserver_comentarios_fase_i()
+
+    return columnas_sqlserver_comentarios_fase_i()
+
+
+# === FIX_ASTER_PHASE_I_LOCAL_COLUMNS_END ===
+
+# === FIX_ASTER_PHASE_I_REQUIRED_ID_USUARIOS_BEGIN ===
+# Fix local ASTER Fase I:
+#
+# En gestioncomercial_dev.dbo.usuarios no existe la columna id.
+# La columna lógica para usuarios local es usuario.
+#
+# Este helper evita que la validación bloquee Fase I por faltar id
+# cuando la conexión es local.
+#
+# Fecha generación: 2026-05-30 09:44:58.455157
+
+
+def _aster_phase_i_es_local_required_id_fix(scope=None):
+    scope = scope or {}
+
+    conexion = (
+        scope.get("conexion")
+        or scope.get("modo")
+        or scope.get("origen")
+        or scope.get("tipo_conexion")
+        or "local"
+    )
+
+    conexion = str(conexion or "local").strip().lower()
+
+    return conexion in [
+        "local",
+        "sqlserver",
+        "sql_server",
+        "dev",
+        "desarrollo",
+    ]
+
+
+def _aster_phase_i_filtrar_faltantes_usuarios_local(faltantes, scope=None):
+    """
+    En local, dbo.usuarios no tiene id.
+    Por tanto, si la única columna faltante es id, no debe bloquear la Fase I.
+    """
+    if not faltantes:
+        return faltantes
+
+    faltantes_lista = list(faltantes)
+
+    if not _aster_phase_i_es_local_required_id_fix(scope):
+        return faltantes_lista
+
+    ignorables_local = {
+        "id",
+    }
+
+    filtrados = [
+        col for col in faltantes_lista
+        if str(col).strip().lower() not in ignorables_local
+    ]
+
+    return filtrados
+
+
+def _aster_phase_i_columnas_requeridas_usuarios_local(columnas=None, scope=None):
+    """
+    Normaliza columnas requeridas para usuarios local.
+    Si aparece id, se elimina.
+    Si no aparece usuario, se agrega como mínimo requerido.
+    """
+    columnas = list(columnas or [])
+
+    if not _aster_phase_i_es_local_required_id_fix(scope):
+        return columnas
+
+    columnas = [
+        col for col in columnas
+        if str(col).strip().lower() != "id"
+    ]
+
+    if "usuario" not in [str(c).strip().lower() for c in columnas]:
+        columnas.insert(0, "usuario")
+
+    return columnas
+
+
+# === FIX_ASTER_PHASE_I_REQUIRED_ID_USUARIOS_END ===
