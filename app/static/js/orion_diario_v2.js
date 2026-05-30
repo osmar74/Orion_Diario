@@ -61,14 +61,32 @@
 
     function loadState() {
         try {
-            const raw = JSON.parse(localStorage.getItem("orion_diario_v2_state") || "{}");
+            const rawText = localStorage.getItem("orion_diario_v2_state") || "{}";
+
+            // Si el estado quedó enorme por guardar resultados HTML,
+            // se limpia para evitar pantalla negra o navegador lento.
+            if (rawText.length > 250000) {
+                localStorage.removeItem("orion_diario_v2_state");
+                return { ...DEFAULT_STATE };
+            }
+
+            const raw = JSON.parse(rawText);
+
+            const phaseResults = raw.phaseResults || {};
+
+            // Nunca restaurar HTML pesado de Distribuir.
+            if (phaseResults["distribuir.preparar"]) {
+                phaseResults["distribuir.preparar"] = '<div class="odv2-empty">Resultado de distribución limpiado para evitar lentitud. Ejecute nuevamente D - Distribuir Archivos.</div>';
+            }
+
             return {
                 ...DEFAULT_STATE,
                 ...raw,
                 phaseStatus: raw.phaseStatus || {},
-                phaseResults: raw.phaseResults || {}
+                phaseResults
             };
         } catch {
+            localStorage.removeItem("orion_diario_v2_state");
             return { ...DEFAULT_STATE };
         }
     }
@@ -353,7 +371,14 @@
     }
 
     function setPhaseResult(action, html) {
-        state.phaseResults[action] = html;
+        // El resultado de Distribuir puede contener tablas/listas grandes.
+        // Se muestra en pantalla, pero NO se guarda completo en localStorage.
+        if (action === "distribuir.preparar") {
+            state.phaseResults[action] = '<div class="odv2-empty">Distribución ejecutada. Resultado no persistido para evitar lentitud.</div>';
+        } else {
+            state.phaseResults[action] = html;
+        }
+
         saveState();
 
         const el = document.getElementById(phaseResultId(action));
@@ -399,7 +424,364 @@
         return form;
     }
 
+
+/* === ORION_DIARIO_V2_DISTRIBUCION_MVC_BEGIN === */
+
+    function odv2DistEmptyCounts() {
+        return { Causales: 0, Lotes: 0, Discador: 0 };
+    }
+
+    function odv2DistCountKey(categoria) {
+        const value = String(categoria || "").trim();
+
+        if (value.toLowerCase().includes("causal")) return "Causales";
+        if (value.toLowerCase().includes("lote")) return "Lotes";
+        if (value.toLowerCase().includes("discador")) return "Discador";
+
+        return value || "Otros";
+    }
+
+    function odv2DistCollect() {
+        const checks = Array.from(document.querySelectorAll("#odv2-distribucion-mvc input[type='checkbox'][data-categoria][data-archivo]"));
+
+        const encontrados = odv2DistEmptyCounts();
+        const seleccionados = odv2DistEmptyCounts();
+        const payload = [];
+
+        checks.forEach(cb => {
+            const categoria = cb.dataset.categoria;
+            const archivo = cb.dataset.archivo;
+            const key = odv2DistCountKey(categoria);
+
+            if (!(key in encontrados)) encontrados[key] = 0;
+            if (!(key in seleccionados)) seleccionados[key] = 0;
+
+            encontrados[key] += 1;
+
+            if (cb.checked) {
+                seleccionados[key] += 1;
+                payload.push({ categoria, archivo });
+            }
+        });
+
+        return { encontrados, seleccionados, payload };
+    }
+
+    function odv2DistTotal(counts) {
+        return Object.values(counts || {}).reduce((a, b) => a + Number(b || 0), 0);
+    }
+
+    function odv2DistPie(counts, title) {
+        const rows = [
+            { key: "Causales", label: "Cau", color: "#0ea5ff" },
+            { key: "Lotes", label: "Lot", color: "#f59e0b" },
+            { key: "Discador", label: "Dis", color: "#22c55e" },
+        ];
+
+        const total = odv2DistTotal(counts);
+
+        if (!total) {
+            return `
+                <div class="odv2-dist-pie-card">
+                    <strong>${escapeHtml(title)}</strong>
+                    <div class="odv2-dist-pie-empty">0</div>
+                </div>
+            `;
+        }
+
+        let start = 0;
+
+        const segments = rows.map(row => {
+            const value = Number(counts[row.key] || 0);
+            const pct = value / total * 100;
+            const end = start + pct;
+            const segment = `${row.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+            start = end;
+            return segment;
+        });
+
+        return `
+            <div class="odv2-dist-pie-card">
+                <strong>${escapeHtml(title)}</strong>
+                <div class="odv2-dist-pie-stage">
+                    <div class="odv2-dist-pie" style="background: conic-gradient(${segments.join(", ")});">
+                        <div class="odv2-dist-pie-center">
+                            <b>${fmt(total)}</b>
+                            <span>${escapeHtml(title)}</span>
+                        </div>
+                    </div>
+
+                    ${rows.map((row, idx) => `
+                        <div class="odv2-dist-pie-value odv2-dist-pie-value-${idx}">
+                            <i style="background:${row.color}"></i>
+                            <span>${row.label}</span>
+                            <b>${fmt(counts[row.key] || 0)}</b>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+    }
+
+    function odv2DistSummaryTable(encontrados, seleccionados, copiados) {
+        const rows = ["Causales", "Lotes", "Discador"];
+        const totalEncontrados = odv2DistTotal(encontrados);
+        const totalSeleccionados = odv2DistTotal(seleccionados);
+        const totalCopiados = odv2DistTotal(copiados);
+
+        return `
+            <table class="odv2-table odv2-dist-summary-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Total encontrados</th>
+                        <th>Total seleccionados</th>
+                        <th>Total copiados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(row => `
+                        <tr>
+                            <td>${row}</td>
+                            <td>${fmt(encontrados[row] || 0)}</td>
+                            <td>${fmt(seleccionados[row] || 0)}</td>
+                            <td>${fmt(copiados[row] || 0)}</td>
+                        </tr>
+                    `).join("")}
+                    <tr class="odv2-dist-total-row">
+                        <td>Total</td>
+                        <td>${fmt(totalEncontrados)}</td>
+                        <td>${fmt(totalSeleccionados)}</td>
+                        <td>${fmt(totalCopiados)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    }
+
+    function odv2DistRenderSummary(copiados = null) {
+        const root = document.getElementById("odv2-distribucion-mvc");
+        if (!root) return;
+
+        const data = odv2DistCollect();
+        const copiedCounts = copiados || odv2DistEmptyCounts();
+
+        const target = document.getElementById("odv2-dist-summary");
+
+        if (!target) return;
+
+        target.innerHTML = `
+            <div class="odv2-dist-summary-layout">
+                <div class="odv2-dist-summary-table-side">
+                    <div class="odv2-dist-pies-title">Resumen de archivos</div>
+                    ${odv2DistSummaryTable(data.encontrados, data.seleccionados, copiedCounts)}
+                </div>
+
+                <div class="odv2-dist-summary-pies-side">
+                    <div class="odv2-dist-pies-title">Resumen visual</div>
+                    <div class="odv2-dist-pies odv2-dist-pies-stacked">
+                        ${odv2DistPie(data.encontrados, "Antes")}
+                        ${odv2DistPie(copiedCounts, "Después")}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function odv2DistCopiedCounts(detalle) {
+        const counts = odv2DistEmptyCounts();
+
+        (detalle || []).forEach(item => {
+            const key = odv2DistCountKey(item.categoria);
+            if (!(key in counts)) counts[key] = 0;
+            counts[key] += 1;
+        });
+
+        return counts;
+    }
+
+    function odv2DistRender(data) {
+        const grupos = data.grupos || [];
+
+        const html = `
+            <div id="odv2-distribucion-mvc" class="odv2-dist-box">
+                <div class="odv2-dist-head">
+                    <div>
+                        <h4>Distribución de archivos Orion</h4>
+                        <p>Seleccione los archivos a copiar. Todos vienen marcados por defecto.</p>
+                        <small>Ruta usada: ${escapeHtml(data.red_base_usada || "--")}</small>
+                    </div>
+                </div>
+
+                <div class="odv2-dist-selection">
+                    ${grupos.map(g => `
+                        <details class="odv2-dist-group" open>
+                            <summary>📁 ${escapeHtml(g.categoria)} - ${fmt(g.total)} archivo(s)</summary>
+                            <div class="odv2-dist-routes">
+                                <div><b>Ruta origen:</b> ${escapeHtml(g.ruta_origen || "--")}</div>
+                                <div><b>Ruta destino:</b> ${escapeHtml(g.ruta_destino || "--")}</div>
+                            </div>
+                            <table class="odv2-table odv2-dist-files-table">
+                                <thead>
+                                    <tr>
+                                        <th>Copiar</th>
+                                        <th>Archivo</th>
+                                        <th>Ruta origen</th>
+                                        <th>Ruta destino</th>
+                                        <th>Estado destino</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${(g.archivos || []).map(a => `
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox"
+                                                       checked
+                                                       data-categoria="${escapeHtml(a.categoria)}"
+                                                       data-archivo="${escapeHtml(a.archivo)}">
+                                            </td>
+                                            <td><b>${escapeHtml(a.archivo)}</b></td>
+                                            <td>${escapeHtml(a.ruta_origen || "")}</td>
+                                            <td>${escapeHtml(a.ruta_destino || "")}</td>
+                                            <td class="${a.existe_destino ? "odv2-dist-warn" : "odv2-dist-ok"}">
+                                                ${a.existe_destino ? "⚠️ Ya existe, se reemplazará" : "✅ Nuevo"}
+                                            </td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </details>
+                    `).join("")}
+                </div>
+
+                
+                <div class="odv2-dist-actions">
+                    <button type="button" id="odv2-dist-copy" class="odv2-dist-copy-btn">
+                        Copiar seleccionados
+                    </button>
+                </div>
+
+                <div id="odv2-dist-summary"></div>
+                <div id="odv2-dist-result"></div>
+            </div>
+        `;
+
+        setPhaseResult("distribuir.preparar", html);
+        setPhaseStatus("distribuir.preparar", "success", "Correcto");
+
+        document.querySelectorAll("#odv2-distribucion-mvc input[type='checkbox']").forEach(cb => {
+            cb.addEventListener("change", () => odv2DistRenderSummary());
+        });
+
+        const btn = document.getElementById("odv2-dist-copy");
+        if (btn) btn.addEventListener("click", copiarDistribucionMvc);
+
+        odv2DistRenderSummary();
+    }
+
+    async function ejecutarDistribucionMvc(button) {
+        try {
+            collectInputs();
+
+            button.disabled = true;
+            button.classList.add("loading");
+
+            setPhaseStatus("distribuir.preparar", "running", "Ejecutando");
+            setPhaseResult("distribuir.preparar", `<div class="odv2-result-loading">Preparando distribución Orion v2...</div>`);
+
+            const url = "/api/orion-diario-v2/distribucion/preparar?" + getParams(true).toString();
+            const response = await fetch(url, { credentials: "same-origin" });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || "Error preparando distribución.");
+            }
+
+            odv2DistRender(data);
+            debug("Distribución Orion v2 preparada correctamente.", "success");
+
+        } catch (error) {
+            setPhaseStatus("distribuir.preparar", "error", "Error");
+            setPhaseResult("distribuir.preparar", `<div class="odv2-result-error">Error preparando distribución: ${escapeHtml(error.message || error)}</div>`);
+            debug("Error preparando distribución MVC: " + (error.message || error), "error");
+        } finally {
+            button.disabled = false;
+            button.classList.remove("loading");
+        }
+    }
+
+    async function copiarDistribucionMvc() {
+        const result = document.getElementById("odv2-dist-result");
+        const collected = odv2DistCollect();
+
+        if (!collected.payload.length) {
+            if (result) result.innerHTML = `<div class="odv2-result-warning">No hay archivos seleccionados para copiar.</div>`;
+            return;
+        }
+
+        if (result) {
+            result.innerHTML = `<div class="odv2-result-loading">Copiando ${fmt(collected.payload.length)} archivo(s)...</div>`;
+        }
+
+        try {
+            const payload = {
+                fecha_proceso: state.fechaProceso,
+                fecha: state.fechaProceso,
+                mes_gestion: state.mesGestion,
+                conexion: state.conexion,
+                rutas_base: getActiveRoutes(),
+                seleccionados: collected.payload
+            };
+
+            const response = await fetch("/api/orion-diario-v2/distribucion/copiar?_=" + Date.now(), {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            const copiedCounts = data.success ? odv2DistCopiedCounts(data.copiados_detalle) : odv2DistEmptyCounts();
+            odv2DistRenderSummary(copiedCounts);
+
+            if (result) {
+                result.innerHTML = `
+                    <div class="odv2-result-toolbar">
+                        <strong>Resultado copia seleccionados</strong>
+                        <span>HTTP ${response.status}</span>
+                    </div>
+                    <div class="odv2-result-html">${data.result_html || escapeHtml(data.error || "")}</div>
+                `;
+            }
+
+            setPhaseStatus("distribuir.preparar", data.success ? "success" : "error", data.success ? "Copiado" : "Error copia");
+            debug(data.success ? "Copia realizada correctamente." : "Error copiando archivos.", data.success ? "success" : "error");
+
+        } catch (error) {
+            if (result) {
+                result.innerHTML = `<div class="odv2-result-error">Error copiando seleccionados: ${escapeHtml(error.message || error)}</div>`;
+            }
+
+            setPhaseStatus("distribuir.preparar", "error", "Error copia");
+            debug("Error copiando distribución MVC: " + (error.message || error), "error");
+        }
+    }
+
+    window.OrionDistribucionMVC = {
+        preparar: ejecutarDistribucionMvc,
+        copiar: copiarDistribucionMvc,
+    };
+
+/* === ORION_DIARIO_V2_DISTRIBUCION_MVC_END === */
+
+
     async function executeWorkflowAction(actionName, button) {
+        if (actionName === "distribuir.preparar") {
+            await ejecutarDistribucionMvc(button);
+            return;
+        }
+
         const meta = ORION_V2_ACTION_MAP[actionName];
 
         if (!meta) {
@@ -459,10 +841,6 @@
 
             setPhaseResult(actionName, wrapped);
             setPhaseStatus(actionName, error ? "error" : "success", error ? "Error" : "Correcto");
-
-            if (actionName === "distribuir.preparar" && !error) {
-                appendDistributionControls(actionName);
-            }
 
             debug(
                 error ? "La fase devolvió advertencia/error: " + actionName : "Fase ejecutada correctamente: " + actionName,

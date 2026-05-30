@@ -520,3 +520,193 @@ def construir_estadisticas_orion_v2(
     )
 
     return contexto
+
+# === ORION_DIARIO_V2_DISTRIBUCION_MVC_BEGIN ===
+
+def _orion_v2_destino_categoria(carpeta_diaria: str, categoria: str) -> str:
+    destinos = {
+        "Causales": os.path.join(carpeta_diaria, "Causales"),
+        "Lotes": os.path.join(carpeta_diaria, "Lotes"),
+        "Discador": os.path.join(carpeta_diaria, "Discador"),
+    }
+
+    return destinos.get(categoria, carpeta_diaria)
+
+
+def _orion_v2_resolver_distribucion(
+    data_dir: str,
+    fecha_proceso: str,
+    rutas_base: list[str] | None = None,
+) -> dict[str, Any]:
+    from app.services.orion_fases_service import preparar_distribucion_archivos_orion
+
+    fecha = _fecha_yyyymmdd(fecha_proceso)
+    candidatos = _rutas_base(rutas_base)
+    errores = []
+
+    for red_base in candidatos:
+        respuesta = preparar_distribucion_archivos_orion(
+            data_dir=data_dir,
+            fecha_raw=fecha,
+            red_base=red_base,
+            log_service=None,
+        )
+
+        if respuesta.get("success"):
+            respuesta["red_base_usada"] = red_base
+            return respuesta
+
+        errores.append(
+            {
+                "red_base": red_base,
+                "error": respuesta.get("error", "No disponible"),
+                "status": respuesta.get("status", "error"),
+            }
+        )
+
+    return {
+        "success": False,
+        "fecha": fecha,
+        "error": "No se pudo preparar distribución con ninguna ruta base.",
+        "errores": errores,
+    }
+
+
+def preparar_distribucion_orion_v2(
+    data_dir: str,
+    fecha_proceso: str,
+    mes_gestion: str,
+    rutas_base: list[str] | None = None,
+) -> dict[str, Any]:
+    respuesta = _orion_v2_resolver_distribucion(
+        data_dir=data_dir,
+        fecha_proceso=fecha_proceso,
+        rutas_base=rutas_base,
+    )
+
+    fecha = _fecha_yyyymmdd(fecha_proceso)
+
+    if not respuesta.get("success"):
+        return {
+            "success": False,
+            "fecha_proceso": fecha,
+            "error": respuesta.get("error", "Error preparando distribución."),
+            "errores": respuesta.get("errores", []),
+        }
+
+    carpeta_diaria = respuesta["carpeta_diaria"]
+    rutas_validadas = respuesta.get("rutas_validadas", {})
+    archivos_encontrados = respuesta.get("archivos_encontrados", {})
+
+    grupos = []
+    total_archivos = 0
+
+    for categoria in ["Causales", "Lotes", "Discador"]:
+        ruta_origen = str(rutas_validadas.get(categoria, "") or "")
+        destino_dir = _orion_v2_destino_categoria(carpeta_diaria, categoria)
+        archivos = []
+
+        for archivo in archivos_encontrados.get(categoria, []) or []:
+            total_archivos += 1
+
+            archivo = str(archivo)
+            ruta_destino = os.path.join(destino_dir, archivo)
+            existe_destino = os.path.isfile(ruta_destino)
+
+            archivos.append(
+                {
+                    "categoria": categoria,
+                    "archivo": archivo,
+                    "ruta_origen": ruta_origen,
+                    "ruta_destino": ruta_destino,
+                    "existe_destino": existe_destino,
+                    "estado_destino": "Ya existe, se reemplazará" if existe_destino else "Nuevo",
+                    "checked": True,
+                }
+            )
+
+        grupos.append(
+            {
+                "categoria": categoria,
+                "ruta_origen": ruta_origen,
+                "ruta_destino": destino_dir,
+                "total": len(archivos),
+                "archivos": archivos,
+            }
+        )
+
+    return {
+        "success": True,
+        "fecha_proceso": fecha,
+        "mes_gestion": _normalizar_mes(mes_gestion, fecha),
+        "red_base_usada": respuesta.get("red_base_usada", ""),
+        "carpeta_diaria": carpeta_diaria,
+        "grupos": grupos,
+        "total_archivos": total_archivos,
+    }
+
+
+def copiar_distribucion_orion_v2(
+    data_dir: str,
+    fecha_proceso: str,
+    mes_gestion: str,
+    seleccionados: list[dict[str, Any]],
+    rutas_base: list[str] | None = None,
+) -> dict[str, Any]:
+    from app.services.orion_fases_service import distribuir_archivos_seleccionados_orion
+    from app.services.orion_fases_renderer import render_distribucion_seleccionados_orion
+
+    fecha = _fecha_yyyymmdd(fecha_proceso)
+    candidatos = _rutas_base(rutas_base)
+    errores = []
+
+    if not isinstance(seleccionados, list) or not seleccionados:
+        return {
+            "success": False,
+            "fecha_proceso": fecha,
+            "error": "No seleccionó archivos para copiar.",
+            "result_html": "<div class='log-line error'>❌ No seleccionó archivos para copiar.</div>",
+            "copiados_detalle": [],
+            "errores": [],
+        }
+
+    for red_base in candidatos:
+        respuesta = distribuir_archivos_seleccionados_orion(
+            data_dir=data_dir,
+            fecha_raw=fecha,
+            seleccionados=seleccionados,
+            red_base=red_base,
+            log_service=None,
+        )
+
+        if respuesta.get("success"):
+            return {
+                "success": True,
+                "fecha_proceso": fecha,
+                "mes_gestion": _normalizar_mes(mes_gestion, fecha),
+                "red_base_usada": red_base,
+                "result_html": render_distribucion_seleccionados_orion(respuesta),
+                "copiados_detalle": respuesta.get("copiados_detalle", []),
+                "errores": respuesta.get("errores", []),
+            }
+
+        errores.append(
+            {
+                "red_base": red_base,
+                "error": respuesta.get("error", "No se pudo copiar con esta ruta."),
+                "status": respuesta.get("status", "error"),
+            }
+        )
+
+    error = errores[-1]["error"] if errores else "No se pudo copiar archivos."
+
+    return {
+        "success": False,
+        "fecha_proceso": fecha,
+        "error": error,
+        "result_html": f"<div class='log-line error'>❌ {error}</div>",
+        "copiados_detalle": [],
+        "errores": errores,
+    }
+
+# === ORION_DIARIO_V2_DISTRIBUCION_MVC_END ===

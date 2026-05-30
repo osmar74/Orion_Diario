@@ -1,8 +1,12 @@
 from flask import Blueprint, jsonify, render_template, request
 
+from app.config import DATA_DIR
+
 from app.services.orion_diario_v2_dashboard_service import (
     construir_contexto_orion_v2,
     construir_estadisticas_orion_v2,
+    preparar_distribucion_orion_v2,
+    copiar_distribucion_orion_v2,
 )
 
 
@@ -45,3 +49,55 @@ def api_orion_diario_v2_estadisticas():
     )
 
     return jsonify(data)
+
+# === ORION_DIARIO_V2_DISTRIBUCION_MVC_BEGIN ===
+
+@orion_diario_v2_bp.route("/api/orion-diario-v2/distribucion/preparar")
+def api_orion_diario_v2_distribucion_preparar():
+    fecha_proceso = request.args.get("fecha_proceso", "20260429").strip()
+    mes_gestion = request.args.get("mes_gestion", "abril").strip()
+    rutas_base = request.args.getlist("rutas_base")
+
+    data = preparar_distribucion_orion_v2(
+        data_dir=DATA_DIR,
+        fecha_proceso=fecha_proceso,
+        mes_gestion=mes_gestion,
+        rutas_base=rutas_base,
+    )
+
+    status = 200 if data.get("success") else 400
+    return jsonify(data), status
+
+
+@orion_diario_v2_bp.route("/api/orion-diario-v2/distribucion/copiar", methods=["POST"])
+def api_orion_diario_v2_distribucion_copiar():
+    payload = request.get_json(silent=True) or {}
+
+    fecha_proceso = str(
+        payload.get("fecha_proceso")
+        or payload.get("fecha")
+        or "20260429"
+    ).strip()
+
+    mes_gestion = str(payload.get("mes_gestion") or "abril").strip()
+    rutas_base = payload.get("rutas_base") or []
+    seleccionados = payload.get("seleccionados") or []
+
+    if not isinstance(rutas_base, list):
+        rutas_base = []
+
+    if not isinstance(seleccionados, list):
+        seleccionados = []
+
+    data = copiar_distribucion_orion_v2(
+        data_dir=DATA_DIR,
+        fecha_proceso=fecha_proceso,
+        mes_gestion=mes_gestion,
+        seleccionados=seleccionados,
+        rutas_base=rutas_base,
+    )
+
+    status = 200 if data.get("success") else 400
+    return jsonify(data), status
+
+# === ORION_DIARIO_V2_DISTRIBUCION_MVC_END ===
