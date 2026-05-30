@@ -449,6 +449,7 @@ def consultar_entidades_sql_aster_origen(
         "conexion": normalizar_conexion_aster_origen(conexion),
         "engine": engine,
         "fecha": fecha_sql,
+        "fecha_sql": fecha_sql,
         "resultados": resultados,
         "total_entidades": len(resultados),
         "total_registros": sum(int(item["numero"]) for item in resultados),

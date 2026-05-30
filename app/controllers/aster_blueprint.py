@@ -70,7 +70,8 @@ from app.services.aster_phase_i_prepare_service import (
 from app.services.aster_phase_i_execution_service import ejecutar_fase_i_aster
 from app.services.aster_gestion_export_service import generar_gestion_aster_fase_i
 from app.services.aster_renderer_service import (
-    render_archivo_aster,
+
+render_archivo_aster,
     render_clasificacion_final_aster,
     render_conciliacion_aster,
     render_consulta_sql_aster,
@@ -91,6 +92,135 @@ from app.services.aster_renderer_service import (
     render_preparacion_fase_i,
     render_reporte_fase_i,
 )
+
+# === FIX_ASTER_PHASE_E_SAFE_FECHA_SQL_BEGIN ===
+# Helper seguro para ASTER Fase E.
+#
+# Corrige:
+# - KeyError: 'fecha_sql'
+# - Default local/remoto para consulta ASTER
+#
+# Fecha generación: 2026-05-30 09:34:13.598735
+
+
+def _aster_phase_e_request_dict_safe():
+    data = {}
+
+    try:
+        from flask import request
+
+        if request.is_json:
+            payload = request.get_json(silent=True) or {}
+            if isinstance(payload, dict):
+                data.update(payload)
+
+        try:
+            data.update(request.form.to_dict())
+        except Exception:
+            pass
+
+        try:
+            data.update(request.args.to_dict())
+        except Exception:
+            pass
+
+        try:
+            data.update(request.values.to_dict())
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+
+    return data
+
+
+def _aster_phase_e_fecha_sql_safe(default=None):
+    if default is None:
+        from datetime import date as _date
+        default = _date.today().strftime("%Y-%m-%d")
+
+    data = _aster_phase_e_request_dict_safe()
+
+    for key in [
+        "fecha_sql",
+        "fecha",
+        "fecha_gestion",
+        "fechaGestion",
+        "fecha_proceso",
+        "fechaProceso",
+        "dia",
+    ]:
+        value = data.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+
+    try:
+        from flask import session
+        value = session.get("aster_fecha_sql")
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    except Exception:
+        pass
+
+    return default
+
+
+def _aster_phase_e_conexion_safe(default=None):
+    import os
+
+    if default is None:
+        default = os.getenv("ASTER_CONEXION_DEFAULT", "local")
+
+    data = _aster_phase_e_request_dict_safe()
+
+    for key in [
+        "conexion",
+        "conexion_aster",
+        "origen",
+        "modo",
+        "ambiente",
+        "tipo_conexion",
+    ]:
+        value = data.get(key)
+
+        if value is None or not str(value).strip():
+            continue
+
+        value = str(value).strip().lower()
+
+        if value in ["local", "sqlserver", "sql_server", "dev", "desarrollo"]:
+            return "local"
+
+        if value in ["remoto", "remote", "mysql", "produccion", "producción", "prod"]:
+            return "remoto"
+
+    default = str(default or "local").strip().lower()
+
+    if default not in ["local", "remoto"]:
+        return "local"
+
+    return default
+
+
+def _aster_phase_e_fecha_from_resultado(resultado):
+    """
+    Compatibilidad:
+    - Algunos servicios devuelven resultado["fecha"].
+    - Otros consumidores esperan resultado.get("fecha_sql").
+    """
+    if not isinstance(resultado, dict):
+        return _aster_phase_e_fecha_sql_safe()
+
+    return str(
+        resultado.get("fecha_sql")
+        or resultado.get("fecha")
+        or _aster_phase_e_fecha_sql_safe()
+    )
+
+
+# === FIX_ASTER_PHASE_E_SAFE_FECHA_SQL_END ===
+
 
 
 aster_bp = Blueprint("aster", __name__)
@@ -747,7 +877,7 @@ def accion_aster_consulta_sql():
             </div>
             """
 
-        fecha_sql = str(resultado["fecha_sql"])
+        fecha_sql = _aster_phase_e_fecha_from_resultado(resultado)
         resultados = resultado["resultados"]
 
         session["aster_fecha_sql"] = fecha_sql
@@ -1718,8 +1848,3 @@ def accion_aster_guardar_clasificacion():
 
     except Exception as exc:
         return f"<div class='log-line error'>❌ Error guardando clasificación ASTER: {escape(str(exc))}</div>"
-
-
-    
-    
-    
