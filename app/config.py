@@ -98,3 +98,193 @@ SQL_REMOTO = {
     "username": os.getenv("ORION_SQL_REMOTO_USERNAME", "Admin1"),
     "password": os.getenv("ORION_SQL_REMOTO_PASSWORD", ""),
 }
+
+# === FIX_ORION_LOCAL_SQLSERVER_ENV_BRIDGE_BEGIN ===
+# Puente de configuración SQL Server local para Gestión Diaria Orion.
+#
+# Motivo:
+#   Algunos módulos usan variables ORION_SQL_LOCAL_*.
+#   Otros scripts/servicios ya usaban SQLSERVER_*.
+#   Este bloque unifica ambas familias de variables para evitar Login failed
+#   por password vacío o variable no encontrada.
+#
+# Fecha generación: 2026-05-30 09:00:21.495546
+
+
+def _orion_env_first(*names, default=""):
+    for _name in names:
+        _value = os.getenv(_name)
+        if _value is not None and str(_value).strip() != "":
+            return str(_value).strip()
+    return default
+
+
+_ORION_LOCAL_SQLSERVER_CONFIG = {
+    "driver": _orion_env_first(
+        "ORION_SQL_LOCAL_DRIVER",
+        "SQLSERVER_DRIVER",
+        default="ODBC Driver 18 for SQL Server",
+    ),
+    "server": _orion_env_first(
+        "ORION_SQL_LOCAL_SERVER",
+        "SQLSERVER_SERVER",
+        default=r"localhost\SQL2025DEV",
+    ),
+    "database": _orion_env_first(
+        "ORION_SQL_LOCAL_DATABASE",
+        "SQLSERVER_DATABASE",
+        default="gestioncomercial_dev",
+    ),
+    "username": _orion_env_first(
+        "ORION_SQL_LOCAL_USERNAME",
+        "SQLSERVER_USER",
+        default="Admin1",
+    ),
+    "password": _orion_env_first(
+        "ORION_SQL_LOCAL_PASSWORD",
+        "SQLSERVER_PASSWORD",
+        default="1234",
+    ),
+    "encrypt": _orion_env_first(
+        "ORION_SQL_LOCAL_ENCRYPT",
+        default="yes",
+    ),
+    "trust_server_certificate": _orion_env_first(
+        "ORION_SQL_LOCAL_TRUST_SERVER_CERTIFICATE",
+        default="yes",
+    ),
+}
+
+
+def _orion_apply_local_sqlserver_bridge():
+    """
+    Aplica la conexión local correcta sobre los diccionarios de configuración
+    que existan en este módulo, sin tocar configuración remota.
+    """
+
+    _candidate_names = [
+        "SQL_SERVER_CONFIG",
+        "SQLSERVER_CONFIG",
+        "ORION_SQLSERVER_CONFIG",
+        "ORION_SQL_SERVER_CONFIG",
+    ]
+
+    for _name in _candidate_names:
+        _cfg = globals().get(_name)
+
+        if not isinstance(_cfg, dict):
+            continue
+
+        # Caso típico: {"local": {...}, "remoto": {...}}
+        if isinstance(_cfg.get("local"), dict):
+            _cfg["local"].update(_ORION_LOCAL_SQLSERVER_CONFIG)
+
+        # Caso alternativo: {"server": ..., "database": ...}
+        elif "server" in _cfg or "database" in _cfg or "username" in _cfg:
+            _cfg.update(_ORION_LOCAL_SQLSERVER_CONFIG)
+
+
+_orion_apply_local_sqlserver_bridge()
+
+# === FIX_ORION_LOCAL_SQLSERVER_ENV_BRIDGE_END ===
+
+# === FIX_ORION_DATABASE_NAME_FINAL_BEGIN ===
+# Override final para separar bases:
+# - SQLSERVER_DATABASE / gestioncomercial_dev: ASTER local como reemplazo de MySQL remoto.
+# - ORION_SQL_LOCAL_DATABASE / Orion: Gestión Diaria Orion, Causales, Discador y Lotes.
+#
+# Fecha generación: 2026-05-30 09:10:12.820474
+
+
+def _orion_final_env_first(*names, default=""):
+    for _name in names:
+        _value = os.getenv(_name)
+        if _value is not None and str(_value).strip() != "":
+            return str(_value).strip()
+    return default
+
+
+ORION_CARGAS_SQLSERVER_CONFIG = {
+    "driver": _orion_final_env_first(
+        "ORION_CARGAS_SQL_DRIVER",
+        "ORION_SQL_LOCAL_DRIVER",
+        default="ODBC Driver 18 for SQL Server",
+    ),
+    "server": _orion_final_env_first(
+        "ORION_CARGAS_SQL_SERVER",
+        "ORION_SQL_LOCAL_SERVER",
+        default=r"localhost\SQL2025DEV",
+    ),
+    "database": _orion_final_env_first(
+        "ORION_CARGAS_SQL_DATABASE",
+        "ORION_SQL_LOCAL_DATABASE",
+        default="Orion",
+    ),
+    "username": _orion_final_env_first(
+        "ORION_CARGAS_SQL_USER",
+        "ORION_SQL_LOCAL_USERNAME",
+        default="Admin1",
+    ),
+    "password": _orion_final_env_first(
+        "ORION_CARGAS_SQL_PASSWORD",
+        "ORION_SQL_LOCAL_PASSWORD",
+        default="1234",
+    ),
+    "encrypt": _orion_final_env_first(
+        "ORION_CARGAS_SQL_ENCRYPT",
+        "ORION_SQL_LOCAL_ENCRYPT",
+        default="yes",
+    ),
+    "trust_server_certificate": _orion_final_env_first(
+        "ORION_CARGAS_SQL_TRUST_SERVER_CERTIFICATE",
+        "ORION_SQL_LOCAL_TRUST_SERVER_CERTIFICATE",
+        default="yes",
+    ),
+}
+
+
+def get_orion_cargas_sqlserver_config():
+    return dict(ORION_CARGAS_SQLSERVER_CONFIG)
+
+
+def get_orion_cargas_connection_string():
+    cfg = get_orion_cargas_sqlserver_config()
+
+    return (
+        f"DRIVER={{{cfg.get('driver', 'ODBC Driver 18 for SQL Server')}}};"
+        f"SERVER={cfg.get('server', r'localhost\SQL2025DEV')};"
+        f"DATABASE={cfg.get('database', 'Orion')};"
+        f"UID={cfg.get('username', 'Admin1')};"
+        f"PWD={cfg.get('password', '1234')};"
+        f"Encrypt={cfg.get('encrypt', 'yes')};"
+        f"TrustServerCertificate={cfg.get('trust_server_certificate', 'yes')};"
+    )
+
+
+def _apply_orion_final_database_override():
+    """
+    Reaplica a la configuración local de Orion la base correcta: Orion.
+    Esto evita que Causales, Discador y Lotes busquen en gestioncomercial_dev.
+    """
+
+    for _name in [
+        "SQL_SERVER_CONFIG",
+        "SQLSERVER_CONFIG",
+        "ORION_SQLSERVER_CONFIG",
+        "ORION_SQL_SERVER_CONFIG",
+    ]:
+        _cfg = globals().get(_name)
+
+        if not isinstance(_cfg, dict):
+            continue
+
+        if isinstance(_cfg.get("local"), dict):
+            _cfg["local"].update(ORION_CARGAS_SQLSERVER_CONFIG)
+
+        elif "server" in _cfg or "database" in _cfg or "username" in _cfg:
+            _cfg.update(ORION_CARGAS_SQLSERVER_CONFIG)
+
+
+_apply_orion_final_database_override()
+
+# === FIX_ORION_DATABASE_NAME_FINAL_END ===
