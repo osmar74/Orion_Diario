@@ -1,4 +1,79 @@
+from pathlib import Path
+from datetime import datetime
+import shutil
+import subprocess
+import sys
 
+ROOT = Path.cwd()
+
+JS = ROOT / "app" / "static" / "js" / "orion_diario_v2.js"
+SERVICE = ROOT / "app" / "services" / "orion_diario_v2_dashboard_service.py"
+CSS = ROOT / "app" / "static" / "css" / "orion_diario_v2.css"
+
+BACKUP_ROOT = ROOT / ".git" / "orion_patch_backups" / datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def title(value):
+    print("\n" + "=" * 100)
+    print(value)
+    print("=" * 100)
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def write(path: Path, text: str):
+    path.write_text(text, encoding="utf-8")
+
+
+def backup(path: Path):
+    if not path.exists():
+        return
+
+    rel = path.relative_to(ROOT)
+    dest = BACKUP_ROOT / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(path, dest)
+    print(f"Backup: {rel} -> {dest}")
+
+
+def patch_service_actions():
+    title("1. ASEGURANDO ACCIONES REALES EN SERVICE")
+
+    if not SERVICE.exists():
+        raise FileNotFoundError(f"No existe: {SERVICE}")
+
+    original = read(SERVICE)
+    text = original
+
+    replacements = {
+        '"accion": "crear_carpetas"': '"accion": "crear.carpetas"',
+        '"accion": "verificar_red"': '"accion": "verificar.red"',
+        '"accion": "ocr_totales"': '"accion": "ocr.procesar"',
+        '"accion": "distribuir_archivos"': '"accion": "distribuir.preparar"',
+        '"accion": "procesar_discador"': '"accion": "procesar.discador"',
+        '"accion": "procesar_causales"': '"accion": "procesar.causales"',
+        '"accion": "procesar_lotes"': '"accion": "procesar.lotes"',
+        '"accion": "carga_causales"': '"accion": "carga.causales.verificar"',
+        '"accion": "carga_lotes"': '"accion": "carga.lotes.verificar"',
+        '"accion": "carga_discador"': '"accion": "carga.discador.verificar"',
+        '"accion": "consolidado_orion"': '"accion": "consolidado.gestion.consultar"',
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    if text != original:
+        backup(SERVICE)
+        write(SERVICE, text)
+        print("OK: service actualizado.")
+    else:
+        print("OK: service ya estaba correcto.")
+
+
+def js_v3():
+    return r'''
 (function () {
     "use strict";
 
@@ -587,77 +662,34 @@
         });
     }
 
-    
     function renderBars(data) {
         const root = $("#odv2-bars");
         if (!root) return;
 
         root.innerHTML = "";
 
-        const metricas = (data.metricas || [])
-            .map(m => ({
-                titulo: String(m.titulo || ""),
-                valor: Number(m.valor || 0),
-                detalle: String(m.detalle || "")
-            }))
-            .filter(m => !Number.isNaN(m.valor));
+        const values = data.metricas
+            .map(x => Number(x.valor || 0))
+            .filter(x => !Number.isNaN(x));
 
-        const total = metricas.reduce((acc, item) => acc + Math.max(0, item.valor), 0);
+        const max = Math.max(...values, 1);
 
-        if (!metricas.length || total <= 0) {
-            root.innerHTML = '<div class="odv2-empty">No hay datos suficientes para graficar.</div>';
-            return;
-        }
+        data.metricas.forEach(m => {
+            const value = Number(m.valor || 0);
+            const pct = Math.max(3, Math.round((value / max) * 100));
 
-        const colors = [
-            "#0ea5ff",
-            "#22c55e",
-            "#f59e0b",
-            "#a855f7",
-            "#ef4444",
-            "#14b8a6"
-        ];
-
-        let start = 0;
-
-        const segments = metricas.map((m, idx) => {
-            const pct = Math.max(0, m.valor) / total * 100;
-            const end = start + pct;
-            const color = colors[idx % colors.length];
-            const segment = `${color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
-            start = end;
-            return segment;
-        });
-
-        const pie = document.createElement("div");
-        pie.className = "odv2-pie-wrap";
-        pie.innerHTML = `
-            <div class="odv2-pie" style="background: conic-gradient(${segments.join(", ")});">
-                <div class="odv2-pie-center">
-                    <strong>ORION</strong>
-                    <span>Distribución</span>
+            const row = document.createElement("div");
+            row.className = "odv2-bar-row";
+            row.innerHTML = `
+                <label><span>${escapeHtml(m.titulo)}</span><span>${fmt(m.valor)}</span></label>
+                <div class="odv2-bar-track">
+                    <div class="odv2-bar-fill" style="width:${pct}%"></div>
                 </div>
-            </div>
-            <div class="odv2-pie-legend">
-                ${metricas.map((m, idx) => {
-                    const pct = total > 0 ? (Math.max(0, m.valor) / total * 100) : 0;
-                    const color = colors[idx % colors.length];
+            `;
 
-                    return `
-                        <div class="odv2-pie-legend-row">
-                            <i style="background:${color}"></i>
-                            <span>${escapeHtml(m.titulo)}</span>
-                            <b>${fmt(m.valor)}</b>
-                            <em>${pct.toFixed(1)}%</em>
-                        </div>
-                    `;
-                }).join("")}
-            </div>
-        `;
-
-        root.appendChild(pie);
+            root.appendChild(row);
+        });
     }
-
 
     function renderConnections(data) {
         const root = $("#odv2-connections");
@@ -820,3 +852,232 @@
 
     document.addEventListener("DOMContentLoaded", init);
 })();
+'''
+
+
+def patch_js():
+    title("2. REEMPLAZANDO JS V3")
+
+    if not JS.exists():
+        raise FileNotFoundError(f"No existe: {JS}")
+
+    backup(JS)
+    write(JS, js_v3())
+    print("OK: JS V3 aplicado.")
+
+
+def patch_css():
+    title("3. ASEGURANDO CSS DEBUG / RESULTADOS")
+
+    if not CSS.exists():
+        raise FileNotFoundError(f"No existe: {CSS}")
+
+    original = read(CSS)
+
+    block = r'''
+/* === ORION_DIARIO_V2_JS_V3_DEBUG_BEGIN === */
+
+.odv2-debug-panel {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 99999;
+    max-width: 520px;
+    background: #0b1222;
+    border: 1px solid #334155;
+    color: #dbeafe;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 18px 36px rgba(0,0,0,.35);
+}
+
+.odv2-debug-panel.success {
+    border-color: #22c55e;
+    color: #86efac;
+}
+
+.odv2-debug-panel.error {
+    border-color: #ef4444;
+    color: #fca5a5;
+}
+
+.odv2-debug-panel.info {
+    border-color: #0ea5ff;
+    color: #7dd3fc;
+}
+
+.odv2-status-pill.running {
+    color: #93c5fd;
+    border-color: #2563eb;
+}
+
+.odv2-status-pill.error {
+    color: #fca5a5;
+    border-color: #ef4444;
+}
+
+.odv2-phase-status {
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 900;
+    background: #1f2937;
+    color: var(--yellow);
+}
+
+.odv2-phase-status.running {
+    background: #172554;
+    color: #93c5fd;
+}
+
+.odv2-phase-status.success {
+    background: #052e16;
+    color: #86efac;
+}
+
+.odv2-phase-status.error {
+    background: #450a0a;
+    color: #fca5a5;
+}
+
+.odv2-phase-status.warning {
+    background: #422006;
+    color: #facc15;
+}
+
+.odv2-badge.success {
+    color: #86efac;
+}
+
+.odv2-badge.error {
+    color: #fca5a5;
+}
+
+.odv2-badge.running {
+    color: #93c5fd;
+}
+
+.odv2-phase-action-code {
+    margin-top: 8px;
+    color: var(--cyan);
+    font-size: 12px;
+    font-family: Consolas, monospace;
+}
+
+.odv2-phase-result {
+    border-top: 1px solid #243755;
+    padding: 12px 16px;
+    background: #07111f;
+}
+
+.odv2-result-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    color: var(--cyan);
+}
+
+.odv2-result-html {
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 12px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.odv2-result-loading,
+.odv2-result-warning,
+.odv2-result-error {
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 800;
+}
+
+.odv2-result-loading {
+    background: #082f49;
+    color: #7dd3fc;
+    border: 1px solid #0369a1;
+}
+
+.odv2-result-warning {
+    background: #422006;
+    color: #facc15;
+    border: 1px solid #a16207;
+}
+
+.odv2-result-error {
+    background: #450a0a;
+    color: #fca5a5;
+    border: 1px solid #b91c1c;
+}
+
+.odv2-run.loading {
+    opacity: .65;
+    cursor: wait;
+}
+
+/* === ORION_DIARIO_V2_JS_V3_DEBUG_END === */
+'''
+
+    if "ORION_DIARIO_V2_JS_V3_DEBUG_BEGIN" in original:
+        print("OK: CSS debug ya estaba agregado.")
+        return
+
+    backup(CSS)
+    write(CSS, original.rstrip() + "\n\n" + block.strip() + "\n")
+    print("OK: CSS actualizado.")
+
+
+def compile_python():
+    title("4. COMPILACION PYTHON")
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "py_compile",
+            str(SERVICE),
+            str(ROOT / "app" / "controllers" / "orion_diario_v2_blueprint.py"),
+            str(ROOT / "app" / "__init__.py"),
+        ],
+        check=True,
+    )
+
+    print("OK: Python compila.")
+
+
+def main():
+    title("PATCH ORION DIARIO V2 JS V3")
+
+    patch_service_actions()
+    patch_js()
+    patch_css()
+    compile_python()
+
+    title("FINALIZADO")
+    print("Reinicia Flask:")
+    print("  Ctrl + C")
+    print("  python run.py")
+    print("")
+    print("En navegador:")
+    print("  Ctrl + F5")
+    print("  http://127.0.0.1:5000/orion-diario-v2")
+    print("")
+    print("Prueba:")
+    print("  1) Cargar contexto")
+    print("  2) Ejecutar panel estadístico")
+    print("  3) Ejecutar una fase")
+    print("")
+    print("Este fix NO recarga estadísticas automáticamente después de una fase.")
+
+
+if __name__ == "__main__":
+    main()

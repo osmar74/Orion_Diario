@@ -18,8 +18,8 @@ ROOT = Path.cwd()
 RED_BASE_PATHS = [
     r"\\10.24.90.118\Vencorp\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
     r"Z:\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
-    r"D:\Develop\ETL\Nicaragua_Proceso\unidad_red_orion\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion",
-]
+    r"D:\Develop\ETL\Nicaragua_Proceso\unidad_red_orion\COBRANZA %\2024\Prueba _carga_diaria_Aster_voip\Orion"
+            ]
 
 
 MESES = {
@@ -44,79 +44,79 @@ FASES_ORION = [
         "nombre": "Crear carpetas",
         "grupo": "Preparación",
         "descripcion": "Crea estructura local y carpetas de proceso diario Orion.",
-        "accion": "crear_carpetas",
+        "accion": "crear.carpetas",
     },
     {
         "codigo": "B",
         "nombre": "Verificar red",
         "grupo": "Preparación",
         "descripcion": "Verifica disponibilidad de rutas de red, unidad Z y espejo local.",
-        "accion": "verificar_red",
+        "accion": "verificar.red",
     },
     {
         "codigo": "C",
         "nombre": "OCR y Totales",
         "grupo": "OCR",
         "descripcion": "Procesa OCR, extrae totales y valida archivos base.",
-        "accion": "ocr_totales",
+        "accion": "ocr.procesar",
     },
     {
         "codigo": "D",
         "nombre": "Distribuir archivos",
         "grupo": "Distribución",
         "descripcion": "Distribuye archivos por carpetas de trabajo y tipo de insumo.",
-        "accion": "distribuir_archivos",
+        "accion": "distribuir.preparar",
     },
     {
         "codigo": "E1",
         "nombre": "Procesar Discador",
         "grupo": "Procesamiento",
         "descripcion": "Normaliza información de discador para carga SQL.",
-        "accion": "procesar_discador",
+        "accion": "procesar.discador",
     },
     {
         "codigo": "E2",
         "nombre": "Procesar Causales",
         "grupo": "Procesamiento",
         "descripcion": "Normaliza información de causales para carga SQL.",
-        "accion": "procesar_causales",
+        "accion": "procesar.causales",
     },
     {
         "codigo": "E3",
         "nombre": "Procesar Lotes",
         "grupo": "Procesamiento",
         "descripcion": "Normaliza información de lotes para carga SQL.",
-        "accion": "procesar_lotes",
+        "accion": "procesar.lotes",
     },
     {
         "codigo": "F1",
         "nombre": "Carga Causales",
         "grupo": "Carga SQL",
         "descripcion": "Verifica e inserta causales en base Orion.",
-        "accion": "carga_causales",
+        "accion": "carga.causales.verificar",
     },
     {
         "codigo": "F2",
         "nombre": "Carga Lotes",
         "grupo": "Carga SQL",
         "descripcion": "Verifica e inserta lotes en base Orion.",
-        "accion": "carga_lotes",
+        "accion": "carga.lotes.verificar",
     },
     {
         "codigo": "F3",
         "nombre": "Carga Discador",
         "grupo": "Carga SQL",
         "descripcion": "Verifica e inserta discador en base Orion.",
-        "accion": "carga_discador",
+        "accion": "carga.discador.verificar",
     },
     {
         "codigo": "G",
         "nombre": "Consolidado Gestión Orion",
         "grupo": "Consolidado",
         "descripcion": "Genera resumen final de Gestión Diaria Orion.",
-        "accion": "consolidado_orion",
-    },
-]
+        "accion": "consolidado.gestion.consultar",
+    }
+            ]
 
 
 def _leer_env_local() -> None:
@@ -289,8 +289,8 @@ def _servidores_locales(cfg: dict[str, str], rutas_red: list[dict[str, Any]]) ->
             "usuario": "",
             "uso": rutas_red[2]["base"] if len(rutas_red) > 2 else "",
             "visible_solo_local": True,
-        },
-    ]
+        }
+            ]
 
 
 def _safe_count(cfg: dict[str, str], tabla: str, fecha_sql: str) -> dict[str, Any]:
@@ -309,8 +309,8 @@ def _safe_count(cfg: dict[str, str], tabla: str, fecha_sql: str) -> dict[str, An
         "Fecha_Hora",
         "fecha_proceso",
         "FechaProceso",
-        "created_at",
-    ]
+        "created_at"
+            ]
 
     try:
         with pyodbc.connect(_conn_str(cfg), timeout=8) as conn:
@@ -490,8 +490,8 @@ def construir_estadisticas_orion_v2(
             "estado": conteos["discador"]["estado"],
             "total": conteos["discador"]["total"],
             "detalle": conteos["discador"]["detalle"],
-        },
-    ]
+        }
+            ]
 
     total_cargado = sum(int(item.get("total") or 0) for item in conteos.values())
 
@@ -512,12 +512,7 @@ def construir_estadisticas_orion_v2(
                     "titulo": "Discador",
                     "valor": conteos["discador"]["total"],
                     "detalle": conteos["discador"]["detalle"],
-                },
-                {
-                    "titulo": "Total Orion",
-                    "valor": total_cargado,
-                    "detalle": "Suma de tablas principales Orion",
-                },
+                }
             ],
             "conexiones": conexiones,
             "estadisticas_ejecutadas": True,
