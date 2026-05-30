@@ -909,3 +909,267 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* === ORION_DIARIO_V2_DISTRIBUCION_RESET_BEGIN === */
+
+.odv2-danger {
+    background: #7f1d1d;
+    border: 1px solid #ef4444;
+    color: white;
+    border-radius: 10px;
+    padding: 11px 15px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.odv2-danger:hover {
+    background: #991b1b;
+}
+
+.odv2-copy-box {
+    margin-top: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #07111f;
+    padding: 12px;
+}
+
+.odv2-copy-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.odv2-copy-head h4 {
+    margin: 0;
+    color: var(--cyan);
+}
+
+.odv2-copy-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.odv2-copy-grid {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 14px;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.odv2-copy-pie-box {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+}
+
+.odv2-copy-pie {
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid #263752;
+    box-shadow: 0 12px 26px rgba(0,0,0,.28);
+}
+
+.odv2-copy-pie-center {
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: #0b1222;
+    border: 1px solid #263752;
+    display: grid;
+    place-items: center;
+}
+
+.odv2-copy-pie-center strong {
+    font-size: 13px;
+    color: var(--text);
+}
+
+.odv2-copy-pie-legend {
+    width: 100%;
+    display: grid;
+    gap: 5px;
+}
+
+.odv2-copy-pie-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.odv2-copy-pie-row i {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+}
+
+.odv2-copy-pie-row b {
+    color: var(--cyan);
+}
+
+.odv2-copy-summary-table {
+    font-size: 12px;
+}
+
+.odv2-copy-summary-table th,
+.odv2-copy-summary-table td {
+    padding: 7px 8px;
+}
+
+.odv2-copy-total-row td {
+    color: var(--cyan);
+    font-weight: 900;
+    background: #0b1222;
+}
+
+@media (max-width: 1100px) {
+    .odv2-copy-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .odv2-copy-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* === ORION_DIARIO_V2_DISTRIBUCION_RESET_END === */
+
+/* === ORION_DIARIO_V2_V4_CONTEXT_RESET_CSS === */
+
+.odv2-status-pill.running {
+    color: #93c5fd;
+    border-color: #2563eb;
+}
+
+.odv2-status-pill.error {
+    color: #fca5a5;
+    border-color: #ef4444;
+}
+
+.odv2-copy-box {
+    margin-top: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #07111f;
+    padding: 12px;
+}
+
+.odv2-copy-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.odv2-copy-head h4 {
+    margin: 0;
+    color: var(--cyan);
+}
+
+.odv2-copy-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.odv2-copy-grid {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 14px;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.odv2-copy-pie-box {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+}
+
+.odv2-copy-pie {
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid #263752;
+    box-shadow: 0 12px 26px rgba(0,0,0,.28);
+}
+
+.odv2-copy-pie-center {
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: #0b1222;
+    border: 1px solid #263752;
+    display: grid;
+    place-items: center;
+}
+
+.odv2-copy-pie-center strong {
+    font-size: 13px;
+    color: var(--text);
+}
+
+.odv2-copy-pie-legend {
+    width: 100%;
+    display: grid;
+    gap: 5px;
+}
+
+.odv2-copy-pie-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.odv2-copy-pie-row i {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+}
+
+.odv2-copy-pie-row b {
+    color: var(--cyan);
+}
+
+.odv2-copy-summary-table {
+    font-size: 12px;
+}
+
+.odv2-copy-summary-table th,
+.odv2-copy-summary-table td {
+    padding: 7px 8px;
+}
+
+.odv2-copy-total-row td {
+    color: var(--cyan);
+    font-weight: 900;
+    background: #0b1222;
+}
+
+@media (max-width: 1100px) {
+    .odv2-copy-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .odv2-copy-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

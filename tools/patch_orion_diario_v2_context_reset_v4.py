@@ -1,4 +1,73 @@
+from pathlib import Path
+from datetime import datetime
+import shutil
+import subprocess
+import sys
 
+ROOT = Path.cwd()
+
+JS = ROOT / "app" / "static" / "js" / "orion_diario_v2.js"
+CSS = ROOT / "app" / "static" / "css" / "orion_diario_v2.css"
+TPL_CONTEXT = ROOT / "app" / "templates" / "orion_diario_v2" / "partials" / "_context_bar.html"
+
+BACKUP_ROOT = ROOT / ".git" / "orion_patch_backups" / datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def title(value):
+    print("\n" + "=" * 100)
+    print(value)
+    print("=" * 100)
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def write(path: Path, text: str):
+    path.write_text(text, encoding="utf-8")
+
+
+def backup(path: Path):
+    if not path.exists():
+        return
+
+    rel = path.relative_to(ROOT)
+    dest = BACKUP_ROOT / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(path, dest)
+    print(f"Backup: {rel} -> {dest}")
+
+
+def patch_template_remove_reset():
+    title("1. QUITANDO BOTON RESET SI EXISTE")
+
+    if not TPL_CONTEXT.exists():
+        print("AVISO: no existe template context bar.")
+        return
+
+    original = read(TPL_CONTEXT)
+    text = original
+
+    text = text.replace(
+        '\n        <button id="odv2-reset-ui" class="odv2-danger">Reset pantalla</button>',
+        ""
+    )
+
+    text = text.replace(
+        '<button id="odv2-reset-ui" class="odv2-danger">Reset pantalla</button>',
+        ""
+    )
+
+    if text != original:
+        backup(TPL_CONTEXT)
+        write(TPL_CONTEXT, text)
+        print("OK: botón Reset pantalla eliminado.")
+    else:
+        print("OK: no había botón Reset pantalla.")
+
+
+def js_v4():
+    return r'''
 (function () {
     "use strict";
 
@@ -1152,3 +1221,206 @@
 
     document.addEventListener("DOMContentLoaded", init);
 })();
+'''
+
+
+def patch_js():
+    title("2. REEMPLAZANDO JS POR V4 ESTABLE")
+
+    if not JS.exists():
+        raise FileNotFoundError(f"No existe: {JS}")
+
+    backup(JS)
+    write(JS, js_v4())
+    print("OK: JS V4 aplicado.")
+
+
+def patch_css_minimal():
+    title("3. ASEGURANDO CSS COMPLEMENTARIO")
+
+    if not CSS.exists():
+        raise FileNotFoundError(f"No existe: {CSS}")
+
+    original = read(CSS)
+
+    marker = "/* === ORION_DIARIO_V2_V4_CONTEXT_RESET_CSS === */"
+
+    if marker in original:
+        print("OK: CSS V4 ya existe.")
+        return
+
+    block = r'''
+/* === ORION_DIARIO_V2_V4_CONTEXT_RESET_CSS === */
+
+.odv2-status-pill.running {
+    color: #93c5fd;
+    border-color: #2563eb;
+}
+
+.odv2-status-pill.error {
+    color: #fca5a5;
+    border-color: #ef4444;
+}
+
+.odv2-copy-box {
+    margin-top: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #07111f;
+    padding: 12px;
+}
+
+.odv2-copy-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.odv2-copy-head h4 {
+    margin: 0;
+    color: var(--cyan);
+}
+
+.odv2-copy-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.odv2-copy-grid {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 14px;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.odv2-copy-pie-box {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+}
+
+.odv2-copy-pie {
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid #263752;
+    box-shadow: 0 12px 26px rgba(0,0,0,.28);
+}
+
+.odv2-copy-pie-center {
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: #0b1222;
+    border: 1px solid #263752;
+    display: grid;
+    place-items: center;
+}
+
+.odv2-copy-pie-center strong {
+    font-size: 13px;
+    color: var(--text);
+}
+
+.odv2-copy-pie-legend {
+    width: 100%;
+    display: grid;
+    gap: 5px;
+}
+
+.odv2-copy-pie-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.odv2-copy-pie-row i {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+}
+
+.odv2-copy-pie-row b {
+    color: var(--cyan);
+}
+
+.odv2-copy-summary-table {
+    font-size: 12px;
+}
+
+.odv2-copy-summary-table th,
+.odv2-copy-summary-table td {
+    padding: 7px 8px;
+}
+
+.odv2-copy-total-row td {
+    color: var(--cyan);
+    font-weight: 900;
+    background: #0b1222;
+}
+
+@media (max-width: 1100px) {
+    .odv2-copy-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .odv2-copy-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+'''
+
+    backup(CSS)
+    write(CSS, original.rstrip() + "\n\n" + block.strip() + "\n")
+    print("OK: CSS V4 agregado.")
+
+
+def compile_related():
+    title("4. VALIDACION PYTHON")
+
+    targets = [
+        ROOT / "app" / "controllers" / "orion_diario_v2_blueprint.py",
+        ROOT / "app" / "services" / "orion_diario_v2_dashboard_service.py",
+        ROOT / "app" / "__init__.py",
+    ]
+
+    subprocess.run(
+        [sys.executable, "-m", "py_compile", *[str(p) for p in targets if p.exists()]],
+        check=True,
+    )
+
+    print("OK: Python relacionado compila.")
+
+
+def main():
+    title("PATCH ORION DIARIO V2 - CONTEXT RESET V4")
+
+    patch_template_remove_reset()
+    patch_js()
+    patch_css_minimal()
+    compile_related()
+
+    title("FINALIZADO")
+    print("Reinicia Flask:")
+    print("  Ctrl + C")
+    print("  python run.py")
+    print("")
+    print("En navegador:")
+    print("  Ctrl + F5")
+    print("  http://127.0.0.1:5000/orion-diario-v2")
+    print("")
+    print("Ahora 'Cargar contexto' reinicia la pantalla y vuelve a cargar todo.")
+
+
+if __name__ == "__main__":
+    main()
