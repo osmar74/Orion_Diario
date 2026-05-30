@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Gestión Diaria Orion v2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orion_diario_v2.css') }}">
+</head>
+<body>
+    {% include "orion_diario_v2/partials/_header.html" %}
+
+    <main class="odv2-shell">
+        {% include "orion_diario_v2/partials/_context_bar.html" %}
+
+        <section class="odv2-layout">
+            <aside class="odv2-sidebar">
+                {% include "orion_diario_v2/partials/_phase_sidebar.html" %}
+                {% include "orion_diario_v2/partials/_routes_panel.html" %}
+            </aside>
+
+            <section class="odv2-main">
+                {% include "orion_diario_v2/partials/_title_panel.html" %}
+                {% include "orion_diario_v2/partials/_metrics_panel.html" %}
+                {% include "orion_diario_v2/partials/_connections_panel.html" %}
+                {% include "orion_diario_v2/partials/_phase_board.html" %}
+            </section>
+        </section>
+    </main>
+
+    {% include "orion_diario_v2/partials/_paths_modal.html" %}
+
+    <script src="{{ url_for('static', filename='js/orion_diario_v2.js') }}"></script>
+</body>
+</html>
