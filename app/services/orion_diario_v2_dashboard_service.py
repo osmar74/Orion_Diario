@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 import os
@@ -293,7 +293,54 @@ def _servidores_locales(cfg: dict[str, str], rutas_red: list[dict[str, Any]]) ->
             ]
 
 
+def _fecha_estadistica_orion(fecha_sql: str) -> str:
+    """
+    Para el panel estadístico ORION se usa el día anterior a la fecha de proceso.
+    Si el día anterior cae domingo, se retrocede hasta sábado.
+    """
+    try:
+        base = datetime.strptime(str(fecha_sql), "%Y-%m-%d").date()
+    except Exception:
+        base = datetime.now().date()
+
+    ref = base - timedelta(days=1)
+
+    # Python: lunes=0 ... domingo=6
+    while ref.weekday() == 6:
+        ref = ref - timedelta(days=1)
+
+    return ref.strftime("%Y-%m-%d")
+
+
+def _norm_col_orion_v2(value: str) -> str:
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace(" ", "")
+        .replace("_", "")
+        .replace("-", "")
+        .replace("/", "")
+        .replace(".", "")
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+
 def _safe_count(cfg: dict[str, str], tabla: str, fecha_sql: str) -> dict[str, Any]:
+    """
+    Conteo seguro para panel estadístico ORION.
+
+    Regla:
+    - No cuenta la fecha del proceso directamente.
+    - Cuenta la fecha estadística: fecha proceso - 1 día.
+    - Si el día anterior es domingo, retrocede otro día.
+    - Busca columnas de fecha de forma amplia: FechayHora, Fecha, Fecha_Hora, etc.
+    """
+    fecha_ref = _fecha_estadistica_orion(fecha_sql)
+
     if pyodbc is None:
         return {
             "tabla": tabla,
@@ -301,91 +348,135 @@ def _safe_count(cfg: dict[str, str], tabla: str, fecha_sql: str) -> dict[str, An
             "estado": "error",
             "detalle": "pyodbc no disponible",
             "columna_fecha": "",
+            "fecha_referencia": fecha_ref,
         }
 
     candidatos_fecha = [
-        "fecha",
-        "Fecha",
+        "FechayHora",
+        "Fecha y Hora",
         "Fecha_Hora",
-        "fecha_proceso",
+        "Fecha Hora",
+        "Fecha",
+        "fecha",
+        "fecha_gestion",
+        "FechaGestion",
+        "Fecha_Gestion",
+        "Fecha de Gestion",
+        "Fecha de Gestión",
         "FechaProceso",
-        "created_at"
-            ]
+        "fecha_proceso",
+        "created_at",
+        "updated_at",
+    ]
 
     try:
         with pyodbc.connect(_conn_str(cfg), timeout=8) as conn:
             cur = conn.cursor()
 
-            exists = cur.execute(
+            table_row = cur.execute(
                 """
-                SELECT COUNT(*)
+                SELECT TABLE_SCHEMA, TABLE_NAME
                 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_SCHEMA='dbo'
                   AND LOWER(TABLE_NAME)=LOWER(?)
                 """,
                 tabla,
-            ).fetchval()
+            ).fetchone()
 
-            if not exists:
+            if not table_row:
                 return {
                     "tabla": tabla,
                     "total": 0,
                     "estado": "no_existe",
                     "detalle": "Tabla no encontrada",
                     "columna_fecha": "",
+                    "fecha_referencia": fecha_ref,
                 }
 
+            schema = str(table_row.TABLE_SCHEMA)
+            table_name = str(table_row.TABLE_NAME)
+
+            columnas_rows = cur.execute(
+                """
+                SELECT COLUMN_NAME, DATA_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA=?
+                  AND TABLE_NAME=?
+                ORDER BY ORDINAL_POSITION
+                """,
+                schema,
+                table_name,
+            ).fetchall()
+
             columnas = [
-                r.COLUMN_NAME
-                for r in cur.execute(
-                    """
-                    SELECT COLUMN_NAME
-                    FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_SCHEMA='dbo'
-                      AND LOWER(TABLE_NAME)=LOWER(?)
-                    ORDER BY ORDINAL_POSITION
-                    """,
-                    tabla,
-                ).fetchall()
+                {
+                    "name": str(r.COLUMN_NAME),
+                    "type": str(r.DATA_TYPE).lower(),
+                    "norm": _norm_col_orion_v2(str(r.COLUMN_NAME)),
+                }
+                for r in columnas_rows
             ]
 
             columna_fecha = ""
+            tipo_fecha = ""
 
+            # 1) Coincidencia por candidatos conocidos.
             for candidato in candidatos_fecha:
+                nc = _norm_col_orion_v2(candidato)
+
                 for col in columnas:
-                    if col.lower() == candidato.lower():
-                        columna_fecha = col
+                    if col["norm"] == nc:
+                        columna_fecha = col["name"]
+                        tipo_fecha = col["type"]
                         break
 
                 if columna_fecha:
                     break
 
+            # 2) Fallback: cualquier columna que contenga "fecha".
+            if not columna_fecha:
+                for col in columnas:
+                    if "fecha" in col["norm"]:
+                        columna_fecha = col["name"]
+                        tipo_fecha = col["type"]
+                        break
+
+            # 3) Fallback: cualquier columna tipo datetime/date.
+            if not columna_fecha:
+                for col in columnas:
+                    if col["type"] in ("date", "datetime", "datetime2", "smalldatetime", "datetimeoffset"):
+                        columna_fecha = col["name"]
+                        tipo_fecha = col["type"]
+                        break
+
             if columna_fecha:
                 total = cur.execute(
                     f"""
                     SELECT COUNT(*)
-                    FROM dbo.[{tabla}]
+                    FROM [{schema}].[{table_name}]
                     WHERE TRY_CAST([{columna_fecha}] AS DATE)=?
                     """,
-                    fecha_sql,
+                    fecha_ref,
                 ).fetchval()
 
                 return {
-                    "tabla": tabla,
+                    "tabla": table_name,
                     "total": int(total or 0),
                     "estado": "ok",
-                    "detalle": f"Filtrado por {columna_fecha}",
+                    "detalle": f"Fecha referencia {fecha_ref}; filtrado por {columna_fecha}",
                     "columna_fecha": columna_fecha,
+                    "fecha_referencia": fecha_ref,
                 }
 
-            total = cur.execute(f"SELECT COUNT(*) FROM dbo.[{tabla}]").fetchval()
+            total = cur.execute(f"SELECT COUNT(*) FROM [{schema}].[{table_name}]").fetchval()
 
             return {
-                "tabla": tabla,
+                "tabla": table_name,
                 "total": int(total or 0),
                 "estado": "ok",
-                "detalle": "Sin columna fecha; total general",
+                "detalle": f"Sin columna fecha; total general. Fecha referencia sugerida {fecha_ref}",
                 "columna_fecha": "",
+                "fecha_referencia": fecha_ref,
             }
 
     except Exception as exc:
@@ -395,8 +486,8 @@ def _safe_count(cfg: dict[str, str], tabla: str, fecha_sql: str) -> dict[str, An
             "estado": "error",
             "detalle": str(exc),
             "columna_fecha": "",
+            "fecha_referencia": fecha_ref,
         }
-
 
 def construir_contexto_orion_v2(
     fecha_proceso: str,

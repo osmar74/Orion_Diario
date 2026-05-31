@@ -103,6 +103,11 @@ def render_gestion_orion_exportada(
 def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     """
     Genera HTML de verificación de carga ORION.
+
+    Ajuste v2:
+    - No usa el botón legacy insertarDatos(...).
+    - Agrega marcador de cantidad para que Orion Diario v2 no confunda fecha 20260429 con registros.
+    - Agrega botón compatible con window.OrionCargaSqlMVC.ejecutar(...).
     """
     if not res.get("success"):
         return render_log_error(res.get("error", "Error desconocido."))
@@ -112,8 +117,35 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     tabla_destino = str(res.get("tabla_destino", ""))
     nombre_archivo = str(res.get("nombre_archivo", ""))
     ruta_archivo = str(res.get("ruta_archivo", ""))
+    registros_archivo = res.get("registros_archivo", 0)
 
-    html = (
+    tipo_lower = tipo.strip().lower()
+    tabla_lower = tabla_destino.strip().lower()
+
+    if "causal" in tipo_lower or "causal" in tabla_lower:
+        insert_action = "carga.causales.insertar"
+        insert_label = "Causales"
+    elif "lote" in tipo_lower or "lote" in tabla_lower:
+        insert_action = "carga.lotes.insertar"
+        insert_label = "Lotes"
+    elif "discador" in tipo_lower or "discador" in tabla_lower:
+        insert_action = "carga.discador.insertar"
+        insert_label = "Discador"
+    else:
+        insert_action = ""
+        insert_label = tipo.capitalize() if tipo else "Datos"
+
+    html = ""
+
+    # Marcador explícito para que el JS v2 tome este valor y no la fecha 20260429.
+    html += (
+        "<div class='odv2-carga-v2-count-marker' style='display:none;'>"
+        f"Registros detectados: {escape(str(registros_archivo))}. "
+        f"Registros a insertar: {escape(str(registros_archivo))}."
+        "</div>"
+    )
+
+    html += (
         f"<div class='log-line success'>"
         f"✅ Verificación de {escape(tipo.capitalize())} "
         f"(conexión {escape(conexion)})"
@@ -159,7 +191,7 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     html += "</table>"
 
     html += "<div style='display:flex; gap:20px; margin-top:10px; font-size:0.75rem;'>"
-    html += f"<div><b>Registros en archivo:</b> {escape(str(res.get('registros_archivo', 0)))}</div>"
+    html += f"<div><b>Registros en archivo:</b> {escape(str(registros_archivo))}</div>"
 
     if res.get("ultimo_id") is not None:
         html += f"<div><b>Último ID en tabla:</b> {escape(str(res.get('ultimo_id')))}</div>"
@@ -167,15 +199,30 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     html += f"<div><b>Registros en tabla:</b> {escape(str(res.get('total_tabla', 0)))}</div>"
     html += "</div>"
 
-    html += f"""
-    <div style='margin-top:12px;'>
-        <button onclick="insertarDatos('{escape(tipo)}', '{escape(conexion)}')"
-                style="background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;">
-            📤 Insertar datos en {escape(tabla_destino)}
-        </button>
-    </div>
-    <div id="resultado-insercion-{escape(tipo)}" style="margin-top:10px;"></div>
-    """
+    if insert_action:
+        safe_action = escape(insert_action)
+        safe_label = escape(insert_label)
+
+        html += f"""
+        <div class="odv2-carga-v2-actions">
+            <button type="button"
+                    class="odv2-carga-v2-insert-btn"
+                    onclick="(function(btn){{
+                        if (window.OrionCargaSqlMVC && window.OrionCargaSqlMVC.ejecutar) {{
+                            window.OrionCargaSqlMVC.ejecutar('{safe_action}', btn);
+                            return;
+                        }}
+                        var target = document.querySelector('[data-action=&quot;{safe_action}&quot;], button[data-action=&quot;{safe_action}&quot;]');
+                        if (target) {{
+                            target.click();
+                            return;
+                        }}
+                        alert('No se encontró el ejecutor de inserción para {safe_action}');
+                    }})(this); return false;">
+                Insertar Datos {safe_label}
+            </button>
+        </div>
+        """
 
     return html
 
