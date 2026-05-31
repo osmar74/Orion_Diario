@@ -3284,3 +3284,105 @@ body {
 }
 
 /* === ORION_LOAD_RENDERER_V2_SAFE_END === */
+
+/* === ORION_LOAD_RENDERER_INSERT_INLINE_BEGIN === */
+
+.odv2-carga-inline-actions {
+    display: none !important;
+}
+
+.odv2-carga-v2-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 12px 0 8px;
+    padding: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #0b1222;
+}
+
+.odv2-carga-v2-insert-btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 11px 18px;
+    color: white;
+    font-weight: 900;
+    cursor: pointer;
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+    box-shadow: 0 10px 20px rgba(34, 197, 94, .16);
+}
+
+.odv2-carga-v2-insert-btn:hover {
+    filter: brightness(1.08);
+}
+
+.odv2-carga-v2-insert-btn:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.odv2-carga-v2-insert-result {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px dashed #263752;
+    border-radius: 12px;
+    background: #0b1222;
+    color: var(--muted);
+}
+
+/* === ORION_LOAD_RENDERER_INSERT_INLINE_END === */
+
+/* === ORION_CARGA_V2_INSERT_JS_BEGIN === */
+
+.odv2-carga-inline-actions {
+    display: none !important;
+}
+
+.odv2-carga-v2-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 12px 0 8px;
+    padding: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #0b1222;
+}
+
+.odv2-carga-v2-insert-btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 11px 18px;
+    color: white;
+    font-weight: 900;
+    cursor: pointer;
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+    box-shadow: 0 10px 20px rgba(34, 197, 94, .16);
+}
+
+.odv2-carga-v2-insert-btn:hover {
+    filter: brightness(1.08);
+}
+
+.odv2-carga-v2-insert-btn:disabled {
+    opacity: .65;
+    cursor: wait;
+}
+
+.odv2-carga-v2-insert-result {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px dashed #263752;
+    border-radius: 12px;
+    background: #0b1222;
+    color: var(--muted);
+}
+
+/* === ORION_CARGA_V2_INSERT_JS_END === */
+
+/* === ORION_CARGA_V2_NO_DUPLICADO_BEGIN === */
+
+.odv2-carga-v2-insert-result {
+    display: none !important;
+}
+
+/* === ORION_CARGA_V2_NO_DUPLICADO_END === */

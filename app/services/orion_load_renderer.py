@@ -104,10 +104,10 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     """
     Genera HTML de verificación de carga ORION.
 
-    Ajuste v2:
-    - No usa el botón legacy insertarDatos(...).
-    - Agrega marcador de cantidad para que Orion Diario v2 no confunda fecha 20260429 con registros.
-    - Agrega botón compatible con window.OrionCargaSqlMVC.ejecutar(...).
+    V2 seguro:
+    - No usa onclick inline.
+    - No usa insertarDatos(...) legacy.
+    - El botón lo maneja app/static/js/orion_carga_v2_insert.js.
     """
     if not res.get("success"):
         return render_log_error(res.get("error", "Error desconocido."))
@@ -123,21 +123,18 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     tabla_lower = tabla_destino.strip().lower()
 
     if "causal" in tipo_lower or "causal" in tabla_lower:
-        insert_action = "carga.causales.insertar"
         insert_label = "Causales"
     elif "lote" in tipo_lower or "lote" in tabla_lower:
-        insert_action = "carga.lotes.insertar"
         insert_label = "Lotes"
     elif "discador" in tipo_lower or "discador" in tabla_lower:
-        insert_action = "carga.discador.insertar"
         insert_label = "Discador"
     else:
-        insert_action = ""
         insert_label = tipo.capitalize() if tipo else "Datos"
+
+    result_id = f"resultado-insercion-v2-{tipo_lower or 'orion'}"
 
     html = ""
 
-    # Marcador explícito para que el JS v2 tome este valor y no la fecha 20260429.
     html += (
         "<div class='odv2-carga-v2-count-marker' style='display:none;'>"
         f"Registros detectados: {escape(str(registros_archivo))}. "
@@ -199,30 +196,19 @@ def render_verificacion_carga_orion(res: dict[str, Any]) -> str:
     html += f"<div><b>Registros en tabla:</b> {escape(str(res.get('total_tabla', 0)))}</div>"
     html += "</div>"
 
-    if insert_action:
-        safe_action = escape(insert_action)
-        safe_label = escape(insert_label)
+    html += f"""
+    <div class="odv2-carga-v2-actions">
+        <button type="button"
+                class="odv2-carga-v2-insert-btn"
+                data-orion-carga-v2-insert="1"
+                data-tipo="{escape(tipo, quote=True)}"
+                data-conexion="{escape(conexion, quote=True)}"
+                data-target="{escape(result_id, quote=True)}">
+            Insertar Datos {escape(insert_label)}
+        </button>
+    </div>
 
-        html += f"""
-        <div class="odv2-carga-v2-actions">
-            <button type="button"
-                    class="odv2-carga-v2-insert-btn"
-                    onclick="(function(btn){{
-                        if (window.OrionCargaSqlMVC && window.OrionCargaSqlMVC.ejecutar) {{
-                            window.OrionCargaSqlMVC.ejecutar('{safe_action}', btn);
-                            return;
-                        }}
-                        var target = document.querySelector('[data-action=&quot;{safe_action}&quot;], button[data-action=&quot;{safe_action}&quot;]');
-                        if (target) {{
-                            target.click();
-                            return;
-                        }}
-                        alert('No se encontró el ejecutor de inserción para {safe_action}');
-                    }})(this); return false;">
-                Insertar Datos {safe_label}
-            </button>
-        </div>
-        """
+    """
 
     return html
 
