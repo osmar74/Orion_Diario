@@ -9,6 +9,7 @@ from html import escape
 from flask import Blueprint, request, session
 
 from app.config import DATA_DIR, SQL_LOCAL, SQL_REMOTO
+from app.services.orion_aster_config_service import get_data_root, get_sql_config_legacy
 
 from app.services.orion_load_renderer import (
     render_consolidado_consulta_orion,
@@ -37,6 +38,15 @@ from app.services.orion_connection_service import (
 )
 
 carga_bp = Blueprint("carga", __name__)
+
+
+def _data_dir_orion_config() -> str:
+    return get_data_root()
+
+
+def _cfg_sql_orion_config(conexion: str) -> dict:
+    return get_sql_config_legacy(conexion, "orion")
+
 
 def _obtener_fecha_fase_g_orion() -> str:
     """
@@ -88,7 +98,7 @@ def _render_info_busqueda_consolidado_orion(
     """
     resultado = resultado or {}
 
-    carpeta_orion = os.path.join(str(DATA_DIR), str(fecha), "Orion")
+    carpeta_orion = os.path.join(str(_data_dir_orion_config()), str(fecha), "Orion")
     carpeta_consolidados = os.path.join(carpeta_orion, "Consolidados")
 
     ruta_archivo = (
@@ -204,12 +214,12 @@ def accion_verificar_carga():
     tipo = request.form.get("tipo", "")
     conexion = request.form.get("conexion", "local")
 
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = _cfg_sql_orion_config(conexion)
 
     fecha = _obtener_fecha_fase_g_orion()
 
     resultado = verificar_carga_orion(
-        data_dir=DATA_DIR,
+        data_dir=_data_dir_orion_config(),
         fecha=fecha,
         tipo=tipo,
         conexion=conexion,
@@ -233,10 +243,10 @@ def accion_insertar_datos():
     conexion = request.form.get("conexion", "local")
     fecha = _obtener_fecha_fase_g_orion()
 
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = _cfg_sql_orion_config(conexion)
 
     resultado = insertar_datos_orion(
-        data_dir=DATA_DIR,
+        data_dir=_data_dir_orion_config(),
         fecha=fecha,
         tipo=tipo,
         conexion=conexion,
@@ -253,7 +263,7 @@ def accion_probar_conexion_consolidado():
     """
     conexion = request.args.get("conexion", "local")
 
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = _cfg_sql_orion_config(conexion)
 
     resultado = probar_conexion_sql_server(cfg)
 
@@ -319,10 +329,10 @@ def accion_consolidar_consulta():
 
     conexion = request.form.get("conexion", "local")
 
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = _cfg_sql_orion_config(conexion)
 
     resultado = ejecutar_consulta_consolidado_orion(
-        data_dir=DATA_DIR,
+        data_dir=_data_dir_orion_config(),
         fecha=fecha,
         meses=meses,
         cfg_sql=cfg,
@@ -353,7 +363,7 @@ def accion_consolidar_aplicar():
         seleccionados = []
 
     resultado = exportar_gestion_orion_desde_temporal(
-        data_dir=DATA_DIR,
+        data_dir=_data_dir_orion_config(),
         fecha=fecha,
         seleccionados=seleccionados,
         temp_id=temp_id,

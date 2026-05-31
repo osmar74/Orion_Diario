@@ -60,4 +60,4 @@ logs/
 .env.local
 
 # Permitir versionar plantilla sin secretos
-!.env.example
+!.env.exampleinstance/

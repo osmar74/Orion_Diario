@@ -6,6 +6,8 @@ from typing import Any
 import os
 import re
 
+from app.services.orion_aster_config_service import get_data_root, get_module_paths, get_sql_config_legacy
+
 try:
     import pyodbc
 except Exception:
@@ -171,32 +173,18 @@ def _normalizar_mes(mes_gestion: str, fecha_proceso: str) -> str:
 
 
 def _orion_config(conexion: str) -> dict[str, str]:
-    _leer_env_local()
-
-    conexion = str(conexion or "local").strip().lower()
-
-    if conexion == "remoto":
-        server = os.getenv("ORION_SQL_REMOTE_SERVER", os.getenv("ORION_REMOTE_SERVER", "VC-EIDER"))
-        database = os.getenv("ORION_SQL_REMOTE_DATABASE", "Orion")
-        username = os.getenv("ORION_SQL_REMOTE_USERNAME", "Admin1")
-        password = os.getenv("ORION_SQL_REMOTE_PASSWORD", "")
-    else:
-        server = os.getenv("ORION_CARGAS_SQL_SERVER", os.getenv("ORION_SQL_LOCAL_SERVER", r"localhost\SQL2025DEV"))
-        database = os.getenv("ORION_CARGAS_SQL_DATABASE", os.getenv("ORION_SQL_LOCAL_DATABASE", "Orion"))
-        username = os.getenv("ORION_CARGAS_SQL_USER", os.getenv("ORION_SQL_LOCAL_USERNAME", "Admin1"))
-        password = os.getenv("ORION_CARGAS_SQL_PASSWORD", os.getenv("ORION_SQL_LOCAL_PASSWORD", "1234"))
+    cfg = get_sql_config_legacy(conexion, "orion")
 
     return {
-        "conexion": conexion,
-        "driver": os.getenv("ORION_CARGAS_SQL_DRIVER", "ODBC Driver 18 for SQL Server"),
-        "server": server,
-        "database": database,
-        "username": username,
-        "password": password,
-        "encrypt": os.getenv("ORION_CARGAS_SQL_ENCRYPT", "yes"),
-        "trust": os.getenv("ORION_CARGAS_SQL_TRUST_SERVER_CERTIFICATE", "yes"),
+        "conexion": cfg.get("conexion", str(conexion or "local").strip().lower()),
+        "driver": cfg.get("driver", "ODBC Driver 18 for SQL Server"),
+        "server": cfg.get("server", ""),
+        "database": cfg.get("database", "Orion"),
+        "username": cfg.get("username", cfg.get("user", "")),
+        "password": cfg.get("password", ""),
+        "encrypt": cfg.get("encrypt", "yes"),
+        "trust": cfg.get("trust", cfg.get("trust_server_certificate", "yes")),
     }
-
 
 def _conn_str(cfg: dict[str, str]) -> str:
     return (
@@ -210,18 +198,29 @@ def _conn_str(cfg: dict[str, str]) -> str:
     )
 
 
-def _rutas_base(rutas_base: list[str] | None = None) -> list[str]:
+def _rutas_base(
+    rutas_base: list[str] | None = None,
+    conexion: str = "local",
+) -> list[str]:
     if rutas_base:
         limpias = [str(r).strip() for r in rutas_base if str(r).strip()]
         if limpias:
             return limpias
 
+    rutas_config = get_module_paths("orion", conexion)
+
+    if rutas_config:
+        return rutas_config
+
     return list(RED_BASE_PATHS)
 
-
-def _rutas_red(mes_gestion: str, rutas_base: list[str] | None = None) -> list[dict[str, Any]]:
-    bases = _rutas_base(rutas_base)
-    nombres = ["Ruta red UNC", "Unidad Z", "Espejo local"]
+def _rutas_red(
+    mes_gestion: str,
+    rutas_base: list[str] | None = None,
+    conexion: str = "local",
+) -> list[dict[str, Any]]:
+    bases = _rutas_base(rutas_base, conexion)
+    nombres = ["Ruta ORION 1", "Ruta ORION 2", "Ruta ORION 3"]
 
     salida = []
 
@@ -234,27 +233,28 @@ def _rutas_red(mes_gestion: str, rutas_base: list[str] | None = None) -> list[di
                 "nombre": nombres[idx] if idx < len(nombres) else f"Ruta {idx + 1}",
                 "base": base,
                 "ruta_mes": ruta_mes,
-                "existe_base": Path(base).exists() if not base.startswith("\\\\") else False,
-                "existe_mes": Path(ruta_mes).exists() if not ruta_mes.startswith("\\\\") else False,
+                "existe_base": Path(base).exists() if not base.startswith("\\\\") else Path(base).exists(),
+                "existe_mes": Path(ruta_mes).exists() if not ruta_mes.startswith("\\\\") else Path(ruta_mes).exists(),
+                "conexion": str(conexion or "local").lower(),
             }
         )
 
     return salida
 
-
-def _rutas_locales(fecha_proceso: str) -> dict[str, str]:
+def _rutas_locales(fecha_proceso: str, data_dir: str | None = None) -> dict[str, str]:
     fecha = _fecha_yyyymmdd(fecha_proceso)
 
-    base = ROOT / "data" / fecha
+    base_root = Path(data_dir or get_data_root())
+    base = base_root / fecha
     orion = base / "Orion"
 
     return {
+        "data_root": str(base_root),
         "data_fecha": str(base),
         "orion": str(orion),
         "consolidados": str(orion / "Consolidados"),
         "logs": str(base / "logs"),
     }
-
 
 def _servidores_locales(cfg: dict[str, str], rutas_red: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
@@ -499,7 +499,7 @@ def construir_contexto_orion_v2(
     mes_gestion = _normalizar_mes(mes_gestion, fecha_proceso)
 
     cfg = _orion_config(conexion)
-    rutas_red = _rutas_red(mes_gestion, rutas_base)
+    rutas_red = _rutas_red(mes_gestion, rutas_base, cfg["conexion"])
     rutas_locales = _rutas_locales(fecha_proceso)
 
     return {
@@ -628,11 +628,12 @@ def _orion_v2_resolver_distribucion(
     data_dir: str,
     fecha_proceso: str,
     rutas_base: list[str] | None = None,
+    conexion: str = "local",
 ) -> dict[str, Any]:
     from app.services.orion_fases_service import preparar_distribucion_archivos_orion
 
     fecha = _fecha_yyyymmdd(fecha_proceso)
-    candidatos = _rutas_base(rutas_base)
+    candidatos = _rutas_base(rutas_base, conexion)
     errores = []
 
     for red_base in candidatos:
@@ -668,11 +669,13 @@ def preparar_distribucion_orion_v2(
     fecha_proceso: str,
     mes_gestion: str,
     rutas_base: list[str] | None = None,
+    conexion: str = "local",
 ) -> dict[str, Any]:
     respuesta = _orion_v2_resolver_distribucion(
         data_dir=data_dir,
         fecha_proceso=fecha_proceso,
         rutas_base=rutas_base,
+        conexion=conexion,
     )
 
     fecha = _fecha_yyyymmdd(fecha_proceso)
@@ -743,12 +746,13 @@ def copiar_distribucion_orion_v2(
     mes_gestion: str,
     seleccionados: list[dict[str, Any]],
     rutas_base: list[str] | None = None,
+    conexion: str = "local",
 ) -> dict[str, Any]:
     from app.services.orion_fases_service import distribuir_archivos_seleccionados_orion
     from app.services.orion_fases_renderer import render_distribucion_seleccionados_orion
 
     fecha = _fecha_yyyymmdd(fecha_proceso)
-    candidatos = _rutas_base(rutas_base)
+    candidatos = _rutas_base(rutas_base, conexion)
     errores = []
 
     if not isinstance(seleccionados, list) or not seleccionados:

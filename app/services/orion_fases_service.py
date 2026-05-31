@@ -63,6 +63,7 @@ def verificar_red_carpetas_orion(
     data_dir: str,
     fecha_raw: str,
     log_service: Any = None,
+    red_base_path: str | None = None,
 ) -> dict[str, Any]:
     """
     Verifica red y carpetas ORION.
@@ -70,7 +71,7 @@ def verificar_red_carpetas_orion(
     fecha = normalizar_fecha_orion(fecha_raw)
 
     fm = FileManager(data_dir, log_service=log_service)
-    resultado = fm.verificar_red_y_carpetas(fecha)
+    resultado = fm.verificar_red_y_carpetas(fecha, red_base_path=red_base_path)
 
     return {
         "fecha": fecha,

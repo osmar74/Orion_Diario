@@ -24,6 +24,9 @@ def create_app():
 
     app.register_blueprint(gestion_consolidada_bp)
 
+    from app.controllers.orion_aster_config_blueprint import orion_aster_config_bp
+    app.register_blueprint(orion_aster_config_bp)
+
     from app.controllers.orion_diario_v2_blueprint import orion_diario_v2_bp
     app.register_blueprint(orion_diario_v2_bp)
 

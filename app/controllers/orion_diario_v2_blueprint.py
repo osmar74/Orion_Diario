@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 
 from app.config import DATA_DIR
+from app.services.orion_aster_config_service import get_data_root, get_sql_config_legacy
 
 from app.services.orion_diario_v2_dashboard_service import (
     construir_contexto_orion_v2,
@@ -59,12 +60,14 @@ def api_orion_diario_v2_distribucion_preparar():
     fecha_proceso = request.args.get("fecha_proceso", "20260429").strip()
     mes_gestion = request.args.get("mes_gestion", "abril").strip()
     rutas_base = request.args.getlist("rutas_base")
+    conexion = request.args.get("conexion", "local").strip().lower()
 
     data = preparar_distribucion_orion_v2(
-        data_dir=DATA_DIR,
+        data_dir=get_data_root(),
         fecha_proceso=fecha_proceso,
         mes_gestion=mes_gestion,
         rutas_base=rutas_base,
+        conexion=conexion,
     )
 
     status = 200 if data.get("success") else 400
@@ -84,6 +87,7 @@ def api_orion_diario_v2_distribucion_copiar():
     mes_gestion = str(payload.get("mes_gestion") or "abril").strip()
     rutas_base = payload.get("rutas_base") or []
     seleccionados = payload.get("seleccionados") or []
+    conexion = str(payload.get("conexion") or "local").strip().lower()
 
     if not isinstance(rutas_base, list):
         rutas_base = []
@@ -92,7 +96,7 @@ def api_orion_diario_v2_distribucion_copiar():
         seleccionados = []
 
     data = copiar_distribucion_orion_v2(
-        data_dir=DATA_DIR,
+        data_dir=get_data_root(),
         fecha_proceso=fecha_proceso,
         mes_gestion=mes_gestion,
         seleccionados=seleccionados,
@@ -135,7 +139,7 @@ def api_orion_diario_v2_carga_precheck():
     )
 
     data = precheck_carga_orion_v2(
-        data_dir=DATA_DIR,
+        data_dir=get_data_root(),
         fecha_proceso=fecha_proceso,
         tipo=tipo,
         conexion=conexion,
@@ -147,7 +151,6 @@ def api_orion_diario_v2_carga_precheck():
 @orion_diario_v2_bp.route("/api/orion-diario-v2/fase-g/kpis")
 def api_orion_diario_v2_fase_g_kpis():
     from flask import jsonify, request
-    from app.controllers.carga_blueprint import SQL_LOCAL, SQL_REMOTO
 
     fecha = (
         request.args.get("fecha_proceso")
@@ -156,7 +159,7 @@ def api_orion_diario_v2_fase_g_kpis():
     )
 
     conexion = (request.args.get("conexion") or "local").strip().lower()
-    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+    cfg = get_sql_config_legacy(conexion, "orion")
 
     data = construir_kpi_pies_fase_g(cfg=cfg, fecha_proceso=fecha)
     data["conexion"] = conexion

@@ -2,11 +2,7 @@
 (function () {
     "use strict";
 
-    const DEFAULT_RUTAS = [
-        "\\\\10.24.90.118\\Vencorp\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion",
-        "Z:\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion",
-        "D:\\Develop\\ETL\\Nicaragua_Proceso\\unidad_red_orion\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Orion"
-    ];
+    const DEFAULT_RUTAS = [];
 
     const DEFAULT_STATE = {
         conexion: "local",
@@ -165,23 +161,19 @@
     }
 
     function getActiveRoutes() {
-        return state.rutasBase && state.rutasBase.length ? state.rutasBase : DEFAULT_RUTAS;
+        return state.rutasBase || [];
     }
 
     function getParams(includeRoutes) {
         collectInputs();
 
-        const params = new URLSearchParams({
+        // Las rutas ya no son fuente de verdad en JavaScript.
+        // Python lee LOCAL/REMOTO desde instance/orion_aster_config.json.
+        return new URLSearchParams({
             fecha_proceso: state.fechaProceso,
             mes_gestion: state.mesGestion,
             conexion: state.conexion
         });
-
-        if (includeRoutes) {
-            getActiveRoutes().forEach(r => params.append("rutas_base", r));
-        }
-
-        return params;
     }
 
     function setGlobalStatus(text, status) {
