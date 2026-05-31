@@ -101,3 +101,44 @@ def api_orion_diario_v2_distribucion_copiar():
     return jsonify(data), status
 
 # === ORION_DIARIO_V2_DISTRIBUCION_MVC_END ===
+
+# === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_BEGIN ===
+
+@orion_diario_v2_bp.route("/api/orion-diario-v2/carga/precheck", methods=["GET", "POST"])
+def api_orion_diario_v2_carga_precheck():
+    from flask import jsonify, request
+    from app.config import DATA_DIR
+    from app.services.orion_diario_v2_dashboard_service import precheck_carga_orion_v2
+
+    payload = request.get_json(silent=True) or {}
+
+    fecha_proceso = (
+        request.args.get("fecha_proceso")
+        or request.args.get("fecha")
+        or payload.get("fecha_proceso")
+        or payload.get("fecha")
+        or "20260429"
+    )
+
+    tipo = (
+        request.args.get("tipo")
+        or payload.get("tipo")
+        or ""
+    )
+
+    conexion = (
+        request.args.get("conexion")
+        or payload.get("conexion")
+        or "local"
+    )
+
+    data = precheck_carga_orion_v2(
+        data_dir=DATA_DIR,
+        fecha_proceso=fecha_proceso,
+        tipo=tipo,
+        conexion=conexion,
+    )
+
+    return jsonify(data), 200
+
+# === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_END ===

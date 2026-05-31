@@ -3024,3 +3024,223 @@ body {
 }
 
 /* === ORION_DIARIO_V2_COMPARAR_LOTES_SIMPLE_END === */
+
+/* === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_BEGIN === */
+
+.odv2-carga-sql-box {
+    border: 1px solid #263752;
+    border-radius: 16px;
+    background: #07111f;
+    padding: 14px;
+}
+
+.odv2-carga-sql-box.ok {
+    border-color: rgba(34, 197, 94, .35);
+}
+
+.odv2-carga-sql-box.blocked {
+    border-color: rgba(248, 113, 113, .45);
+}
+
+.odv2-carga-sql-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.odv2-carga-sql-head h4 {
+    margin: 0;
+    color: var(--cyan);
+    font-size: 16px;
+}
+
+.odv2-carga-sql-head p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.odv2-carga-sql-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.odv2-carga-sql-chip.ok {
+    background: #052e16;
+    border: 1px solid #22c55e;
+    color: #86efac;
+}
+
+.odv2-carga-sql-chip.blocked {
+    background: #3f1212;
+    border: 1px solid #f87171;
+    color: #fecaca;
+}
+
+.odv2-carga-sql-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.odv2-carga-sql-metric {
+    border: 1px solid #263752;
+    border-radius: 13px;
+    background: #0b1222;
+    padding: 10px;
+}
+
+.odv2-carga-sql-metric span {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.odv2-carga-sql-metric strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--cyan);
+    font-size: 20px;
+    line-height: 1;
+}
+
+.odv2-carga-sql-metric.danger strong {
+    color: #f87171;
+}
+
+.odv2-carga-sql-metric.ok strong {
+    color: #86efac;
+}
+
+.odv2-carga-sql-alert {
+    border-radius: 13px;
+    padding: 10px 12px;
+    margin: 10px 0 14px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.odv2-carga-sql-alert.ok {
+    background: #052e16;
+    border: 1px solid rgba(34, 197, 94, .45);
+    color: #bbf7d0;
+}
+
+.odv2-carga-sql-alert.danger {
+    background: #3f1212;
+    border: 1px solid rgba(248, 113, 113, .55);
+    color: #fecaca;
+}
+
+.odv2-carga-sql-title {
+    color: var(--cyan);
+    font-weight: 900;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.odv2-carga-sql-table {
+    font-size: 12px;
+}
+
+.odv2-carga-sql-table th,
+.odv2-carga-sql-table td {
+    padding: 7px 8px;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.odv2-carga-sql-table td:first-child {
+    width: 210px;
+    color: var(--muted);
+    font-weight: 800;
+}
+
+.odv2-carga-sql-details {
+    margin-top: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #0b1222;
+    padding: 10px 12px;
+}
+
+.odv2-carga-sql-details summary {
+    cursor: pointer;
+    color: var(--cyan);
+    font-weight: 900;
+    font-size: 12px;
+}
+
+.odv2-carga-sql-original {
+    margin-top: 10px;
+    overflow-x: auto;
+}
+
+.odv2-carga-sql-original table,
+.odv2-carga-sql-original .dataframe {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.odv2-carga-sql-original th,
+.odv2-carga-sql-original td {
+    border: 1px solid #263752;
+    padding: 6px 7px;
+}
+
+@media (max-width: 1100px) {
+    .odv2-carga-sql-metrics {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+
+    .odv2-carga-sql-head {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 700px) {
+    .odv2-carga-sql-metrics {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_END === */
+
+/* === ORION_DIARIO_V2_CARGA_SQL_INLINE_CLEAN_BEGIN === */
+
+.odv2-carga-inline-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 10px 16px 0;
+}
+
+.odv2-carga-inline-insert-btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 16px;
+    color: white;
+    font-weight: 900;
+    cursor: pointer;
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+    box-shadow: 0 10px 20px rgba(34, 197, 94, .16);
+}
+
+.odv2-carga-inline-insert-btn:hover {
+    filter: brightness(1.08);
+}
+
+.odv2-carga-inline-insert-btn:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+/* === ORION_DIARIO_V2_CARGA_SQL_INLINE_CLEAN_END === */

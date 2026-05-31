@@ -804,3 +804,478 @@ except NameError:
     pass
 
 # === ORION_DIARIO_V2_COMPARAR_LOTES_END ===
+
+# === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_BEGIN ===
+
+def _odv2_carga_fecha_yyyymmdd(fecha):
+    from datetime import datetime
+
+    raw = str(fecha or "").strip().replace("-", "").replace("_", "").replace("/", "")
+
+    if len(raw) == 8 and raw.isdigit():
+        return raw
+
+    try:
+        return datetime.now().strftime("%Y%m%d")
+    except Exception:
+        return "20260429"
+
+
+def _odv2_carga_fecha_sql(fecha):
+    raw = _odv2_carga_fecha_yyyymmdd(fecha)
+    return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
+
+
+def _odv2_carga_tipo_normalizado(tipo):
+    t = str(tipo or "").strip().lower()
+
+    if t in ("causal", "causales"):
+        return "causales"
+
+    if t in ("lote", "lotes"):
+        return "lote"
+
+    if t in ("discador", "discadores"):
+        return "discador"
+
+    return t
+
+
+def _odv2_carga_tabla_destino(tipo):
+    tipo = _odv2_carga_tipo_normalizado(tipo)
+
+    if tipo == "causales":
+        return ["causales"]
+
+    if tipo == "lote":
+        return ["lote", "lotes"]
+
+    if tipo == "discador":
+        return ["discador"]
+
+    return [tipo]
+
+
+def _odv2_carga_label(tipo):
+    tipo = _odv2_carga_tipo_normalizado(tipo)
+
+    if tipo == "causales":
+        return "Causales"
+
+    if tipo == "lote":
+        return "Lotes"
+
+    if tipo == "discador":
+        return "Discador"
+
+    return tipo.title()
+
+
+def _odv2_carga_qname(name):
+    return "[" + str(name).replace("]", "]]") + "]"
+
+
+def _odv2_carga_env_first(*names, default=""):
+    import os
+
+    for name in names:
+        value = os.getenv(name)
+
+        if value:
+            return value
+
+    return default
+
+
+def _odv2_carga_load_env():
+    try:
+        from dotenv import load_dotenv
+        from pathlib import Path
+
+        load_dotenv(Path.cwd() / ".env")
+    except Exception:
+        pass
+
+
+def _odv2_carga_conn_info(conexion):
+    _odv2_carga_load_env()
+
+    conexion = str(conexion or "local").strip().lower()
+
+    driver = _odv2_carga_env_first(
+        "ORION_SQL_DRIVER",
+        "GESTION_SQL_DRIVER",
+        "SQLSERVER_DRIVER",
+        default="ODBC Driver 18 for SQL Server",
+    )
+
+    database = _odv2_carga_env_first(
+        "ORION_SQL_ORION_DATABASE",
+        "ORION_SQL_DATABASE",
+        "ORION_DATABASE",
+        "SQLSERVER_ORION_DATABASE",
+        default="Orion",
+    )
+
+    if conexion == "remoto":
+        server = _odv2_carga_env_first(
+            "ORION_SQL_REMOTE_SERVER",
+            "GESTION_SQL_REMOTE_SERVER",
+            "SQLSERVER_REMOTE_SERVER",
+            default="VC-EIDER",
+        )
+
+        user = _odv2_carga_env_first(
+            "ORION_SQL_REMOTE_USERNAME",
+            "ORION_SQL_REMOTE_USER",
+            "GESTION_SQL_REMOTE_USER",
+            "SQLSERVER_REMOTE_USER",
+            "SQLSERVER_USER",
+            default="Admin1",
+        )
+
+        password = _odv2_carga_env_first(
+            "ORION_SQL_REMOTE_PASSWORD",
+            "GESTION_SQL_REMOTE_PASSWORD",
+            "SQLSERVER_REMOTE_PASSWORD",
+            "SQLSERVER_PASSWORD",
+            default="",
+        )
+    else:
+        server = _odv2_carga_env_first(
+            "ORION_SQL_LOCAL_SERVER",
+            "GESTION_SQL_LOCAL_SERVER",
+            "SQLSERVER_SERVER",
+            default=r"localhost\SQL2025DEV",
+        )
+
+        user = _odv2_carga_env_first(
+            "ORION_SQL_LOCAL_USERNAME",
+            "ORION_SQL_LOCAL_USER",
+            "GESTION_SQL_USER",
+            "SQLSERVER_USER",
+            default="Admin1",
+        )
+
+        password = _odv2_carga_env_first(
+            "ORION_SQL_LOCAL_PASSWORD",
+            "GESTION_SQL_PASSWORD",
+            "SQLSERVER_PASSWORD",
+            default="",
+        )
+
+    return {
+        "conexion": conexion,
+        "driver": driver,
+        "server": server,
+        "database": database,
+        "user": user,
+        "password": password,
+    }
+
+
+def _odv2_carga_connection_string(info):
+    return (
+        f"DRIVER={{{info['driver']}}};"
+        f"SERVER={info['server']};"
+        f"DATABASE={info['database']};"
+        f"UID={info['user']};"
+        f"PWD={info['password']};"
+        "Encrypt=yes;"
+        "TrustServerCertificate=yes;"
+    )
+
+
+def _odv2_carga_buscar_archivo_origen(data_dir, fecha, tipo):
+    from pathlib import Path
+
+    fecha = _odv2_carga_fecha_yyyymmdd(fecha)
+    tipo = _odv2_carga_tipo_normalizado(tipo)
+
+    base = Path(data_dir) / fecha / "Orion"
+
+    patrones = {
+        "causales": ["**/*Causal*Consolid*.xlsx", "**/*Causales*Consolid*.xlsx"],
+        "lote": ["**/*Lote*Consolid*.xlsx", "**/*Lotes*Consolid*.xlsx", "**/*lote*consolid*.xlsx"],
+        "discador": ["**/*Discador*Consolid*.xlsx", "**/*discador*consolid*.xlsx"],
+    }
+
+    encontrados = []
+
+    for patron in patrones.get(tipo, ["**/*Consolid*.xlsx"]):
+        encontrados.extend([p for p in base.glob(patron) if p.is_file()])
+
+    # Evitar duplicados conservando orden
+    vistos = set()
+    unicos = []
+
+    for item in encontrados:
+        key = str(item).lower()
+
+        if key in vistos:
+            continue
+
+        vistos.add(key)
+        unicos.append(item)
+
+    return {
+        "base_orion": str(base),
+        "archivo_principal": str(unicos[0]) if unicos else "",
+        "archivos_encontrados": [str(p) for p in unicos],
+        "total_archivos": len(unicos),
+    }
+
+
+def precheck_carga_orion_v2(data_dir, fecha_proceso, tipo, conexion="local"):
+    import pyodbc
+
+    fecha_yyyymmdd = _odv2_carga_fecha_yyyymmdd(fecha_proceso)
+    fecha_sql = _odv2_carga_fecha_sql(fecha_proceso)
+    tipo_norm = _odv2_carga_tipo_normalizado(tipo)
+    tipo_label = _odv2_carga_label(tipo_norm)
+    tablas_candidatas = _odv2_carga_tabla_destino(tipo_norm)
+    conn_info = _odv2_carga_conn_info(conexion)
+    origen = _odv2_carga_buscar_archivo_origen(data_dir, fecha_yyyymmdd, tipo_norm)
+
+    data = {
+        "ok": False,
+        "bloqueado": True,
+        "duplicado": False,
+        "tipo": tipo_norm,
+        "tipo_label": tipo_label,
+        "fecha_proceso": fecha_yyyymmdd,
+        "fecha_sql": fecha_sql,
+        "conexion": conn_info["conexion"],
+        "servidor_destino": conn_info["server"],
+        "bd_destino": conn_info["database"],
+        "tabla_destino": "",
+        "tabla_schema": "",
+        "fecha_columna": "",
+        "registros_existentes": 0,
+        "mensaje": "",
+        "origen": origen,
+        "tablas_candidatas": tablas_candidatas,
+        "columnas_fecha_evaluadas": [],
+    }
+
+    date_preference = [
+        # Preferencias explícitas por fecha de proceso/carga
+        "fecha_proceso",
+        "fechaproceso",
+        "fecha proceso",
+        "fecha_de_proceso",
+        "fecha de proceso",
+
+        "fecha_carga",
+        "fechacarga",
+        "fecha carga",
+        "fecha_de_carga",
+        "fecha de carga",
+
+        # Fechas propias de gestión/llamada
+        "fecha",
+        "fecha_gestion",
+        "fechagestion",
+        "fecha gestion",
+        "fecha_de_gestion",
+        "fecha de gestion",
+        "fecha_de_la_gestion",
+        "fecha de la gestion",
+        "fecha_de_gestión",
+        "fecha de gestión",
+        "fecha_gestión",
+        "fechagestión",
+
+        "fecha_llamada",
+        "fechallamada",
+        "fecha llamada",
+        "fecha_de_llamada",
+        "fecha de llamada",
+
+        "fecha_hora",
+        "fechahora",
+        "fecha hora",
+        "fecha_hora_gestion",
+        "fecha hora gestion",
+        "fecha_y_hora",
+        "fecha y hora",
+
+        # Fechas técnicas
+        "created_at",
+        "updated_at",
+        "fecha_creacion",
+        "fecha_modificacion",
+    ]
+
+    try:
+        conn = pyodbc.connect(_odv2_carga_connection_string(conn_info), timeout=10)
+        cur = conn.cursor()
+
+        tables = cur.execute(
+            """
+            SELECT TABLE_SCHEMA, TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_TYPE='BASE TABLE'
+            """
+        ).fetchall()
+
+        table_match = None
+
+        lower_candidates = [x.lower() for x in tablas_candidatas]
+
+        for row in tables:
+            name = str(row.TABLE_NAME).lower()
+
+            if name in lower_candidates:
+                table_match = row
+                break
+
+        if not table_match:
+            data["mensaje"] = f"No se encontró tabla destino para {tipo_label}. Candidatas: {', '.join(tablas_candidatas)}."
+            return data
+
+        schema = str(table_match.TABLE_SCHEMA)
+        table = str(table_match.TABLE_NAME)
+
+        data["tabla_schema"] = schema
+        data["tabla_destino"] = f"{schema}.{table}"
+
+        columns = cur.execute(
+            """
+            SELECT COLUMN_NAME, DATA_TYPE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA=? AND TABLE_NAME=?
+            ORDER BY ORDINAL_POSITION
+            """,
+            schema,
+            table,
+        ).fetchall()
+
+        def _norm_col(value):
+            return (
+                str(value or "")
+                .strip()
+                .lower()
+                .replace(" ", "")
+                .replace("_", "")
+                .replace("-", "")
+                .replace("/", "")
+                .replace(".", "")
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+            )
+
+        colmap = {
+            _norm_col(c.COLUMN_NAME): (str(c.COLUMN_NAME), str(c.DATA_TYPE).lower())
+            for c in columns
+        }
+
+        selected_col = None
+
+        # 1) Override manual desde .env si se necesita forzar columna por tabla/tipo.
+        #    Ejemplos:
+        #    ORION_CARGA_FECHA_CAUSALES=Fecha De Gestion
+        #    ORION_CARGA_FECHA_LOTE=fecha
+        #    ORION_CARGA_FECHA_DISCADOR=Fecha_Hora
+        override_env = {
+            "causales": "ORION_CARGA_FECHA_CAUSALES",
+            "lote": "ORION_CARGA_FECHA_LOTE",
+            "discador": "ORION_CARGA_FECHA_DISCADOR",
+        }.get(tipo_norm)
+
+        override_col = _odv2_carga_env_first(override_env, default="") if override_env else ""
+
+        if override_col:
+            override_key = _norm_col(override_col)
+
+            if override_key in colmap:
+                selected_col = colmap[override_key]
+            else:
+                data["mensaje"] = (
+                    f"La columna definida en .env {override_env}={override_col} no existe en {schema}.{table}."
+                )
+                return data
+
+        # 2) Búsqueda exacta por preferencias conocidas.
+        if not selected_col:
+            for candidate in date_preference:
+                key = _norm_col(candidate)
+
+                if key in colmap:
+                    selected_col = colmap[key]
+                    break
+
+        # 3) Fallback: cualquier columna que contenga fecha.
+        if not selected_col:
+            for key, value in colmap.items():
+                if "fecha" in key:
+                    selected_col = value
+                    break
+
+        # 4) Fallback adicional: columnas datetime aunque no se llamen fecha.
+        if not selected_col:
+            for key, value in colmap.items():
+                col_name, col_type = value
+
+                if col_type in ("date", "datetime", "datetime2", "smalldatetime", "datetimeoffset"):
+                    selected_col = value
+                    break
+
+        if not selected_col:
+            columnas_disponibles = ", ".join([str(c.COLUMN_NAME) for c in columns])
+
+            data["mensaje"] = (
+                f"No se encontró columna de fecha en {schema}.{table}. "
+                f"Columnas disponibles: {columnas_disponibles}. "
+                "No se permite insertar hasta definir la columna de control de fecha."
+            )
+            return data
+
+        col_name, col_type = selected_col
+        data["fecha_columna"] = col_name
+        data["columnas_fecha_evaluadas"] = [col_name]
+
+        qschema = _odv2_carga_qname(schema)
+        qtable = _odv2_carga_qname(table)
+        qcol = _odv2_carga_qname(col_name)
+
+        fecha_ddmmyyyy = f"{fecha_yyyymmdd[6:8]}{fecha_yyyymmdd[4:6]}{fecha_yyyymmdd[0:4]}"
+
+        if col_type in ("date", "datetime", "datetime2", "smalldatetime", "datetimeoffset"):
+            sql = f"SELECT COUNT(1) FROM {qschema}.{qtable} WHERE CAST({qcol} AS date)=?"
+            count = int(cur.execute(sql, fecha_sql).fetchone()[0] or 0)
+        else:
+            sql = (
+                f"SELECT COUNT(1) FROM {qschema}.{qtable} "
+                f"WHERE TRY_CONVERT(date, {qcol})=? "
+                f"OR REPLACE(REPLACE(REPLACE(CONVERT(varchar(64), {qcol}), '-', ''), '/', ''), ' ', '')=? "
+                f"OR REPLACE(REPLACE(REPLACE(CONVERT(varchar(64), {qcol}), '-', ''), '/', ''), ' ', '')=?"
+            )
+            count = int(cur.execute(sql, fecha_sql, fecha_yyyymmdd, fecha_ddmmyyyy).fetchone()[0] or 0)
+
+        data["registros_existentes"] = count
+        data["duplicado"] = count > 0
+        data["bloqueado"] = count > 0
+        data["ok"] = True
+
+        if count > 0:
+            data["mensaje"] = (
+                f"Ya existen {count} registros en {schema}.{table} para la fecha {fecha_sql}. "
+                "La inserción fue bloqueada para evitar duplicados."
+            )
+        else:
+            data["mensaje"] = (
+                f"No existen registros previos en {schema}.{table} para la fecha {fecha_sql}. "
+                "Puede continuar con la inserción."
+            )
+
+        return data
+
+    except Exception as exc:
+        data["mensaje"] = f"Error validando duplicados en SQL Server: {exc}"
+        return data
+
+# === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_END ===

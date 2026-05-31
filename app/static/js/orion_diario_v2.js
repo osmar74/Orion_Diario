@@ -1212,7 +1212,540 @@
 /* === ORION_DIARIO_V2_PROCESAMIENTO_MVC_END === */
 
 
+
+/* === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_BEGIN === */
+
+    const ORION_CARGA_SQL_ACTIONS = new Set([
+        "carga.causales.verificar",
+        "carga.causales.insertar",
+        "carga.lotes.verificar",
+        "carga.lotes.insertar",
+        "carga.discador.verificar",
+        "carga.discador.insertar"
+    ]);
+
+    const ORION_CARGA_SQL_META = {
+        "carga.causales.verificar": { tipo: "causales", label: "Carga Causales", modo: "verificar", icono: "📋" },
+        "carga.causales.insertar": { tipo: "causales", label: "Carga Causales", modo: "insertar", icono: "📋" },
+        "carga.lotes.verificar": { tipo: "lote", label: "Carga Lotes", modo: "verificar", icono: "🧩" },
+        "carga.lotes.insertar": { tipo: "lote", label: "Carga Lotes", modo: "insertar", icono: "🧩" },
+        "carga.discador.verificar": { tipo: "discador", label: "Carga Discador", modo: "verificar", icono: "📞" },
+        "carga.discador.insertar": { tipo: "discador", label: "Carga Discador", modo: "insertar", icono: "📞" }
+    };
+
+    function odv2CargaConexionActiva() {
+        const select = document.getElementById("odv2-conexion-global");
+        return (select?.value || state.conexion || "local").trim();
+    }
+
+    function odv2CargaFechaActiva() {
+        return (
+            document.getElementById("odv2-fecha-proceso")?.value ||
+            state.fechaProceso ||
+            "20260429"
+        ).trim();
+    }
+
+    function odv2CargaForm(tipo) {
+        collectInputs();
+
+        const fecha = odv2CargaFechaActiva();
+        const conexion = odv2CargaConexionActiva();
+
+        state.fechaProceso = fecha;
+        state.conexion = conexion;
+        saveState();
+
+        const form = new FormData();
+        form.append("fecha", fecha);
+        form.append("fecha_proceso", fecha);
+        form.append("tipo", tipo);
+        form.append("conexion", conexion);
+        form.append("mes_gestion", state.mesGestion || "");
+
+        return form;
+    }
+
+    function odv2CargaText(html) {
+        const div = document.createElement("div");
+        div.innerHTML = html || "";
+        return div.textContent || div.innerText || "";
+    }
+
+    function odv2CargaNum(value) {
+        const clean = String(value ?? "")
+            .replace(/\./g, "")
+            .replace(/,/g, "")
+            .replace(/[^\d-]/g, "");
+
+        if (!clean) return null;
+
+        const n = Number(clean);
+        return Number.isFinite(n) ? n : null;
+    }
+
+    function odv2CargaExtractCount(html) {
+        const text = odv2CargaText(html);
+        const patterns = [
+            /total\s+filas\s+consolidadas\s*[:\s]+(\d+)/i,
+            /registros\s+a\s+insertar\s*[:\s]+(\d+)/i,
+            /registros\s+detectados\s*[:\s]+(\d+)/i,
+            /total\s+registros\s*[:\s]+(\d+)/i,
+            /filas\s+consolidadas\s*[:\s]+(\d+)/i,
+            /insertad[oa]s?\s*[:\s]+(\d+)/i,
+            /(\d+)\s+registros/i
+        ];
+
+        for (const pattern of patterns) {
+            const m = text.match(pattern);
+            if (m) {
+                const n = odv2CargaNum(m[1]);
+                if (n !== null) return n;
+            }
+        }
+
+        const tableNumbers = Array.from((html || "").matchAll(/<td[^>]*>\s*([\d.,]+)\s*<\/td>/gi))
+            .map(m => odv2CargaNum(m[1]))
+            .filter(n => n !== null);
+
+        if (tableNumbers.length) {
+            return Math.max(...tableNumbers);
+        }
+
+        return null;
+    }
+
+    function odv2CargaDetectInserted(html) {
+        const text = odv2CargaText(html).toLowerCase();
+
+        if (text.includes("insertado") || text.includes("insertados") || text.includes("cargado")) {
+            const n = odv2CargaExtractCount(html);
+            return n;
+        }
+
+        return null;
+    }
+
+    function odv2CargaOkHtml(html) {
+        const text = odv2CargaText(html).toLowerCase();
+
+        if (text.includes("❌") || text.includes("error")) return false;
+
+        return text.includes("correctamente") ||
+               text.includes("ok") ||
+               text.includes("validado") ||
+               text.includes("insertado") ||
+               text.includes("cargado");
+    }
+
+    async function odv2CargaPrecheck(tipo) {
+        const params = new URLSearchParams();
+        params.set("fecha_proceso", odv2CargaFechaActiva());
+        params.set("fecha", odv2CargaFechaActiva());
+        params.set("tipo", tipo);
+        params.set("conexion", odv2CargaConexionActiva());
+
+        const response = await fetch("/api/orion-diario-v2/carga/precheck?" + params.toString() + "&_=" + Date.now(), {
+            credentials: "same-origin"
+        });
+
+        return await response.json();
+    }
+
+    async function odv2CargaPost(endpoint, tipo) {
+        const response = await fetch(endpoint + "?_=" + Date.now(), {
+            method: "POST",
+            credentials: "same-origin",
+            body: odv2CargaForm(tipo)
+        });
+
+        const html = await response.text();
+
+        return {
+            ok: response.ok && odv2CargaOkHtml(html),
+            status: response.status,
+            html,
+            count: odv2CargaExtractCount(html)
+        };
+    }
+
+    function odv2CargaInfoTable(precheck, detectados, insertar, insertados) {
+        const origen = precheck.origen || {};
+
+        const rows = [
+            ["Conexión", precheck.conexion || "--"],
+            ["Servidor destino", precheck.servidor_destino || "--"],
+            ["Base destino", precheck.bd_destino || "--"],
+            ["Tabla destino", precheck.tabla_destino || "--"],
+            ["Columna fecha control", precheck.fecha_columna || "--"],
+            ["Fecha proceso", precheck.fecha_sql || precheck.fecha_proceso || "--"],
+            ["Ruta/archivo origen", origen.archivo_principal || origen.base_orion || "--"],
+            ["Archivos origen detectados", origen.total_archivos ?? "--"],
+            ["Registros existentes con fecha", precheck.registros_existentes ?? "--"],
+            ["Registros detectados", detectados ?? "--"],
+            ["Registros a insertar", insertar ?? "--"],
+            ["Registros insertados", insertados ?? "--"]
+        ];
+
+        return `
+            <table class="odv2-table odv2-carga-sql-table">
+                <thead>
+                    <tr>
+                        <th>Elemento</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row[0])}</td>
+                            <td>${escapeHtml(row[1])}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function odv2CargaMetric(label, value, tone = "") {
+        return `
+            <div class="odv2-carga-sql-metric ${tone}">
+                <span>${escapeHtml(label)}</span>
+                <strong>${value === null || value === undefined ? "--" : fmt(value)}</strong>
+            </div>
+        `;
+    }
+
+    function odv2CargaRender({
+        meta,
+        precheck,
+        verificar = null,
+        insertar = null,
+        blocked = false,
+        mode = "verificar"
+    }) {
+        const duplicado = Number(precheck.registros_existentes || 0) > 0;
+        const detectados = verificar?.count ?? null;
+        const aInsertar = duplicado ? 0 : detectados;
+        const insertados = insertar ? odv2CargaDetectInserted(insertar.html) : null;
+
+        const precheckValido = Boolean(precheck.ok) && Boolean(precheck.fecha_columna);
+        const bloqueadoPorPrecheck = Boolean(blocked) || Boolean(duplicado) || !precheckValido;
+        const statusClass = bloqueadoPorPrecheck ? "blocked" : "ok";
+
+        return `
+            <div class="odv2-carga-sql-box ${statusClass}">
+                <div class="odv2-carga-sql-head">
+                    <div>
+                        <h4>${meta.icono} ${escapeHtml(meta.label)}</h4>
+                        <p>${escapeHtml(precheck.mensaje || "")}</p>
+                    </div>
+                    <span class="odv2-carga-sql-chip ${statusClass}">
+                        ${duplicado ? "Duplicado detectado" : (insertar ? "Inserción ejecutada" : "Verificación")}
+                    </span>
+                </div>
+
+                <div class="odv2-carga-sql-metrics">
+                    ${odv2CargaMetric("Existentes", precheck.registros_existentes, duplicado ? "danger" : "ok")}
+                    ${odv2CargaMetric("Detectados", detectados)}
+                    ${odv2CargaMetric("A insertar", aInsertar, duplicado ? "danger" : "ok")}
+                    ${odv2CargaMetric("Insertados", insertados)}
+                </div>
+
+                ${!precheckValido ? `
+                    <div class="odv2-carga-sql-alert danger">
+                        ❌ No se pudo validar correctamente la columna de fecha de control. La inserción queda bloqueada hasta corregir la tabla o definir la columna de fecha.
+                    </div>
+                ` : duplicado ? `
+                    <div class="odv2-carga-sql-alert danger">
+                        ❌ Ya existen registros para la fecha del proceso. La inserción fue bloqueada para evitar duplicar información.
+                    </div>
+                ` : `
+                    <div class="odv2-carga-sql-alert ok">
+                        ✅ No se encontraron registros previos para la fecha del proceso. Puede continuar con la carga.
+                    </div>
+                `}
+
+                <div class="odv2-carga-sql-layout">
+                    <div>
+                        <div class="odv2-carga-sql-title">Información origen / destino</div>
+                        ${odv2CargaInfoTable(precheck, detectados, aInsertar, insertados)}
+                    </div>
+                </div>
+
+                <details class="odv2-carga-sql-details" ${mode === "verificar" ? "open" : ""}>
+                    <summary>Resultado de verificación</summary>
+                    <div class="odv2-carga-sql-original">
+                        ${verificar?.html || "<div class='odv2-empty'>Sin verificación ejecutada.</div>"}
+                    </div>
+                </details>
+
+                <details class="odv2-carga-sql-details" ${insertar ? "open" : ""}>
+                    <summary>Resultado de inserción</summary>
+                    <div class="odv2-carga-sql-original">
+                        ${insertar?.html || (duplicado ? "<div class='odv2-result-warning'>Inserción bloqueada por registros existentes.</div>" : "<div class='odv2-empty'>Inserción no ejecutada.</div>")}
+                    </div>
+                </details>
+            </div>
+        `;
+    }
+
+    async function ejecutarCargaSqlMvc(actionName, button) {
+        const meta = ORION_CARGA_SQL_META[actionName];
+        const action = ORION_V2_ACTION_MAP[actionName];
+
+        if (!meta || !action) {
+            debug("Acción de carga no registrada: " + actionName, "error");
+            return;
+        }
+
+        try {
+            collectInputs();
+
+            if (button) {
+                button.disabled = true;
+                button.classList.add("loading");
+            }
+
+            setPhaseStatus(actionName, "running", "Validando");
+            setPhaseResult(actionName, `<div class="odv2-result-loading">Validando duplicados y preparando ${escapeHtml(meta.label)}...</div>`);
+
+            const precheck = await odv2CargaPrecheck(meta.tipo);
+
+            if (!precheck.ok) {
+                setPhaseStatus(actionName, "error", "Error precheck");
+                setPhaseResult(actionName, odv2CargaRender({
+                    meta,
+                    precheck,
+                    blocked: true,
+                    mode: meta.modo
+                }));
+                debug("No se pudo validar duplicados para " + meta.label, "error");
+                return;
+            }
+
+            if (Number(precheck.registros_existentes || 0) > 0) {
+                setPhaseStatus(actionName, "blocked", "Duplicado");
+                setPhaseResult(actionName, odv2CargaRender({
+                    meta,
+                    precheck,
+                    blocked: true,
+                    mode: meta.modo
+                }));
+                debug("Inserción bloqueada: existen registros para la fecha.", "error");
+                return;
+            }
+
+            const verificacion = await odv2CargaPost("/accion/verificar-carga", meta.tipo);
+
+            if (meta.modo === "verificar") {
+                setPhaseStatus(actionName, verificacion.ok ? "success" : "error", verificacion.ok ? "Verificado" : "Revisar");
+                setPhaseResult(actionName, odv2CargaRender({
+                    meta,
+                    precheck,
+                    verificar: verificacion,
+                    mode: "verificar"
+                }));
+                debug(meta.label + " verificado.", verificacion.ok ? "success" : "error");
+                return;
+            }
+
+            const insercion = await odv2CargaPost("/accion/insertar-datos", meta.tipo);
+
+            setPhaseStatus(actionName, insercion.ok ? "success" : "error", insercion.ok ? "Insertado" : "Revisar");
+            setPhaseResult(actionName, odv2CargaRender({
+                meta,
+                precheck,
+                verificar: verificacion,
+                insertar: insercion,
+                mode: "insertar"
+            }));
+
+            debug(meta.label + " inserción finalizada.", insercion.ok ? "success" : "error");
+
+        } catch (error) {
+            setPhaseStatus(actionName, "error", "Error");
+            setPhaseResult(actionName, `<div class="odv2-result-error">Error en carga SQL: ${escapeHtml(error.message || error)}</div>`);
+            debug("Error en carga SQL MVC: " + (error.message || error), "error");
+
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.classList.remove("loading");
+            }
+        }
+    }
+
+    window.OrionCargaSqlMVC = {
+        ejecutar: ejecutarCargaSqlMvc,
+        precheck: odv2CargaPrecheck
+    };
+
+/* === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_END === */
+
+
+
+/* === ORION_DIARIO_V2_CARGA_SQL_INLINE_CLEAN_BEGIN === */
+
+    const ORION_CARGA_INLINE_DEFS = [
+        {
+            verificar: "carga.causales.verificar",
+            insertar: "carga.causales.insertar",
+            label: "Insertar Datos Causales"
+        },
+        {
+            verificar: "carga.lotes.verificar",
+            insertar: "carga.lotes.insertar",
+            label: "Insertar Datos Lotes"
+        },
+        {
+            verificar: "carga.discador.verificar",
+            insertar: "carga.discador.insertar",
+            label: "Insertar Datos Discador"
+        }
+    ];
+
+    function odv2CargaInlineFindCard(actionName) {
+        let node = document.querySelector(`[data-action="${actionName}"]`);
+
+        if (!node) {
+            const btn = document.querySelector(`button[data-action="${actionName}"], .odv2-run[data-action="${actionName}"]`);
+            node = btn ? btn.closest(".odv2-phase-card, .odv2-card, .odv2-phase, section, article, details, div") : null;
+        }
+
+        if (!node) return null;
+
+        if (node.tagName === "BUTTON" || node.tagName === "A") {
+            node = node.closest(".odv2-phase-card, .odv2-card, .odv2-phase, section, article, details, div");
+        }
+
+        return node;
+    }
+
+    function odv2CargaInlineRemoveWrongInsertCards() {
+        ORION_CARGA_INLINE_DEFS.forEach(def => {
+            document.querySelectorAll(`[data-action="${def.insertar}"]`).forEach(node => {
+                if (node.classList && node.classList.contains("odv2-carga-inline-insert-btn")) return;
+
+                const tag = String(node.tagName || "").toLowerCase();
+
+                if (tag === "button" || tag === "a") return;
+
+                const looksLikePhase =
+                    node.classList.contains("odv2-phase-card") ||
+                    node.classList.contains("odv2-card") ||
+                    node.querySelector?.(".odv2-phase-title, h4, .odv2-run, button");
+
+                if (looksLikePhase) {
+                    node.remove();
+                }
+            });
+        });
+    }
+
+    function odv2CargaInlineEnsureButtons() {
+        if (typeof ejecutarCargaSqlMvc !== "function") {
+            return;
+        }
+
+        odv2CargaInlineRemoveWrongInsertCards();
+
+        ORION_CARGA_INLINE_DEFS.forEach(def => {
+            const card = odv2CargaInlineFindCard(def.verificar);
+
+            if (!card) return;
+
+            if (card.querySelector(`[data-odv2-carga-inline-insert="${def.insertar}"]`)) {
+                return;
+            }
+
+            const actions = document.createElement("div");
+            actions.className = "odv2-carga-inline-actions";
+            actions.setAttribute("data-odv2-carga-inline-actions", def.verificar);
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "odv2-carga-inline-insert-btn";
+            btn.setAttribute("data-odv2-carga-inline-insert", def.insertar);
+            btn.textContent = def.label;
+
+            btn.addEventListener("click", async event => {
+                event.preventDefault();
+                event.stopPropagation();
+                await ejecutarCargaSqlMvc(def.insertar, btn);
+            });
+
+            actions.appendChild(btn);
+
+            const header =
+                card.querySelector(".odv2-phase-header") ||
+                card.querySelector(".odv2-phase-head") ||
+                card.querySelector(".odv2-card-head") ||
+                card.querySelector("header");
+
+            if (header && header.parentNode) {
+                header.parentNode.insertBefore(actions, header.nextSibling);
+            } else {
+                const firstResult = card.querySelector(".odv2-phase-result, [id^='odv2-result'], .odv2-result");
+
+                if (firstResult && firstResult.parentNode) {
+                    firstResult.parentNode.insertBefore(actions, firstResult);
+                } else {
+                    card.appendChild(actions);
+                }
+            }
+        });
+    }
+
+    function odv2CargaInlineSchedule() {
+        [100, 300, 700, 1200, 2000].forEach(ms => {
+            setTimeout(odv2CargaInlineEnsureButtons, ms);
+        });
+    }
+
+    document.addEventListener("click", event => {
+        const text = String(event.target?.textContent || "").toLowerCase();
+
+        if (
+            text.includes("cargar contexto") ||
+            text.includes("gestión diaria orion") ||
+            text.includes("gestion diaria orion") ||
+            text.includes("carga")
+        ) {
+            odv2CargaInlineSchedule();
+        }
+    }, true);
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", odv2CargaInlineSchedule);
+    } else {
+        odv2CargaInlineSchedule();
+    }
+
+    const odv2CargaInlineObserver = new MutationObserver(() => {
+        if (odv2CargaInlineObserver.__timer) {
+            clearTimeout(odv2CargaInlineObserver.__timer);
+        }
+
+        odv2CargaInlineObserver.__timer = setTimeout(odv2CargaInlineEnsureButtons, 150);
+    });
+
+    if (document.body) {
+        odv2CargaInlineObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+/* === ORION_DIARIO_V2_CARGA_SQL_INLINE_CLEAN_END === */
+
+
     async function executeWorkflowAction(actionName, button) {
+        if (ORION_CARGA_SQL_ACTIONS.has(actionName)) {
+            await ejecutarCargaSqlMvc(actionName, button);
+            return;
+        }
+
         if (ORION_PROC_ACTIONS.has(actionName)) {
             await ejecutarProcesamientoMvc(actionName, button);
             return;
