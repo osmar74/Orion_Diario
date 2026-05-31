@@ -163,3 +163,60 @@ def render_config_test_result(data: dict[str, Any]) -> str:
         </table>
     </div>
     """
+
+
+
+def render_config_summary(config: dict[str, Any]) -> str:
+    ambiente = str(config.get("ambiente_activo") or "local").lower()
+    data_root = str(config.get("data_root") or "")
+
+    rutas = config.get("rutas", {})
+    rutas_ambiente = rutas.get(ambiente, {}) if isinstance(rutas, dict) else {}
+
+    orion_count = len(rutas_ambiente.get("orion", []) or [])
+    aster_count = len(rutas_ambiente.get("aster", []) or [])
+
+    sql = config.get("sql", {})
+    sql_ambiente = sql.get(ambiente, {}) if isinstance(sql, dict) else {}
+
+    orion_sql = sql_ambiente.get("orion", {}) if isinstance(sql_ambiente, dict) else {}
+    aster_sql = sql_ambiente.get("aster_api", {}) if isinstance(sql_ambiente, dict) else {}
+    cons_sql = sql_ambiente.get("gestion_consolidada", {}) if isinstance(sql_ambiente, dict) else {}
+
+    ambiente_label = "LOCAL - Pruebas" if ambiente == "local" else "REMOTO - Producción"
+
+    return f"""
+    <div class="oac-summary-card">
+        <div class="oac-summary-row">
+            <span>Ambiente</span>
+            <b>{_v(ambiente_label)}</b>
+        </div>
+        <div class="oac-summary-row">
+            <span>DATA</span>
+            <b title="{_v(data_root)}">{_v(data_root)}</b>
+        </div>
+        <div class="oac-summary-row">
+            <span>Rutas ORION</span>
+            <b>{orion_count}</b>
+        </div>
+        <div class="oac-summary-row">
+            <span>Rutas ASTER</span>
+            <b>{aster_count}</b>
+        </div>
+        <div class="oac-summary-row">
+            <span>SQL Orion</span>
+            <b>{_v(orion_sql.get("server", ""))} / {_v(orion_sql.get("database", ""))}</b>
+        </div>
+        <div class="oac-summary-row">
+            <span>SQL ASTER</span>
+            <b>{_v(aster_sql.get("server", ""))} / {_v(aster_sql.get("database", ""))}</b>
+        </div>
+        <div class="oac-summary-row">
+            <span>SQL Consolidado</span>
+            <b>{_v(cons_sql.get("server", ""))} / {_v(cons_sql.get("database", ""))}</b>
+        </div>
+        <button type="button" class="odv2-secondary oac-open-config" id="oac-open-config-sidebar">
+            ⚙ Configurar
+        </button>
+    </div>
+    """

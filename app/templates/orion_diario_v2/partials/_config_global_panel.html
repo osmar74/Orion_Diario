@@ -1,9 +1,29 @@
-<details class="odv2-card oac-wrapper" open>
+<details class="odv2-card oac-wrapper oac-summary-wrapper" open>
     <summary>
         <span>⚙ Configuración global</span>
         <small>DATA, rutas y SQL</small>
     </summary>
-    <div id="oac-config-host">
-        <div class="odv2-empty">Cargando configuración...</div>
+
+    <div id="oac-summary-host">
+        <div class="odv2-empty">Cargando resumen de configuración...</div>
     </div>
 </details>
+
+<div id="oac-modal" class="oac-modal hidden" aria-hidden="true">
+    <div class="oac-modal-backdrop" data-oac-close="1"></div>
+
+    <section class="oac-modal-dialog" role="dialog" aria-modal="true" aria-label="Configuración global">
+        <header class="oac-modal-header">
+            <div>
+                <h2>⚙ Configuración global</h2>
+                <p>DATA, rutas y conexiones SQL compartidas por Gestión Diaria Orion, ASTER y Consolidado Gestión.</p>
+            </div>
+
+            <button type="button" class="oac-modal-close" data-oac-close="1">×</button>
+        </header>
+
+        <div id="oac-config-host" class="oac-modal-body">
+            <div class="odv2-empty">Cargando configuración...</div>
+        </div>
+    </section>
+</div>

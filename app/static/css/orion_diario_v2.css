@@ -3659,3 +3659,217 @@ body {
 }
 
 /* === ORION_ASTER_CONFIG_CENTRAL_END === */
+
+/* === ORION_CONFIG_MODAL_FASE_1_1_BEGIN === */
+
+.oac-summary-wrapper {
+    margin-top: 14px;
+}
+
+.oac-summary-card {
+    display: grid;
+    gap: 8px;
+}
+
+.oac-summary-row {
+    display: grid;
+    gap: 3px;
+    padding: 8px;
+    border: 1px solid #263752;
+    border-radius: 10px;
+    background: #0b1222;
+}
+
+.oac-summary-row span {
+    color: #9db3d8;
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.oac-summary-row b {
+    color: #e6eefc;
+    font-size: .72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oac-open-config {
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.oac-top-config-btn {
+    margin-right: 8px;
+}
+
+.oac-modal.hidden {
+    display: none !important;
+}
+
+.oac-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+}
+
+.oac-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, .72);
+    backdrop-filter: blur(4px);
+}
+
+.oac-modal-dialog {
+    position: absolute;
+    top: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1280px, calc(100vw - 48px));
+    max-height: calc(100vh - 72px);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border: 1px solid #263752;
+    border-radius: 22px;
+    background: #08111f;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+}
+
+.oac-modal-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 18px 20px;
+    border-bottom: 1px solid #263752;
+    background: linear-gradient(90deg, #0f2743, #0b7a88);
+}
+
+.oac-modal-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.25rem;
+}
+
+.oac-modal-header p {
+    margin: 4px 0 0;
+    color: #dbeafe;
+    font-size: .82rem;
+}
+
+.oac-modal-close {
+    border: 1px solid rgba(255, 255, 255, .22);
+    background: rgba(15, 23, 42, .7);
+    color: white;
+    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.oac-modal-body {
+    overflow: auto;
+    padding: 16px;
+}
+
+body.oac-modal-open {
+    overflow: hidden;
+}
+
+.oac-result.success {
+    border-color: rgba(34, 197, 94, .45);
+    color: #86efac;
+}
+
+.oac-result.error {
+    border-color: rgba(239, 68, 68, .45);
+    color: #fecaca;
+}
+
+.oac-modal-dialog .oac-card {
+    max-width: none;
+}
+
+.oac-modal-dialog textarea {
+    min-height: 110px;
+    resize: vertical;
+    font-family: Consolas, monospace;
+}
+
+@media (max-width: 900px) {
+    .oac-modal-dialog {
+        top: 12px;
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 24px);
+    }
+}
+
+/* === ORION_CONFIG_MODAL_FASE_1_1_END === */
+
+/* === ORION_CONFIG_LAYOUT_FASE_1_2_BEGIN === */
+
+/* Botón superior: debe quedar en la misma fila que Cargar contexto / Panel estadístico */
+.oac-top-actions-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+}
+
+.oac-top-config-btn {
+    width: auto !important;
+    min-width: 170px !important;
+    max-width: 220px !important;
+    height: 46px !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+}
+
+/* El botón del resumen lateral sí puede ocupar todo el ancho */
+.oac-summary-card .oac-open-config,
+.oac-summary-card #oac-open-config-sidebar {
+    width: 100% !important;
+}
+
+/* Reducir campos superiores de fecha y mes para que entren mejor las acciones */
+#odv2-fecha-proceso,
+#odv2-mes-gestion {
+    max-width: 210px !important;
+}
+
+/* Reducir los bloques contenedores donde viven los inputs, sin afectar los demás */
+#odv2-fecha-proceso,
+#odv2-mes-gestion {
+    min-width: 160px !important;
+}
+
+/* Si algún panel antiguo quedó renderizado por otra plantilla, lo escondemos visualmente */
+/* Compatibilidad: los paneles antiguos se retiran desde index.html. */
+.oac-hide-old-panels {
+    display: none !important;
+}
+
+/* Mejor compactación del resumen lateral */
+.oac-summary-wrapper {
+    margin-top: 14px !important;
+}
+
+.oac-summary-card {
+    gap: 7px !important;
+}
+
+.oac-summary-row {
+    padding: 9px 10px !important;
+}
+
+.oac-summary-row b {
+    font-size: .76rem !important;
+}
+
+/* === ORION_CONFIG_LAYOUT_FASE_1_2_END === */

@@ -43,3 +43,8 @@ def api_config_probar_html():
 def api_config_probar_json():
     conexion = request.args.get("conexion", "local")
     return jsonify(probar_configuracion(conexion))
+@orion_aster_config_bp.get("/api/config/global/resumen/html")
+def api_config_global_resumen_html():
+    from app.services.orion_aster_config_renderer import render_config_summary
+
+    return render_config_summary(get_config())
