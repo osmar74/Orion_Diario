@@ -3386,3 +3386,133 @@ body {
 }
 
 /* === ORION_CARGA_V2_NO_DUPLICADO_END === */
+
+/* === ORION_FASE_G_EXPORT_V2_BEGIN === */
+
+.orion-fase-g-export-resultado {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #0b1222;
+}
+
+.orion-fase-g-export-resultado .dataframe {
+    width: 100%;
+}
+
+.orion-fase-g-export-resultado a {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+/* === ORION_FASE_G_EXPORT_V2_END === */
+
+/* === ORION_FASE_G_KPI_PIES_BEGIN === */
+
+.orion-fase-g-kpi-pies {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 0 0 16px;
+}
+
+.fg-pie-card {
+    border: 1px solid #263752;
+    border-radius: 16px;
+    background: #0b1222;
+    padding: 12px;
+    min-height: 300px;
+}
+
+.fg-pie-title {
+    color: #00e5ff;
+    font-weight: 900;
+    font-size: .95rem;
+    margin-bottom: 2px;
+}
+
+.fg-pie-subtitle {
+    color: #9db3d8;
+    font-size: .72rem;
+    margin-bottom: 8px;
+}
+
+.fg-pie-figure {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fg-pie-svg {
+    width: 205px;
+    height: 205px;
+    overflow: visible;
+}
+
+.fg-pie-value {
+    fill: #fff;
+    font-size: 10px;
+    font-weight: 900;
+    paint-order: stroke;
+    stroke: #0b1222;
+    stroke-width: 3px;
+    stroke-linejoin: round;
+}
+
+.fg-pie-center {
+    fill: #fff;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.fg-pie-center-label {
+    fill: #9db3d8;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.fg-pie-empty {
+    fill: #9db3d8;
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.fg-pie-legend {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.fg-pie-legend-item {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    color: #b9c8e6;
+    font-size: .75rem;
+}
+
+.fg-pie-legend-item b {
+    color: #00e5ff;
+}
+
+.fg-pie-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+}
+
+@media (max-width: 1200px) {
+    .orion-fase-g-kpi-pies {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === ORION_FASE_G_KPI_PIES_END === */

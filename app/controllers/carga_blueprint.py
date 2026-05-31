@@ -260,6 +260,41 @@ def accion_probar_conexion_consolidado():
     return render_prueba_conexion_orion(resultado)
 
 
+
+
+def _normalizar_fecha_consolidado_orion_v2(valor: str) -> str:
+    """
+    Acepta YYYYMMDD o YYYY-MM-DD y devuelve YYYY-MM-DD.
+    """
+    raw = str(valor or "").strip().replace("/", "-")
+
+    if len(raw) == 8 and raw.isdigit():
+        return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
+
+    return raw
+
+
+def _normalizar_meses_consolidado_orion_v2(fecha: str, meses: str = "", mes_gestion: str = "") -> str:
+    """
+    Devuelve YYYYMM para el consolidado.
+
+    Prioridad:
+    1. meses si ya viene como YYYYMM.
+    2. derivar desde fecha YYYY-MM-DD.
+    3. derivar desde fecha YYYYMMDD.
+    """
+    raw_meses = str(meses or "").strip()
+
+    if len(raw_meses) == 6 and raw_meses.isdigit():
+        return raw_meses
+
+    raw_fecha = str(fecha or "").strip().replace("-", "").replace("/", "")
+
+    if len(raw_fecha) >= 6 and raw_fecha[:6].isdigit():
+        return raw_fecha[:6]
+
+    return raw_meses or "202605"
+
 @carga_bp.route("/accion/consolidar-consulta", methods=["POST"])
 def accion_consolidar_consulta():
     """
@@ -268,8 +303,20 @@ def accion_consolidar_consulta():
     La lógica de negocio vive en:
     app.services.orion_consolidado_query_service
     """
-    fecha = request.form.get("fecha", "2026-05-05")
-    meses = request.form.get("meses", "202605")
+    fecha_raw = (
+        request.form.get("fecha")
+        or request.form.get("fecha_proceso")
+        or "2026-05-05"
+    )
+
+    fecha = _normalizar_fecha_consolidado_orion_v2(fecha_raw)
+
+    meses = _normalizar_meses_consolidado_orion_v2(
+        fecha=fecha,
+        meses=request.form.get("meses", ""),
+        mes_gestion=request.form.get("mes_gestion", ""),
+    )
+
     conexion = request.form.get("conexion", "local")
 
     cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL

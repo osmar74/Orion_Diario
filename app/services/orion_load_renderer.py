@@ -361,7 +361,7 @@ def render_consolidado_consulta_orion(res: dict[str, Any]) -> str:
     html += f"<input type='hidden' id='cons-temp-id' value='{escape(temp_id, quote=True)}'>"
 
     html += """
-    <button onclick='aplicarFiltroYExportar()'
+    <button onclick='return aplicarFiltroYExportar(this)'
             style='background:#28a745; color:#fff; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:0.8rem;'>
         Aplicar Filtro y Exportar a Excel
     </button>

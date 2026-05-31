@@ -13,6 +13,8 @@ from app.services.orion_diario_v2_dashboard_service import (
 orion_diario_v2_bp = Blueprint("orion_diario_v2", __name__)
 
 
+
+from app.services.orion_fase_g_kpi_service import construir_kpi_pies_fase_g
 @orion_diario_v2_bp.route("/orion-diario-v2")
 def vista_orion_diario_v2():
     return render_template("orion_diario_v2/index.html")
@@ -142,3 +144,21 @@ def api_orion_diario_v2_carga_precheck():
     return jsonify(data), 200
 
 # === ORION_DIARIO_V2_CARGA_SQL_PRECHECK_END ===
+@orion_diario_v2_bp.route("/api/orion-diario-v2/fase-g/kpis")
+def api_orion_diario_v2_fase_g_kpis():
+    from flask import jsonify, request
+    from app.controllers.carga_blueprint import SQL_LOCAL, SQL_REMOTO
+
+    fecha = (
+        request.args.get("fecha_proceso")
+        or request.args.get("fecha")
+        or "20260429"
+    )
+
+    conexion = (request.args.get("conexion") or "local").strip().lower()
+    cfg = SQL_REMOTO if conexion == "remoto" else SQL_LOCAL
+
+    data = construir_kpi_pies_fase_g(cfg=cfg, fecha_proceso=fecha)
+    data["conexion"] = conexion
+
+    return jsonify(data)
