@@ -1,0 +1,438 @@
+:root {
+    --av2-bg: #050b14;
+    --av2-card: #0b1222;
+    --av2-line: #263752;
+    --av2-text: #e6eefc;
+    --av2-muted: #9db3d8;
+    --av2-cyan: #00e5ff;
+    --av2-blue: #2563eb;
+    --av2-green: #22c55e;
+    --av2-red: #ef4444;
+    --av2-yellow: #f59e0b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.aster-v2-body {
+    margin: 0;
+    background: var(--av2-bg);
+    color: var(--av2-text);
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+.aster-v2-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--av2-line);
+    background: #080f1c;
+}
+
+.aster-v2-topbar h1 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.aster-v2-topbar p {
+    margin: 4px 0 0;
+    color: var(--av2-muted);
+    font-size: .8rem;
+}
+
+.aster-v2-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.aster-v2-nav a {
+    color: var(--av2-muted);
+    text-decoration: none;
+    border: 1px solid var(--av2-line);
+    padding: 9px 12px;
+    border-radius: 10px;
+}
+
+.aster-v2-nav a.active {
+    color: white;
+    background: var(--av2-blue);
+}
+
+.aster-v2-controls {
+    display: grid;
+    grid-template-columns: 190px 230px auto auto 1fr;
+    gap: 12px;
+    align-items: end;
+    padding: 16px 22px;
+    background: #0b1222;
+    border-bottom: 1px solid var(--av2-line);
+}
+
+.aster-v2-controls label {
+    display: grid;
+    gap: 6px;
+    color: var(--av2-muted);
+    font-size: .74rem;
+    font-weight: 800;
+}
+
+.aster-v2-controls input,
+.aster-v2-controls select {
+    border: 1px solid var(--av2-line);
+    border-radius: 10px;
+    background: #08111f;
+    color: var(--av2-text);
+    padding: 10px;
+    font-weight: 800;
+}
+
+.aster-v2-controls button,
+.aster-v2-disabled-btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 14px;
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    color: white;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.aster-v2-disabled-btn {
+    background: #1f2937;
+    color: var(--av2-muted);
+    cursor: not-allowed;
+    width: max-content;
+}
+
+.aster-v2-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 18px;
+    padding: 18px 22px;
+}
+
+.aster-v2-sidebar,
+.aster-v2-main {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+.aster-v2-card,
+.aster-v2-hero,
+.aster-v2-phase-card {
+    border: 1px solid var(--av2-line);
+    border-radius: 16px;
+    background: var(--av2-card);
+    padding: 14px;
+}
+
+.aster-v2-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    background: linear-gradient(90deg, #0f2743, #0b7a88);
+}
+
+.aster-v2-hero h2 {
+    margin: 0;
+    color: white;
+}
+
+.aster-v2-hero p {
+    margin: 6px 0 0;
+    color: #dbeafe;
+}
+
+.aster-v2-card h3 {
+    margin: 0 0 12px;
+    color: var(--av2-cyan);
+}
+
+.aster-v2-badge,
+.aster-v2-status {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #111827;
+    color: var(--av2-muted);
+    font-size: .75rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.aster-v2-badge.ok {
+    color: #86efac;
+    background: rgba(34, 197, 94, .14);
+}
+
+.aster-v2-badge.warn {
+    color: #fcd34d;
+    background: rgba(245, 158, 11, .14);
+}
+
+.aster-v2-status.pending {
+    color: #fcd34d;
+    background: rgba(245, 158, 11, .14);
+}
+
+.aster-v2-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.aster-v2-mini {
+    border: 1px solid var(--av2-line);
+    border-radius: 12px;
+    padding: 10px;
+    background: #08111f;
+    display: grid;
+    gap: 5px;
+}
+
+.aster-v2-mini.wide {
+    margin-top: 10px;
+}
+
+.aster-v2-mini span {
+    color: var(--av2-muted);
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.aster-v2-mini b,
+.aster-v2-mini li {
+    color: var(--av2-text);
+    font-size: .8rem;
+    word-break: break-word;
+}
+
+.aster-v2-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.aster-v2-group {
+    border: 1px solid var(--av2-line);
+    border-radius: 14px;
+    margin-bottom: 12px;
+    padding: 10px;
+}
+
+.aster-v2-group summary {
+    cursor: pointer;
+    color: var(--av2-cyan);
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.aster-v2-phase-card {
+    margin-top: 8px;
+    display: grid;
+    gap: 8px;
+}
+
+.aster-v2-phase-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.aster-v2-phase-header h4 {
+    margin: 0;
+}
+
+.aster-v2-phase-card p {
+    margin: 0;
+    color: var(--av2-muted);
+}
+
+.aster-v2-phase-card code {
+    color: var(--av2-cyan);
+}
+
+.aster-v2-phase-list-mini {
+    display: grid;
+    gap: 7px;
+}
+
+.aster-v2-phase-mini {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--av2-line);
+    border-radius: 10px;
+    padding: 7px;
+    background: #08111f;
+}
+
+.aster-v2-phase-mini b {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: #12385c;
+    color: white;
+}
+
+.aster-v2-phase-mini span {
+    color: var(--av2-muted);
+    font-size: .74rem;
+}
+
+.aster-v2-phase-mini em {
+    color: #fcd34d;
+    font-size: .7rem;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.aster-v2-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+}
+
+.aster-v2-table th,
+.aster-v2-table td {
+    border-bottom: 1px solid var(--av2-line);
+    padding: 9px;
+    text-align: left;
+}
+
+.aster-v2-table.compact td:first-child {
+    color: var(--av2-muted);
+    font-weight: 900;
+    width: 120px;
+}
+
+@media (max-width: 1100px) {
+    .aster-v2-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .aster-v2-controls,
+    .aster-v2-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .aster-v2-topbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* === ASTER_V2_INFO_COLAPSABLE_BEGIN === */
+
+.aster-v2-collapsible {
+    padding: 0;
+    overflow: hidden;
+}
+
+.aster-v2-collapsible > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    color: var(--av2-cyan);
+    font-weight: 900;
+    border-bottom: 1px solid transparent;
+}
+
+.aster-v2-collapsible > summary::-webkit-details-marker {
+    display: none;
+}
+
+.aster-v2-collapsible > summary::after {
+    content: "▾";
+    color: var(--av2-muted);
+    font-size: .85rem;
+    transition: transform .16s ease;
+}
+
+.aster-v2-collapsible:not([open]) > summary::after {
+    transform: rotate(-90deg);
+}
+
+.aster-v2-collapsible > summary small {
+    color: var(--av2-muted);
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.aster-v2-collapsible[open] > summary {
+    border-bottom-color: var(--av2-line);
+}
+
+.aster-v2-collapsible-body {
+    padding: 14px;
+}
+
+/* === ASTER_V2_INFO_COLAPSABLE_END === */
+
+
+/* === ASTER_V2_FASE_I_JSON_BEGIN === */
+
+.aster-v2-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.aster-v2-run-btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 13px;
+    color: white;
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.aster-v2-card-result {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px dashed var(--av2-line);
+    border-radius: 12px;
+    background: #08111f;
+    color: var(--av2-muted);
+}
+
+.aster-v2-result-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.aster-v2-result-header b {
+    color: var(--av2-cyan);
+}
+
+.aster-v2-status.correcto {
+    color: #86efac;
+    background: rgba(34, 197, 94, .14);
+}
+
+.aster-v2-status.revisar {
+    color: #fcd34d;
+    background: rgba(245, 158, 11, .14);
+}
+
+.aster-v2-status.error {
+    color: #fecaca;
+    background: rgba(239, 68, 68, .14);
+}
+
+/* === ASTER_V2_FASE_I_JSON_END === */

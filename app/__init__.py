@@ -30,4 +30,7 @@ def create_app():
     from app.controllers.orion_diario_v2_blueprint import orion_diario_v2_bp
     app.register_blueprint(orion_diario_v2_bp)
 
+    from app.controllers.aster_diario_v2_blueprint import aster_diario_v2_bp
+    app.register_blueprint(aster_diario_v2_bp)
+
     return app

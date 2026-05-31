@@ -538,3 +538,281 @@ def _aster_phase_i_columnas_requeridas_usuarios_local(columnas=None, scope=None)
 
 
 # === FIX_ASTER_PHASE_I_REQUIRED_ID_USUARIOS_END ===
+
+# === ASTER_CONFIG_CENTRAL_FASE2A_BEGIN ===
+#
+# Migración backend ASTER hacia configuración central.
+# No usa JavaScript.
+# No devuelve HTML.
+#
+# Origen ASTER local:
+#   SQL Server gestioncomercial_dev desde instance/orion_aster_config.json
+#
+# Destino ASTER:
+#   SQL Server Aster_Api desde instance/orion_aster_config.json
+#
+# Origen ASTER remoto:
+#   Mantiene compatibilidad con configuración remota existente.
+#   Si no hay configuración MySQL central, usa variables .env existentes.
+#
+
+try:
+    _aster_original_probar_origen_aster = probar_origen_aster
+except Exception:
+    _aster_original_probar_origen_aster = None
+
+try:
+    _aster_original_obtener_config_mysql_remoto_aster = obtener_config_mysql_remoto_aster
+except Exception:
+    _aster_original_obtener_config_mysql_remoto_aster = None
+
+try:
+    _aster_original_conectar_mysql_remoto_aster = conectar_mysql_remoto_aster
+except Exception:
+    _aster_original_conectar_mysql_remoto_aster = None
+
+
+def _aster_cfg_get(cfg: dict, *keys: str, default: str = "") -> str:
+    for key in keys:
+        if key in cfg and cfg.get(key) not in (None, ""):
+            return str(cfg.get(key)).strip()
+
+    return default
+
+
+def _aster_conn_str_sqlserver_from_cfg(cfg: dict, database: str | None = None) -> str:
+    """
+    Construye cadena SQL Server usando la configuración central.
+
+    Compatible con:
+    - server / servidor
+    - database / bd
+    - username / user
+    - password
+    - auth: sql/windows
+    """
+    driver = _aster_cfg_get(
+        cfg,
+        "driver",
+        "DRIVER",
+        "odbc_driver",
+        default="ODBC Driver 18 for SQL Server",
+    )
+
+    server = _aster_cfg_get(
+        cfg,
+        "server",
+        "servidor",
+        "SERVER",
+        "host",
+        default=r"localhost\SQL2025DEV",
+    )
+
+    db = str(database or _aster_cfg_get(
+        cfg,
+        "database",
+        "bd",
+        "db",
+        "DATABASE",
+        default="gestioncomercial_dev",
+    )).strip()
+
+    auth = _aster_cfg_get(
+        cfg,
+        "auth",
+        "authentication",
+        default="sql",
+    ).lower()
+
+    username = _aster_cfg_get(
+        cfg,
+        "username",
+        "user",
+        "usuario",
+        "UID",
+        default="",
+    )
+
+    password = _aster_cfg_get(
+        cfg,
+        "password",
+        "clave",
+        "PWD",
+        default="",
+    )
+
+    encrypt = _aster_cfg_get(
+        cfg,
+        "encrypt",
+        "Encrypt",
+        default="no",
+    )
+
+    trust = _aster_cfg_get(
+        cfg,
+        "trust",
+        "trust_server_certificate",
+        "TrustServerCertificate",
+        default="yes",
+    )
+
+    parts = [
+        f"DRIVER={{{driver}}}",
+        f"SERVER={server}",
+        f"DATABASE={db}",
+        f"Encrypt={encrypt}",
+        f"TrustServerCertificate={trust}",
+    ]
+
+    if auth == "windows" or not username:
+        parts.append("Trusted_Connection=yes")
+    else:
+        parts.append(f"UID={username}")
+        parts.append(f"PWD={password}")
+
+    return ";".join(parts) + ";"
+
+
+def _aster_origen_local_cfg(database: str | None = None) -> dict:
+    from app.services.orion_aster_config_service import get_sql_config_legacy
+
+    cfg = get_sql_config_legacy("local", "gestioncomercial")
+
+    if database:
+        cfg = dict(cfg)
+        cfg["database"] = database
+
+    return cfg
+
+
+def conectar_sqlserver_origen_aster(database: str | None = None):
+    """
+    Conexión origen ASTER local.
+    Desde ahora usa configuración central:
+      sql.local.gestioncomercial
+    """
+    import pyodbc
+
+    cfg = _aster_origen_local_cfg(database)
+    cadena = _aster_conn_str_sqlserver_from_cfg(cfg, database=database)
+
+    return pyodbc.connect(cadena, timeout=10)
+
+
+def obtener_config_mysql_remoto_aster(database: str | None = None) -> dict:
+    """
+    Config remoto ASTER.
+
+    Para no romper producción, mantiene compatibilidad:
+    1. Si en config central existe mysql.remoto.aster_origen, lo usa.
+    2. Si no existe, usa el comportamiento original basado en .env.
+    """
+    try:
+        from app.services.orion_aster_config_service import get_config
+
+        config = get_config()
+        mysql_cfg = (
+            config.get("mysql", {})
+            .get("remoto", {})
+            .get("aster_origen", {})
+        )
+
+        if isinstance(mysql_cfg, dict) and mysql_cfg.get("host") and mysql_cfg.get("user"):
+            cfg = dict(mysql_cfg)
+
+            if database:
+                cfg["database"] = database
+            elif not cfg.get("database"):
+                cfg["database"] = "gestioncomercial"
+
+            cfg["port"] = int(cfg.get("port") or 3306)
+
+            return cfg
+
+    except Exception:
+        pass
+
+    if _aster_original_obtener_config_mysql_remoto_aster is not None:
+        return _aster_original_obtener_config_mysql_remoto_aster(database)
+
+    raise RuntimeError("No existe configuración remota ASTER MySQL.")
+
+
+def conectar_mysql_remoto_aster(database: str | None = None):
+    """
+    Mantiene la conexión MySQL remota original, pero permitiendo config central.
+    """
+    if _aster_original_conectar_mysql_remoto_aster is not None:
+        return _aster_original_conectar_mysql_remoto_aster(database)
+
+    raise RuntimeError("No existe función original conectar_mysql_remoto_aster.")
+
+
+def probar_origen_aster(
+    conexion: str,
+    db_usuarios: str = "usuarios",
+    db_gestion: str = "gestioncomercial",
+) -> dict[str, Any]:
+    """
+    Prueba origen ASTER usando configuración central para LOCAL.
+    REMOTO conserva la lógica existente para no romper producción.
+    """
+    modo = normalizar_conexion_aster_origen(conexion)
+
+    if modo == "local":
+        try:
+            conn = conectar_sqlserver_origen_aster()
+
+            try:
+                cursor = conn.cursor()
+
+                db_name = _aster_origen_local_cfg().get("database", "gestioncomercial_dev")
+                server = _aster_origen_local_cfg().get("server", r"localhost\SQL2025DEV")
+
+                cursor.execute("SELECT DB_NAME()")
+                actual_db = cursor.fetchone()[0]
+
+                return {
+                    "ok": True,
+                    "success": True,
+                    "conexion": "local",
+                    "engine": "sqlserver",
+                    "servidor": server,
+                    "database": actual_db or db_name,
+                    "origen_config": "central",
+                }
+
+            finally:
+                conn.close()
+
+        except Exception as exc:
+            return {
+                "ok": False,
+                "success": False,
+                "conexion": "local",
+                "engine": "sqlserver",
+                "error": str(exc),
+                "origen_config": "central",
+            }
+
+    if _aster_original_probar_origen_aster is not None:
+        resultado = _aster_original_probar_origen_aster(
+            conexion,
+            db_usuarios=db_usuarios,
+            db_gestion=db_gestion,
+        )
+
+        if isinstance(resultado, dict):
+            resultado.setdefault("origen_config", "env_original")
+
+        return resultado
+
+    return {
+        "ok": False,
+        "success": False,
+        "conexion": modo,
+        "error": "No existe función original para probar origen remoto ASTER.",
+    }
+
+
+# === ASTER_CONFIG_CENTRAL_FASE2A_END ===

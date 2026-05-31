@@ -21,6 +21,7 @@ from flask import Blueprint, request, session
 from werkzeug.utils import secure_filename
 
 from app.config import DATA_DIR, TESSERACT_PATH
+from app.services.orion_aster_config_service import get_data_root, get_sql_config_legacy
 from app.controllers.helpers import obtener_log_service
 from app.services.ocr_processor import OCRProcessor
 from app.services.aster_file_service import (
@@ -233,9 +234,43 @@ RUTAS_ASTER_DEFAULT = [
 
 ASTER_TABLA_INSERCION = "aster_dia_nc"
 ASTER_SCHEMA_INSERCION = "dbo"
+
+
+# === ASTER_CONFIG_CENTRAL_FASE2A_HELPERS_BEGIN ===
+
+def _aster_data_dir_config() -> str:
+    """
+    DATA raíz central para Gestión Diaria ASTER.
+    """
+    return get_data_root()
+
+
+def _aster_sql_destino_local_config() -> dict:
+    """
+    SQL destino local para ASTER: Aster_Api.
+    """
+    return get_sql_config_legacy("local", "aster_api")
+
+
+def _aster_sql_destino_remoto_config() -> dict:
+    """
+    SQL destino remoto para ASTER: Aster_Api.
+    """
+    return get_sql_config_legacy("remoto", "aster_api")
+
+
+def _aster_sql_origen_local_config() -> dict:
+    """
+    SQL origen local para ASTER: gestioncomercial_dev.
+    Usado por aster_source_service para leer usuarios/comentarios.
+    """
+    return get_sql_config_legacy("local", "gestioncomercial")
+
+# === ASTER_CONFIG_CENTRAL_FASE2A_HELPERS_END ===
+
 ASTER_BASE_INSERCION = "Aster_Api"
 
-ASTER_HISTORIAL_DB = os.path.join(DATA_DIR, "aster_load_history.db")
+ASTER_HISTORIAL_DB = os.path.join(_aster_data_dir_config(), "aster_load_history.db")
 
 ASTER_FASE_I_BASE = "Aster_Api"
 ASTER_FASE_I_SCHEMA = "dbo"
@@ -304,8 +339,8 @@ def _obtener_columnas_sqlserver_aster(conexion: str) -> list[dict[str, Any]]:
     """
     return obtener_columnas_sqlserver_tabla(
         conexion=conexion,
-        sql_local=SQL_LOCAL,
-        sql_remoto=SQL_REMOTO,
+        sql_local=_aster_sql_destino_local_config(),
+        sql_remoto=_aster_sql_destino_remoto_config(),
         base=ASTER_BASE_INSERCION,
         schema=ASTER_SCHEMA_INSERCION,
         tabla=ASTER_TABLA_INSERCION,
@@ -319,8 +354,8 @@ def _obtener_cadena_sqlserver_aster(conexion: str) -> str:
     """
     return obtener_cadena_sqlserver_aster_service(
         conexion=conexion,
-        sql_local=SQL_LOCAL,
-        sql_remoto=SQL_REMOTO,
+        sql_local=_aster_sql_destino_local_config(),
+        sql_remoto=_aster_sql_destino_remoto_config(),
         database_default=ASTER_BASE_INSERCION,
     )
     
@@ -413,7 +448,7 @@ def _generar_excel_entidades_aster(
     entidades = _obtener_entidades_filtradas_finales_aster()
 
     resultado = generar_excel_entidades_aster_service(
-        data_dir=DATA_DIR,
+        data_dir=_aster_data_dir_config(),
         fecha_yyyymmdd=fecha_yyyymmdd,
         entidades=entidades,
     )
@@ -668,7 +703,7 @@ def accion_aster_buscar_archivo():
             return "<div class='log-line error'>❌ Debe ingresar la fecha del proceso ASTER.</div>"
 
         resultado = copiar_archivo_aster(
-            data_dir=DATA_DIR,
+            data_dir=_aster_data_dir_config(),
             fecha_raw=fecha_raw,
             ruta_base_usuario=ruta_base_usuario,
             rutas_default=RUTAS_ASTER_DEFAULT,
@@ -732,7 +767,7 @@ def accion_aster_normalizar_encabezados():
         fecha_yyyymmdd = str(session.get("aster_fecha_proceso") or "").strip()
 
         resultado = normalizar_archivo_aster(
-            data_dir=DATA_DIR,
+            data_dir=_aster_data_dir_config(),
             ruta_archivo=ruta_archivo,
             fecha_yyyymmdd=fecha_yyyymmdd,
         )
@@ -1003,8 +1038,8 @@ def accion_aster_probar_conexion_insercion():
 
         resultado = probar_conexion_tabla_sqlserver_aster(
             conexion=conexion,
-            sql_local=SQL_LOCAL,
-            sql_remoto=SQL_REMOTO,
+            sql_local=_aster_sql_destino_local_config(),
+            sql_remoto=_aster_sql_destino_remoto_config(),
             base=ASTER_BASE_INSERCION,
             schema=ASTER_SCHEMA_INSERCION,
             tabla=ASTER_TABLA_INSERCION,
@@ -1358,8 +1393,8 @@ def accion_aster_fase_i_probar_conexiones():
 
         resultado = probar_conexiones_fase_i_aster(
             conexion=conexion,
-            sql_local=SQL_LOCAL,
-            sql_remoto=SQL_REMOTO,
+            sql_local=_aster_sql_destino_local_config(),
+            sql_remoto=_aster_sql_destino_remoto_config(),
             base=ASTER_FASE_I_BASE,
             schema=ASTER_FASE_I_SCHEMA,
             tabla_usuarios=ASTER_FASE_I_TABLA_USUARIOS,
@@ -1456,12 +1491,12 @@ def accion_aster_fase_i_preparar():
             )
 
         resultado = preparar_fase_i_aster(
-            data_dir=DATA_DIR,
+            data_dir=_aster_data_dir_config(),
             fecha_raw=fecha_raw,
             fecha_default=_obtener_fecha_proceso_aster(),
             conexion=conexion,
-            sql_local=SQL_LOCAL,
-            sql_remoto=SQL_REMOTO,
+            sql_local=_aster_sql_destino_local_config(),
+            sql_remoto=_aster_sql_destino_remoto_config(),
             base=ASTER_FASE_I_BASE,
             schema=ASTER_FASE_I_SCHEMA,
             tabla_usuarios=ASTER_FASE_I_TABLA_USUARIOS,
@@ -1527,12 +1562,12 @@ def accion_aster_fase_i_ejecutar():
             """
 
         resultado = ejecutar_fase_i_aster(
-            data_dir=DATA_DIR,
+            data_dir=_aster_data_dir_config(),
             fecha_raw=fecha_raw,
             fecha_default=_obtener_fecha_proceso_aster(),
             conexion=conexion,
-            sql_local=SQL_LOCAL,
-            sql_remoto=SQL_REMOTO,
+            sql_local=_aster_sql_destino_local_config(),
+            sql_remoto=_aster_sql_destino_remoto_config(),
             base=ASTER_FASE_I_BASE,
             schema=ASTER_FASE_I_SCHEMA,
             tabla_usuarios=ASTER_FASE_I_TABLA_USUARIOS,
@@ -1697,11 +1732,11 @@ def accion_aster_fase_i_generar_gestion():
             conexion = "local"
 
         resultado = generar_gestion_aster_fase_i(
-            data_dir=DATA_DIR,
+            data_dir=_aster_data_dir_config(),
             fecha_yyyymmdd=fecha_yyyymmdd,
             conexion=conexion,
-            sql_local=SQL_LOCAL,
-            sql_remoto=SQL_REMOTO,
+            sql_local=_aster_sql_destino_local_config(),
+            sql_remoto=_aster_sql_destino_remoto_config(),
             base=ASTER_FASE_I_BASE,
         )
 
