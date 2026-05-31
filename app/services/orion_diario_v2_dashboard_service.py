@@ -710,3 +710,97 @@ def copiar_distribucion_orion_v2(
     }
 
 # === ORION_DIARIO_V2_DISTRIBUCION_MVC_END ===
+
+# === ORION_DIARIO_V2_COMPARAR_LOTES_BEGIN ===
+
+def _odv2_accion_item(item):
+    if not isinstance(item, dict):
+        return ""
+
+    return (
+        item.get("accion")
+        or item.get("action")
+        or item.get("id")
+        or item.get("codigo_accion")
+        or ""
+    )
+
+
+def _odv2_crear_comparar_lotes_item():
+    return {
+        "codigo": "F4",
+        "letra": "F4",
+        "fase": "F",
+        "titulo": "Comparar Lotes",
+        "nombre": "Comparar Lotes",
+        "descripcion": "Compara lotes procesados contra Discador para validar consistencia.",
+        "detalle": "Validación cruzada Lotes vs Discador.",
+        "accion": "comparar.lotes",
+        "action": "comparar.lotes",
+        "icono": "⚖️",
+        "orden": 8.5,
+    }
+
+
+def _odv2_insertar_comparar_lotes_en_lista(lista):
+    if not isinstance(lista, list):
+        return False
+
+    if any(_odv2_accion_item(item) == "comparar.lotes" for item in lista):
+        return False
+
+    idx_lotes = -1
+
+    for idx, item in enumerate(lista):
+        if _odv2_accion_item(item) == "procesar.lotes":
+            idx_lotes = idx
+            break
+
+    if idx_lotes < 0:
+        return False
+
+    lista.insert(idx_lotes + 1, _odv2_crear_comparar_lotes_item())
+    return True
+
+
+def _odv2_asegurar_comparar_lotes(contexto):
+    visitados = set()
+
+    def walk(obj):
+        oid = id(obj)
+
+        if oid in visitados:
+            return
+
+        visitados.add(oid)
+
+        if isinstance(obj, list):
+            _odv2_insertar_comparar_lotes_en_lista(obj)
+
+            for item in obj:
+                walk(item)
+
+            return
+
+        if isinstance(obj, dict):
+            for value in obj.values():
+                if isinstance(value, (dict, list)):
+                    walk(value)
+
+    if isinstance(contexto, dict):
+        walk(contexto)
+
+    return contexto
+
+
+try:
+    _odv2_construir_contexto_original = construir_contexto_orion_v2
+
+    def construir_contexto_orion_v2(*args, **kwargs):
+        contexto = _odv2_construir_contexto_original(*args, **kwargs)
+        return _odv2_asegurar_comparar_lotes(contexto)
+
+except NameError:
+    pass
+
+# === ORION_DIARIO_V2_COMPARAR_LOTES_END ===

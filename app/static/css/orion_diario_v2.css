@@ -2696,3 +2696,331 @@ body {
 }
 
 /* === ORION_DIARIO_V2_DISTRIBUCION_LAYOUT_UNA_FILA_END === */
+
+/* === ORION_DIARIO_V2_PROCESAMIENTO_MVC_BEGIN === */
+
+.odv2-proc-box {
+    border: 1px solid #263752;
+    border-radius: 16px;
+    background: #07111f;
+    padding: 14px;
+}
+
+.odv2-proc-box.success {
+    border-color: rgba(34, 197, 94, .35);
+}
+
+.odv2-proc-box.error {
+    border-color: rgba(248, 113, 113, .45);
+}
+
+.odv2-proc-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.odv2-proc-head h4 {
+    margin: 0;
+    color: var(--cyan);
+    font-size: 16px;
+}
+
+.odv2-proc-head p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.odv2-proc-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.odv2-proc-chip.success {
+    background: #052e16;
+    border: 1px solid #22c55e;
+    color: #86efac;
+}
+
+.odv2-proc-chip.error {
+    background: #3f1212;
+    border: 1px solid #f87171;
+    color: #fecaca;
+}
+
+.odv2-proc-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.odv2-proc-kpi {
+    border: 1px solid #263752;
+    border-radius: 13px;
+    background: #0b1222;
+    padding: 10px;
+}
+
+.odv2-proc-kpi span {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.odv2-proc-kpi strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--cyan);
+    font-size: 20px;
+    line-height: 1;
+}
+
+.odv2-proc-kpi em {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-style: normal;
+}
+
+.odv2-proc-layout {
+    display: grid;
+    grid-template-columns: minmax(420px, 1.1fr) minmax(240px, .9fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.odv2-proc-table-side,
+.odv2-proc-visual-side {
+    border: 1px solid #263752;
+    border-radius: 15px;
+    background: #07111f;
+    padding: 12px;
+}
+
+.odv2-proc-section-title {
+    color: var(--cyan);
+    font-size: 13px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.odv2-proc-table {
+    font-size: 12px;
+}
+
+.odv2-proc-table th,
+.odv2-proc-table td {
+    padding: 7px 8px;
+}
+
+.odv2-proc-pie-card {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+}
+
+.odv2-proc-pie-card > strong {
+    color: var(--text);
+    font-size: 13px;
+}
+
+.odv2-proc-pie-stage {
+    position: relative;
+    width: 230px;
+    height: 160px;
+    display: grid;
+    place-items: center;
+}
+
+.odv2-proc-pie {
+    width: 105px;
+    height: 105px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid #263752;
+}
+
+.odv2-proc-pie-center {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #0b1222;
+    border: 1px solid #263752;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 5px;
+}
+
+.odv2-proc-pie-center b {
+    display: block;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1;
+}
+
+.odv2-proc-pie-center span {
+    display: block;
+    color: var(--muted);
+    font-size: 8.5px;
+    font-weight: 900;
+}
+
+.odv2-proc-pie-value {
+    position: absolute;
+    display: grid;
+    grid-template-columns: 8px auto auto;
+    gap: 5px;
+    align-items: center;
+    background: #0b1222;
+    border: 1px solid #263752;
+    border-radius: 999px;
+    padding: 4px 7px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.odv2-proc-pie-value i {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+}
+
+.odv2-proc-pie-value span {
+    color: var(--muted);
+    font-weight: 800;
+}
+
+.odv2-proc-pie-value b {
+    color: var(--cyan);
+    font-weight: 900;
+}
+
+.odv2-proc-pie-value-0 {
+    top: 4px;
+    right: 8px;
+}
+
+.odv2-proc-pie-value-1 {
+    bottom: 4px;
+    left: 12px;
+}
+
+.odv2-proc-pie-value-2 {
+    top: 70px;
+    right: 0;
+}
+
+.odv2-proc-pie-empty {
+    width: 105px;
+    height: 105px;
+    border-radius: 50%;
+    border: 1px dashed #334155;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.odv2-proc-details {
+    margin-top: 14px;
+    border: 1px solid #263752;
+    border-radius: 14px;
+    background: #0b1222;
+    padding: 10px 12px;
+}
+
+.odv2-proc-details summary {
+    cursor: pointer;
+    color: var(--cyan);
+    font-weight: 900;
+    font-size: 12px;
+}
+
+.odv2-proc-original {
+    margin-top: 10px;
+    overflow-x: auto;
+}
+
+.odv2-proc-original table,
+.odv2-proc-original .dataframe {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.odv2-proc-original th,
+.odv2-proc-original td {
+    border: 1px solid #263752;
+    padding: 6px 7px;
+}
+
+@media (max-width: 1200px) {
+    .odv2-proc-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .odv2-proc-kpis {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .odv2-proc-kpis {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === ORION_DIARIO_V2_PROCESAMIENTO_MVC_END === */
+
+/* === ORION_DIARIO_V2_COMPARAR_LOTES_BEGIN === */
+
+[data-action="comparar.lotes"] {
+    border-color: rgba(245, 158, 11, .35);
+}
+
+[data-action="comparar.lotes"] .odv2-phase-title,
+[data-action="comparar.lotes"] h4 {
+    color: #fbbf24;
+}
+
+/* === ORION_DIARIO_V2_COMPARAR_LOTES_END === */
+
+/* === ORION_DIARIO_V2_COMPARAR_LOTES_SIMPLE_BEGIN === */
+
+.odv2-comparar-lotes-simple .odv2-proc-head {
+    margin-bottom: 10px;
+}
+
+.odv2-comparar-lotes-simple .odv2-proc-head h4 {
+    color: #fbbf24;
+}
+
+.odv2-comparar-lotes-details {
+    margin-top: 8px !important;
+}
+
+.odv2-comparar-lotes-details[open] summary {
+    margin-bottom: 10px;
+}
+
+.odv2-comparar-lotes-simple .odv2-proc-original {
+    max-height: none;
+}
+
+.odv2-comparar-lotes-simple .odv2-proc-original table {
+    font-size: 12px;
+}
+
+/* === ORION_DIARIO_V2_COMPARAR_LOTES_SIMPLE_END === */

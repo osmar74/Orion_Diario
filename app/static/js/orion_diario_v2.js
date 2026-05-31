@@ -32,6 +32,7 @@
         "procesar.discador": { method: "GET", endpoint: "/accion/procesar-discador" },
         "procesar.causales": { method: "GET", endpoint: "/accion/procesar-causales" },
         "procesar.lotes": { method: "GET", endpoint: "/accion/procesar-lotes" },
+        "comparar.lotes": { method: "GET", endpoint: "/accion/comparar-lotes" },
 
         "ocr.procesar": {
             blocked: true,
@@ -776,7 +777,447 @@
 /* === ORION_DIARIO_V2_DISTRIBUCION_MVC_END === */
 
 
+
+/* === ORION_DIARIO_V2_PROCESAMIENTO_MVC_BEGIN === */
+
+    const ORION_PROC_ACTIONS = new Set([
+        "procesar.discador",
+        "procesar.causales",
+        "procesar.lotes",
+        "comparar.lotes"
+    ]);
+
+    const ORION_PROC_META = {
+        "procesar.discador": {
+            tipo: "Discador",
+            icono: "📞",
+            esperado: "Consolidado Discador",
+            color: "cyan"
+        },
+        "procesar.causales": {
+            tipo: "Causales",
+            icono: "📋",
+            esperado: "Causales_Consolidado.xlsx",
+            color: "blue"
+        },
+        "procesar.lotes": {
+            tipo: "Lotes",
+            icono: "🧩",
+            esperado: "Lotes consolidados",
+            color: "green"
+        }
+    };
+
+    function odv2ProcStripHtml(html) {
+        const div = document.createElement("div");
+        div.innerHTML = html || "";
+        return div.textContent || div.innerText || "";
+    }
+
+    function odv2ProcNum(value) {
+        const clean = String(value ?? "")
+            .replace(/\./g, "")
+            .replace(/,/g, "")
+            .replace(/[^\d-]/g, "");
+
+        if (!clean) return null;
+
+        const n = Number(clean);
+        return Number.isFinite(n) ? n : null;
+    }
+
+    function odv2ProcTableRows(html) {
+        const doc = new DOMParser().parseFromString(html || "", "text/html");
+        const tables = Array.from(doc.querySelectorAll("table"));
+        const parsed = [];
+
+        tables.forEach(table => {
+            const headers = Array.from(table.querySelectorAll("tr:first-child th"))
+                .map(th => th.textContent.trim());
+
+            const rows = Array.from(table.querySelectorAll("tr"))
+                .slice(1)
+                .map(tr => Array.from(tr.querySelectorAll("td")).map(td => td.textContent.trim()))
+                .filter(row => row.length);
+
+            parsed.push({ headers, rows });
+        });
+
+        return parsed;
+    }
+
+    function odv2ProcFindMetricFromPasoTable(tables, labelIncludes) {
+        const label = String(labelIncludes || "").toLowerCase();
+
+        for (const table of tables) {
+            const h = table.headers.map(x => x.toLowerCase());
+
+            if (!(h.includes("paso") && h.includes("cantidad"))) continue;
+
+            for (const row of table.rows) {
+                const first = String(row[0] || "").toLowerCase();
+
+                if (first.includes(label)) {
+                    return odv2ProcNum(row[1]);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function odv2ProcFindIndicator(tables, labelIncludes) {
+        const label = String(labelIncludes || "").toLowerCase();
+
+        for (const table of tables) {
+            const h = table.headers.map(x => x.toLowerCase());
+
+            if (!(h.includes("indicador") && h.includes("valor"))) continue;
+
+            for (const row of table.rows) {
+                const first = String(row[0] || "").toLowerCase();
+
+                if (first.includes(label)) {
+                    return odv2ProcNum(row[1]);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function odv2ProcSumColumn(tables, headerIncludes) {
+        const target = String(headerIncludes || "").toLowerCase();
+
+        for (const table of tables) {
+            const idx = table.headers.findIndex(h => String(h || "").toLowerCase().includes(target));
+
+            if (idx < 0) continue;
+
+            let total = 0;
+            let found = false;
+
+            for (const row of table.rows) {
+                const first = String(row[0] || "").trim().toLowerCase();
+
+                if (first === "total") {
+                    const nTotal = odv2ProcNum(row[idx]);
+                    if (nTotal !== null) return nTotal;
+                }
+
+                const n = odv2ProcNum(row[idx]);
+
+                if (n !== null) {
+                    total += n;
+                    found = true;
+                }
+            }
+
+            if (found) return total;
+        }
+
+        return null;
+    }
+
+    function odv2ProcExtract(actionName, html, httpStatus) {
+        const meta = ORION_PROC_META[actionName] || {};
+        const text = odv2ProcStripHtml(html);
+        const textLower = text.toLowerCase();
+        const tables = odv2ProcTableRows(html);
+
+        const ok = textLower.includes("procesado correctamente") ||
+                   textLower.includes("procesados correctamente");
+
+        const parsed = {
+            actionName,
+            tipo: meta.tipo || actionName,
+            icono: meta.icono || "⚙️",
+            esperado: meta.esperado || "",
+            httpStatus,
+            ok,
+            mensaje: ok ? "Procesamiento completado correctamente." : "El procesamiento respondió con error o advertencia.",
+            original: null,
+            filtrado: null,
+            consolidado: null,
+            archivos: null,
+            extra: [],
+            rawHtml: html || ""
+        };
+
+        if (actionName === "procesar.discador") {
+            parsed.original = odv2ProcFindMetricFromPasoTable(tables, "registros originales");
+            parsed.filtrado = odv2ProcFindMetricFromPasoTable(tables, "tras filtro campaña");
+            parsed.consolidado = odv2ProcFindMetricFromPasoTable(tables, "tras filtro estado");
+            parsed.archivos = textLower.includes("discador usado") ? 1 : null;
+
+            parsed.extra.push(["Fuente", "Archivo Discador"]);
+            parsed.extra.push(["Salida esperada", "Reporte_Discador_*_Consolidado.xlsx"]);
+        }
+
+        if (actionName === "procesar.causales") {
+            parsed.original = odv2ProcSumColumn(tables, "original");
+            parsed.filtrado = odv2ProcSumColumn(tables, "tras evento");
+            parsed.consolidado = odv2ProcFindIndicator(tables, "total filas consolidadas") || odv2ProcSumColumn(tables, "normalizados");
+            parsed.archivos = odv2ProcFindIndicator(tables, "total archivos procesados");
+
+            parsed.extra.push(["Fuente", "Carpeta Causales"]);
+            parsed.extra.push(["Salida esperada", "Causales_Consolidado.xlsx"]);
+        }
+
+        if (actionName === "procesar.lotes") {
+            parsed.original = odv2ProcSumColumn(tables, "filas orig");
+            parsed.filtrado = odv2ProcSumColumn(tables, "filas tras piv");
+            parsed.consolidado = parsed.filtrado;
+            parsed.archivos = null;
+
+            const lotesEncontradosMatch = text.match(/Valores únicos encontrados.*?(\d+)/i);
+            if (lotesEncontradosMatch) {
+                parsed.extra.push(["Valores únicos en Discador[Lote]", lotesEncontradosMatch[1]]);
+            }
+
+            parsed.extra.push(["Fuente", "Carpeta Lotes"]);
+            parsed.extra.push(["Salida esperada", "Lotes consolidados"]);
+        }
+
+        return parsed;
+    }
+
+    function odv2ProcKpi(label, value, hint = "") {
+        const display = value === null || value === undefined ? "--" : fmt(value);
+
+        return `
+            <div class="odv2-proc-kpi">
+                <span>${escapeHtml(label)}</span>
+                <strong>${display}</strong>
+                ${hint ? `<em>${escapeHtml(hint)}</em>` : ""}
+            </div>
+        `;
+    }
+
+    function odv2ProcResumenTable(parsed) {
+        const rows = [
+            ["Tipo", parsed.tipo],
+            ["HTTP", parsed.httpStatus],
+            ["Estado", parsed.ok ? "Correcto" : "Revisar"],
+            ["Archivo/Salida", parsed.esperado || "--"],
+            ["Registros originales", parsed.original ?? "--"],
+            ["Registros filtrados/procesados", parsed.filtrado ?? "--"],
+            ["Registros consolidados", parsed.consolidado ?? "--"],
+            ["Archivos procesados", parsed.archivos ?? "--"],
+            ...parsed.extra
+        ];
+
+        return `
+            <table class="odv2-table odv2-proc-table">
+                <thead>
+                    <tr>
+                        <th>Indicador</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row[0])}</td>
+                            <td>${escapeHtml(row[1])}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function odv2ProcPie(parsed) {
+        const values = [
+            { label: "Original", short: "Ori", color: "#0ea5ff", value: Number(parsed.original || 0) },
+            { label: "Filtrado", short: "Fil", color: "#f59e0b", value: Number(parsed.filtrado || 0) },
+            { label: "Consolidado", short: "Con", color: "#22c55e", value: Number(parsed.consolidado || 0) },
+        ];
+
+        const total = values.reduce((acc, item) => acc + item.value, 0);
+
+        if (!total) {
+            return `
+                <div class="odv2-proc-pie-card">
+                    <strong>Resumen visual</strong>
+                    <div class="odv2-proc-pie-empty">--</div>
+                </div>
+            `;
+        }
+
+        let start = 0;
+
+        const segments = values.map(item => {
+            const pct = item.value / total * 100;
+            const end = start + pct;
+            const segment = `${item.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+            start = end;
+            return segment;
+        });
+
+        return `
+            <div class="odv2-proc-pie-card">
+                <strong>Resumen visual</strong>
+                <div class="odv2-proc-pie-stage">
+                    <div class="odv2-proc-pie" style="background: conic-gradient(${segments.join(", ")});">
+                        <div class="odv2-proc-pie-center">
+                            <b>${fmt(parsed.consolidado || parsed.filtrado || 0)}</b>
+                            <span>Final</span>
+                        </div>
+                    </div>
+
+                    ${values.map((item, idx) => `
+                        <div class="odv2-proc-pie-value odv2-proc-pie-value-${idx}">
+                            <i style="background:${item.color}"></i>
+                            <span>${escapeHtml(item.short)}</span>
+                            <b>${fmt(item.value)}</b>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+    }
+
+    function odv2ProcResultHtml(parsed) {
+        if (parsed.actionName === "comparar.lotes") {
+            return `
+                <div class="odv2-proc-box odv2-comparar-lotes-simple ${parsed.ok ? "success" : "error"}">
+                    <div class="odv2-proc-head">
+                        <div>
+                            <h4>${parsed.icono} ${escapeHtml(parsed.tipo)}</h4>
+                            <p>Resultado de validación cruzada de lotes contra Discador.</p>
+                        </div>
+                    </div>
+
+                    <details class="odv2-proc-details odv2-comparar-lotes-details" open>
+                        <summary>Ver detalle técnico original</summary>
+                        <div class="odv2-proc-original">${parsed.rawHtml}</div>
+                    </details>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="odv2-proc-box ${parsed.ok ? "success" : "error"}">
+                <div class="odv2-proc-head">
+                    <div>
+                        <h4>${parsed.icono} ${escapeHtml(parsed.tipo)}</h4>
+                        <p>${escapeHtml(parsed.mensaje)}</p>
+                    </div>
+                    <span class="odv2-proc-chip ${parsed.ok ? "success" : "error"}">
+                        ${parsed.ok ? "Correcto" : "Revisar"}
+                    </span>
+                </div>
+
+                <div class="odv2-proc-kpis">
+                    ${odv2ProcKpi("Original", parsed.original)}
+                    ${odv2ProcKpi("Filtrado", parsed.filtrado)}
+                    ${odv2ProcKpi("Consolidado", parsed.consolidado)}
+                    ${odv2ProcKpi("Archivos", parsed.archivos)}
+                </div>
+
+                <div class="odv2-proc-layout">
+                    <div class="odv2-proc-table-side">
+                        <div class="odv2-proc-section-title">Resumen de procesamiento</div>
+                        ${odv2ProcResumenTable(parsed)}
+                    </div>
+
+                    <div class="odv2-proc-visual-side">
+                        ${odv2ProcPie(parsed)}
+                    </div>
+                </div>
+
+                <details class="odv2-proc-details">
+                    <summary>Ver detalle técnico original</summary>
+                    <div class="odv2-proc-original">${parsed.rawHtml}</div>
+                </details>
+            </div>
+        `;
+    }
+
+    async function ejecutarProcesamientoMvc(actionName, button) {
+        const meta = ORION_V2_ACTION_MAP[actionName];
+
+        if (!meta) {
+            debug("Acción de procesamiento no encontrada: " + actionName, "error");
+            return;
+        }
+
+        try {
+            collectInputs();
+
+            if (button) {
+                button.disabled = true;
+                button.classList.add("loading");
+            }
+
+            setPhaseStatus(actionName, "running", "Procesando");
+            setPhaseResult(actionName, `<div class="odv2-result-loading">Procesando ${escapeHtml(ORION_PROC_META[actionName]?.tipo || actionName)}...</div>`);
+
+            const fechaProcesoActiva = (
+                document.getElementById("odv2-fecha-proceso")?.value ||
+                state.fechaProceso ||
+                "20260429"
+            ).trim();
+
+            // Los endpoints antiguos de procesamiento usan principalmente "fecha".
+            // También enviamos "fecha_proceso" para mantener compatibilidad con Orion v2.
+            const params = getParams(true);
+            params.set("fecha", fechaProcesoActiva);
+            params.set("fecha_proceso", fechaProcesoActiva);
+            params.set("mes_gestion", state.mesGestion || "");
+            params.set("conexion", state.conexion || "local");
+
+            state.fechaProceso = fechaProcesoActiva;
+            saveState();
+
+            const url = meta.endpoint + "?" + params.toString();
+
+            const response = await fetch(url + "&_=" + Date.now(), {
+                method: "GET",
+                credentials: "same-origin"
+            });
+
+            const html = await response.text();
+            const parsed = odv2ProcExtract(actionName, html, response.status);
+
+            setPhaseResult(actionName, odv2ProcResultHtml(parsed));
+            setPhaseStatus(actionName, parsed.ok ? "success" : "error", parsed.ok ? "Completado" : "Revisar");
+
+            debug(
+                parsed.ok
+                    ? `${parsed.tipo} procesado correctamente.`
+                    : `${parsed.tipo} respondió con observaciones.`,
+                parsed.ok ? "success" : "error"
+            );
+
+        } catch (error) {
+            setPhaseStatus(actionName, "error", "Error");
+            setPhaseResult(actionName, `<div class="odv2-result-error">Error procesando: ${escapeHtml(error.message || error)}</div>`);
+            debug("Error en procesamiento MVC: " + (error.message || error), "error");
+
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.classList.remove("loading");
+            }
+        }
+    }
+
+    window.OrionProcesamientoMVC = {
+        ejecutar: ejecutarProcesamientoMvc,
+        extract: odv2ProcExtract
+    };
+
+/* === ORION_DIARIO_V2_PROCESAMIENTO_MVC_END === */
+
+
     async function executeWorkflowAction(actionName, button) {
+        if (ORION_PROC_ACTIONS.has(actionName)) {
+            await ejecutarProcesamientoMvc(actionName, button);
+            return;
+        }
+
         if (actionName === "distribuir.preparar") {
             await ejecutarDistribucionMvc(button);
             return;
