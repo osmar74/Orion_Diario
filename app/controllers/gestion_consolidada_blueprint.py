@@ -43,6 +43,7 @@ def _data_dir() -> Path:
 
 
 @gestion_consolidada_bp.route("/gestion-consolidada", methods=["GET"])
+@gestion_consolidada_bp.route("/consolidar-gestion-v2", methods=["GET"])
 def vista_gestion_consolidada():
     embedded = request.args.get("embedded", "0") == "1"
     return render_template("gestion_consolidada.html", embedded=embedded)

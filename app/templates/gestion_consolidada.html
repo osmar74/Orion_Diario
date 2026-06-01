@@ -15,7 +15,13 @@
                 </p>
             </div>
 
-            <a class="gc-back-link" href="{{ url_for('main.index') }}">← Volver a Gestión Diaria</a>
+            <nav class="gc-module-nav">
+                <a class="gc-module-tab" href="/orion-diario-v2">Gestión Diaria Orion</a>
+                <a class="gc-module-tab" href="/aster-diario-v2">Gestión Diaria ASTER</a>
+                <a class="gc-module-tab active" href="/consolidar-gestion-v2">Consolidar Gestión</a>
+            </nav>
+
+            <a class="gc-back-link gc-legacy-link" href="/">Inicio clásico</a>
         </section>
 
         <section class="gc-control-panel">

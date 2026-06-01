@@ -4225,3 +4225,58 @@ body.gc-body.gc-embedded .gc-process-panels {
         min-height: 780px !important;
     }
 }
+
+/* === INTEGRACION_MODULOS_V2_NAV_BEGIN === */
+
+.gc-module-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.gc-module-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, .30);
+    background: rgba(15, 23, 42, .72);
+    color: #dbeafe;
+    text-decoration: none;
+    font-weight: 900;
+    transition: .18s ease;
+}
+
+.gc-module-tab:hover {
+    border-color: rgba(34, 211, 238, .55);
+    color: #67e8f9;
+    transform: translateY(-1px);
+}
+
+.gc-module-tab.active {
+    background: rgba(34, 211, 238, .16);
+    color: #67e8f9;
+    border-color: rgba(34, 211, 238, .65);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, .12) inset;
+}
+
+.gc-legacy-link {
+    opacity: .75;
+    font-size: .88rem;
+}
+
+@media (max-width: 900px) {
+    .gc-module-nav {
+        justify-content: flex-start;
+    }
+
+    .gc-module-tab {
+        width: 100%;
+    }
+}
+
+/* === INTEGRACION_MODULOS_V2_NAV_END === */
