@@ -55,6 +55,7 @@ def api_aster_diario_v2_accion():
         accion=accion,
         fecha_proceso=fecha,
         conexion=conexion,
+            payload=payload,
     )
 
     status = 200 if data.get("ok") or data.get("estado") in {"revisar", "pendiente"} else 400
