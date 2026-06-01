@@ -2,6 +2,33 @@ import os
 
 from dotenv import load_dotenv
 
+# === DATA_DIR_ROOT_E_DATA_FIX_BEGIN ===
+
+def _resolver_data_dir_central():
+    """
+    Raíz única para Orion / ASTER / Consolidar.
+    Prioridad:
+    1. DATA_ROOT
+    2. ORION_DATA_DIR
+    3. ASTER_DATA_DIR
+    4. DATA_DIR
+    5. E:\data
+    """
+    import os
+    from pathlib import Path
+
+    for key in ("DATA_ROOT", "ORION_DATA_DIR", "ASTER_DATA_DIR", "DATA_DIR"):
+        value = os.getenv(key)
+        if value:
+            return str(Path(value).expanduser())
+
+    return r"E:\data"
+
+
+DATA_DIR = _resolver_data_dir_central()
+
+# === DATA_DIR_ROOT_E_DATA_FIX_END ===
+
 
 # ============================================================
 # Variables de entorno
@@ -16,7 +43,6 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
