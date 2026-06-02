@@ -4,9 +4,10 @@
     </div>
 
     <div class="card-body">
-
         <p>
             <strong>Conexión:</strong> {{ resultado.conexion }}<br>
+            <strong>Origen:</strong> {{ resultado.contexto.origen_engine }}<br>
+            <strong>Destino:</strong> {{ resultado.contexto.destino_servidor }} / {{ resultado.contexto.destino_database }}<br>
             <strong>Fecha:</strong> {{ resultado.fecha }}<br>
             <strong>Entidad:</strong> {{ resultado.entidad }}
         </p>
@@ -22,7 +23,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>Usuarios CRM</td>
+                    <td>Usuarios</td>
                     <td>{{ resultado.usuarios.origen }}</td>
                     <td>{{ resultado.usuarios.destino }}</td>
                     <td>
@@ -33,7 +34,6 @@
                         {% endif %}
                     </td>
                 </tr>
-
                 <tr>
                     <td>Comentarios</td>
                     <td>{{ resultado.comentarios.origen }}</td>
@@ -48,6 +48,5 @@
                 </tr>
             </tbody>
         </table>
-
     </div>
 </div>

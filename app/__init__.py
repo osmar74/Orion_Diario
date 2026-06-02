@@ -14,6 +14,7 @@ def create_app():
     from app.controllers.procesamiento_blueprint import proc_bp
     from app.controllers.carga_blueprint import carga_bp
     from app.controllers.aster_blueprint import aster_bp
+    from app.routes.integral_routes import integral_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(fases_ab_bp)
@@ -21,6 +22,7 @@ def create_app():
     app.register_blueprint(proc_bp)
     app.register_blueprint(carga_bp)
     app.register_blueprint(aster_bp)
+    app.register_blueprint(integral_bp)
 
     app.register_blueprint(gestion_consolidada_bp)
 
@@ -32,5 +34,8 @@ def create_app():
 
     from app.controllers.aster_diario_v2_blueprint import aster_diario_v2_bp
     app.register_blueprint(aster_diario_v2_bp)
+
+    from app.controllers.integral_diario_v2_blueprint import integral_diario_v2_bp
+    app.register_blueprint(integral_diario_v2_bp)
 
     return app

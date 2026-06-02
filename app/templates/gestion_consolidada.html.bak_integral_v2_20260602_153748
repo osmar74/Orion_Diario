@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Consolidar Gestión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/deepblack.css') }}">
+</head>
+<body class="deepblack-body gc-body{% if embedded %} gc-embedded{% endif %}">
+    <main class="gc-shell">
+        <section class="gc-hero">
+            <div>
+                <h1>📊 Consolidar Gestión</h1>
+                <p>
+                    Unión, validación, limpieza, generación de archivos y carga final de Gestión ORION + ASTER.
+                </p>
+            </div>
+
+            <nav class="gc-module-nav">
+                <a class="gc-module-tab" href="/orion-diario-v2">Gestión Diaria Orion</a>
+                <a class="gc-module-tab" href="/aster-diario-v2">Gestión Diaria ASTER</a>
+                <a class="gc-module-tab active" href="/consolidar-gestion-v2">Consolidar Gestión</a>
+            </nav>
+
+            <a class="gc-back-link gc-legacy-link" href="/">Inicio clásico</a>
+        </section>
+
+        <section class="gc-control-panel">
+            <div class="gc-field">
+                <label for="gcFechaProceso">Fecha proceso</label>
+                <input id="gcFechaProceso" type="text" placeholder="20260429 o 2026-04-29" value="20260429">
+            </div>
+
+            <div class="gc-field">
+                <label>Conexión global</label>
+                <div class="gc-connection-buttons">
+                    <button type="button" id="gcBtnLocal" class="gc-btn active" onclick="gcSeleccionarConexion('local')">
+                        LOCAL - Pruebas
+                    </button>
+                    <button type="button" id="gcBtnRemoto" class="gc-btn danger" onclick="gcSeleccionarConexion('remoto')">
+                        REMOTO - Producción
+                    </button>
+                </div>
+                <span id="gcConexionEstado" class="wf-status-chip done">✅ Local activo</span>
+            </div>
+
+            <div class="gc-field actions">
+                <label>Acciones</label>
+                <button type="button" class="gc-btn primary" onclick="gcCargarResumen()">
+                    Actualizar tabla resumen
+                </button>
+            </div>
+        </section>
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Tabla resumen inicial SQL</h2>
+                <p>Debe cargarse al ingresar y se recalcula con la conexión global seleccionada.</p>
+            </div>
+
+            <div id="gcResumenSql" class="gc-result-block">
+                <div class="log-line warning">⚠️ Resumen SQL pendiente de carga.</div>
+            </div>
+        </section>
+
+        <div class="gc-work-layout">
+    <aside class="gc-phase-sidebar">
+<section class="gc-section gc-state-section">
+            <div class="gc-section-header">
+                <h2>Estado de fases</h2>
+                <p>Seguimiento paso a paso del proceso Consolidar Gestión.</p>
+            </div>
+
+            <div id="gcEstadoFases" class="gc-phase-grid">
+                <div class="gc-phase-card" data-gc-phase="A"><b>A</b><span>Preparar archivos</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="B"><b>B</b><span>Unir archivos</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="C"><b>C</b><span>Verificar calidad</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="D"><b>D</b><span>Ajuste No contestan</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="E"><b>E</b><span>Limpiar nota</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="F"><b>F</b><span>Compromiso</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="G"><b>G</b><span>Generar final</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="H"><b>H</b><span>Archivos generados</span><em>⚪ Pendiente</em></div>
+                <div class="gc-phase-card" data-gc-phase="I"><b>I</b><span>Cargar información</span><em>⚪ Pendiente</em></div>
+            </div>
+        </section>
+    </aside>
+    <div class="gc-process-panels">
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase A — Preparar proceso</h2>
+                <p>Crea estructura Consolidado/Gestion, localiza archivos ORION/ASTER y muestra rutas, nombres, fechas y totales.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseA()">
+                Ejecutar Fase A: Preparar proceso
+            </button>
+
+            <div id="gcResultadoFaseA" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase A pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase B — Unir archivos</h2>
+                <p>Une los Excel de ASTER y ORION, valida encabezados, normaliza Cliente Nro. y genera archivo de unión.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseB()">
+                Ejecutar Fase B: Unir ASTER + ORION
+            </button>
+
+            <div id="gcResultadoFaseB" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase B pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase C — Verificar calidad</h2>
+                <p>Revisa descripción de gestión, TEL con Asesor/Grabador y duplicidad TEL por Cliente Nro.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseC()">
+                Ejecutar Fase C: Verificar calidad
+            </button>
+
+            <div id="gcResultadoFaseC" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase C pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase D — Ajuste No contestan</h2>
+                <p>Reemplaza entre 10% y 15% de Buzon de voz, Teléfono fuera de servicio y Teléfono ocupado para Home/Mobile.</p>
+            </div>
+
+            <div class="gc-inline-controls">
+                <label for="gcPorcentajeNoContestan">Porcentaje reemplazo</label>
+                <input id="gcPorcentajeNoContestan" type="number" min="10" max="15" step="0.5" value="12">
+                <span class="gc-mini-note">Rango permitido: 10% a 15%.</span>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseD()">
+                Ejecutar Fase D: Ajuste No contestan
+            </button>
+
+            <div id="gcResultadoFaseD" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase D pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase E — Limpiar nota</h2>
+                <p>Reemplaza “Acepta táctico de reconexión.” por “Acepta táctico de reconexión” y reporta los cambios.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseE()">
+                Ejecutar Fase E: Limpiar Nota de la Gestión
+            </button>
+
+            <div id="gcResultadoFaseE" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase E pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase F — Compromiso</h2>
+                <p>Valida Acuerdo De Pago contra Fecha_Compromiso y genera Excel compromiso + CSV gestión.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseF()">
+                Ejecutar Fase F: Compromiso
+            </button>
+
+            <div id="gcResultadoFaseF" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase F pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase G — Generar final</h2>
+                <p>Limpia Cliente Nro., agrega Mes_Gestion, origen_datos, crm y exporta YYYYMMDD_Gestion_excel.xlsx.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseG()">
+                Ejecutar Fase G: Generar archivo final
+            </button>
+
+            <div id="gcResultadoFaseG" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase G pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase H — Archivos generados</h2>
+                <p>Muestra los CSV/XLSX creados con nombre, ruta, fecha de creación, modificación, tamaño y filas.</p>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseH()">
+                Ejecutar Fase H: Listar archivos generados
+            </button>
+
+            <div id="gcResultadoFaseH" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase H pendiente.</div>
+            </div>
+        </section>
+
+
+        <section class="gc-section">
+            <div class="gc-section-header">
+                <h2>Fase I — Cargar información</h2>
+                <p>Carga YYYYMMDD_Gestion_excel.xlsx en Vencorp_V2.gestion.gestion_adminfo_onedrive usando la conexión global.</p>
+            </div>
+
+            <div class="gc-inline-controls">
+                <span class="gc-mini-note">
+                    La carga usa la conexión global seleccionada arriba. LOCAL es para pruebas; REMOTO es producción.
+                </span>
+            </div>
+
+            <button type="button" class="gc-btn success" onclick="gcEjecutarFaseI()">
+                Ejecutar Fase I: Cargar información SQL
+            </button>
+
+            <div id="gcResultadoFaseI" class="gc-result-block">
+                <div class="log-line warning">⚠️ Fase I pendiente.</div>
+            </div>
+        </section>
+
+        <section class="gc-section muted">
+            <div class="gc-section-header">
+                <h2>Fases siguientes</h2>
+                <p>Se implementarán incrementalmente después de validar v1A.</p>
+            </div>
+
+            <div class="gc-roadmap">
+            </div>
+        </section>
+    </div>
+</div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/gestion_consolidada.js') }}"></script>
+</body>
+</html>

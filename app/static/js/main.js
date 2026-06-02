@@ -423,6 +423,12 @@ const MODULOS_UI = {
             "5. Exportación de consolidado final",
         ],
     },
+
+    integral: {
+        botonId: "btnModuloIntegral",
+        tituloSidebar: "Fases y Pasos para Proceso Integral",
+        tituloMonitor: "Proceso Integral",
+    },
 };
 
 let sidebarOrionOriginal = null;
@@ -1046,6 +1052,51 @@ function restaurarModuloOrion() {
     }
 }
 
+
+function cargarModuloIntegral(config) {
+    const sidebar = obtenerSidebarPrincipal();
+    const monitor = obtenerMonitorCentral();
+    const titulo = obtenerTituloMonitor();
+
+    if (titulo) {
+        titulo.textContent = config.tituloMonitor || "Proceso Integral";
+    }
+
+    const opciones = {
+        cache: "no-store",
+        headers: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+    };
+
+    Promise.all([
+        fetchTexto("/integral/sidebar", opciones),
+        fetchTexto("/integral/modulo", opciones),
+    ])
+        .then(([sidebarHtml, monitorHtml]) => {
+            if (sidebar) {
+                sidebar.innerHTML = sidebarHtml;
+            }
+
+            if (monitor) {
+                monitor.innerHTML = monitorHtml;
+            }
+
+            if (typeof window.initIntegralModule === "function") {
+                window.initIntegralModule();
+            }
+        })
+        .catch(() => {
+            fetchTexto("/integral/error-comunicacion", opciones)
+                .then((html) => {
+                    if (monitor) {
+                        monitor.innerHTML = html;
+                    }
+                });
+        });
+}
+
 function mostrarModuloTemporal(modulo) {
     const config = MODULOS_UI[modulo];
     const sidebar = obtenerSidebarPrincipal();
@@ -1054,6 +1105,12 @@ function mostrarModuloTemporal(modulo) {
 
     if (!config || modulo === "orion") {
         restaurarModuloOrion();
+        return;
+    }
+
+
+    if (modulo === "integral") {
+        cargarModuloIntegral(config);
         return;
     }
 
@@ -1169,6 +1226,7 @@ window.fetchTexto = fetchTexto;
 window.postFormTexto = postFormTexto;
 window.normalizarFechaOrion = normalizarFechaOrion;
 window.seleccionarModulo = seleccionarModulo;
+window.cargarModuloIntegral = cargarModuloIntegral;
 window.normalizar = normalizar;
 window.insertarEnPanel = insertarEnPanel;
 window.actualizarTotalesHeader = actualizarTotalesHeader;

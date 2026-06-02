@@ -70,6 +70,14 @@ def _default_config() -> dict[str, Any]:
                     "username": "Admin1",
                     "password": "1234",
                 },
+                "integral_api": {
+                    "server": r"localhost\SQL2025DEV",
+                    "port": "",
+                    "database": "Aster_Integral_Api",
+                    "auth": "sql",
+                    "username": "Admin1",
+                    "password": "1234",
+                },
             },
             "remoto": {
                 "orion": {
@@ -95,6 +103,15 @@ def _default_config() -> dict[str, Any]:
                     "alt_server": "172.24.80.32",
                     "port": "",
                     "database": "Vencorp_V2",
+                    "auth": "sql",
+                    "username": "Admin1",
+                    "password": "",
+                },
+                "integral_api": {
+                    "server": "VC-EIDER",
+                    "alt_server": "172.24.80.32",
+                    "port": "",
+                    "database": "Aster_Integral_Api",
                     "auth": "sql",
                     "username": "Admin1",
                     "password": "",

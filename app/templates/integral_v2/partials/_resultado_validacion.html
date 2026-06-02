@@ -1,0 +1,55 @@
+<div class="integral-v2-result-card">
+    <div class="integral-v2-result-header">
+        <div>
+            <h4>Resultado de validación Integral</h4>
+            <p>
+                Conexión: <strong>{{ resultado.conexion|upper }}</strong> ·
+                Origen: <strong>{{ resultado.modo_origen }}</strong> ·
+                Fecha SQL: <strong>{{ resultado.fecha_sql }}</strong> ·
+                Entidad: <strong>{{ resultado.entidad }}</strong>
+            </p>
+        </div>
+        <span class="integral-v2-badge">{{ resultado.destino_database }}</span>
+    </div>
+
+    <table class="integral-v2-table">
+        <thead>
+            <tr>
+                <th>Proceso</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Usuarios CRM</td>
+                <td>{{ resultado.usuarios.origen }}</td>
+                <td>{{ resultado.usuarios.destino }}</td>
+                <td>
+                    {% if resultado.usuarios.coincide %}
+                        <span class="integral-v2-chip ok">Coincide</span>
+                    {% else %}
+                        <span class="integral-v2-chip warn">No coincide</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Comentarios</td>
+                <td>{{ resultado.comentarios.origen }}</td>
+                <td>{{ resultado.comentarios.destino }}</td>
+                <td>
+                    {% if resultado.comentarios.coincide %}
+                        <span class="integral-v2-chip ok">Coincide</span>
+                    {% else %}
+                        <span class="integral-v2-chip warn">No coincide</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="integral-v2-note">
+        Esta fase solo valida conteos. La carga real se implementará después como pipeline por fases.
+    </div>
+</div>

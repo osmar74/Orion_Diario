@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Gestión Diaria ASTER v2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orion_diario_v2.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/aster_diario_v2.css') }}">
+</head>
+<body class="aster-v2-body">
+    <header class="aster-v2-topbar">
+        <div>
+            <h1>⚙ Orion Procesos</h1>
+            <p>Gestión Diaria ASTER v2 — migración visual progresiva</p>
+        </div>
+
+        <nav class="aster-v2-nav">
+            <a href="{{ url_for('orion_diario_v2.vista_orion_diario_v2') }}">Gestión Diaria Orion</a>
+            <a class="active" href="{{ url_for('aster_diario_v2.vista_aster_diario_v2') }}">Gestión Diaria ASTER</a>
+            <a href="/consolidar-gestion-v2">Consolidar Gestión</a>
+        </nav>
+    </header>
+
+    <section class="aster-v2-controls">
+        <label>
+            Fecha proceso
+            <input id="aster-v2-fecha" value="20260429">
+        </label>
+
+        <label>
+            Conexión global
+            <select id="aster-v2-conexion">
+                <option value="local" selected>LOCAL - Pruebas</option>
+                <option value="remoto">REMOTO - Producción</option>
+            </select>
+        </label>
+
+        <button id="aster-v2-cargar" type="button">Cargar contexto</button>
+        <button id="aster-v2-probar" type="button">Probar configuración</button>
+    </section>
+
+    <main class="aster-v2-layout">
+        <aside class="aster-v2-sidebar">
+            <section class="aster-v2-card">
+                <h3>🎯 Estado ASTER</h3>
+                <div id="aster-v2-estado">Cargue contexto para ver fases.</div>
+            </section>
+
+            <section class="aster-v2-card">
+                <h3>⚙ Configuración activa</h3>
+                <div id="aster-v2-config">Sin verificar.</div>
+            </section>
+        </aside>
+
+        <section class="aster-v2-main">
+            <section class="aster-v2-hero">
+                <div>
+                    <h2>Monitor de ejecución de Gestión Diaria ASTER</h2>
+                    <p>
+                        Nueva vista separada para migrar el flujo antiguo sin romper la pantalla actual.
+                    </p>
+                </div>
+
+                <span id="aster-v2-badge" class="aster-v2-badge">Sin verificar</span>
+            </section>
+
+            <details class="aster-v2-card aster-v2-collapsible" open>
+                <summary>
+                    <span>Información de origen / destino / DATA / SQL</span>
+                    <small>Click para ocultar o desplegar</small>
+                </summary>
+
+                <div id="aster-v2-info" class="aster-v2-collapsible-body">
+                    Ejecute Cargar contexto.
+                </div>
+            </details>
+
+            <section class="aster-v2-card">
+                <h3>Fases Gestión Diaria ASTER</h3>
+                <div id="aster-v2-fases">
+                    Cargue contexto para ver fases.
+                </div>
+            </section>
+
+            <section class="aster-v2-card">
+                <h3>Resultado / pruebas</h3>
+                <div id="aster-v2-resultado">
+                    Sin resultados.
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/aster_diario_v2.js') }}"></script>
+</body>
+</html>

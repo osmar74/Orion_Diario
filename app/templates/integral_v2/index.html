@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Integral v2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orion_diario_v2.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/integral_v2.css') }}">
+</head>
+<body class="integral-v2-body">
+    <header class="integral-v2-topbar">
+        <div>
+            <h1>⚙ Orion Procesos</h1>
+            <p>Integral v2 — pipeline MVC/OOP con SQL externo y HTML renderizado por Flask/Jinja</p>
+        </div>
+
+        <nav class="integral-v2-nav">
+            <a href="/orion-diario-v2">Gestión Diaria Orion</a>
+            <a href="/aster-diario-v2">Gestión Diaria ASTER</a>
+            <a href="/consolidar-gestion-v2">Consolidar Gestión</a>
+            <a class="active" href="/integral-v2">Integral</a>
+        </nav>
+    </header>
+
+    <main class="integral-v2-layout">
+        <aside class="integral-v2-sidebar">
+            {% include "integral_v2/partials/_estado.html" %}
+            {% include "integral_v2/partials/_reglas.html" %}
+        </aside>
+
+        <section class="integral-v2-main">
+            <section class="integral-v2-hero">
+                <div>
+                    <h2>Proceso Integral</h2>
+                    <p>
+                        Validación inicial de usuarios y comentarios para preparar la migración del proceso SSIS a pipeline Python.
+                    </p>
+                </div>
+                <span class="integral-v2-badge">V2 MVC/OOP</span>
+            </section>
+
+            {% include "integral_v2/partials/_panel_validacion.html" %}
+
+            <section class="integral-v2-card">
+                <h3>Resultado</h3>
+                <div id="integral-v2-resultado" class="integral-v2-result-block">
+                    {% include "integral_v2/partials/_sin_resultado.html" %}
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <template id="integral-v2-loading-template">
+        {% include "integral_v2/partials/_loading.html" %}
+    </template>
+
+    <template id="integral-v2-error-comunicacion-template">
+        {% include "integral_v2/partials/_error_comunicacion.html" %}
+    </template>
+
+    <script src="{{ url_for('static', filename='js/integral_diario_v2.js') }}"></script>
+</body>
+</html>

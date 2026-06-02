@@ -1,43 +1,51 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("integral-validar-form");
-    const resultadoContainer = document.getElementById("integral-resultado-container");
+(function () {
+    "use strict";
 
-    if (!form || !resultadoContainer) {
-        return;
+    function getTemplateHtml(templateId) {
+        const template = document.getElementById(templateId);
+        return template ? template.innerHTML : "";
     }
 
-    form.addEventListener("submit", async function (event) {
+    async function manejarSubmitIntegral(event) {
+        const form = event.target;
+
+        if (!form || form.id !== "integral-validar-form") {
+            return;
+        }
+
         event.preventDefault();
 
-        const formData = new FormData(form);
+        const resultadoContainer = document.getElementById("integral-resultado-container");
 
-        resultadoContainer.innerHTML = `
-            <div class="alert alert-info mt-3">
-                Procesando solicitud Integral...
-            </div>
-        `;
+        if (!resultadoContainer) {
+            return;
+        }
+
+        const formData = new FormData(form);
+        resultadoContainer.innerHTML = getTemplateHtml("integral-loading-template");
 
         try {
             const response = await fetch("/integral/validar", {
                 method: "POST",
-                body: formData
+                body: formData,
             });
 
             const html = await response.text();
-
-            if (!response.ok) {
-                resultadoContainer.innerHTML = html;
-                return;
-            }
-
             resultadoContainer.innerHTML = html;
-
         } catch (error) {
-            resultadoContainer.innerHTML = `
-                <div class="alert alert-danger mt-3">
-                    Error de comunicación con el servidor.
-                </div>
-            `;
+            resultadoContainer.innerHTML = getTemplateHtml("integral-error-comunicacion-template");
         }
-    });
-});
+    }
+
+    function initIntegralModule() {
+        // La inicialización queda disponible para cargas dinámicas del módulo.
+        // El submit se maneja por delegación global para no duplicar eventos.
+    }
+
+    if (!window.__integralSubmitDelegadoV1) {
+        document.addEventListener("submit", manejarSubmitIntegral);
+        window.__integralSubmitDelegadoV1 = true;
+    }
+
+    window.initIntegralModule = initIntegralModule;
+})();

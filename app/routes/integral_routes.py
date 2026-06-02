@@ -1,25 +1,21 @@
-from flask import Blueprint
+from __future__ import annotations
 
-from app.controllers.integral_controller import IntegralController
-
-
-integral_bp = Blueprint(
-    "integral",
-    __name__,
-    url_prefix="/integral"
-)
+from flask import Blueprint, redirect
 
 
-@integral_bp.route("/", methods=["GET"])
+integral_bp = Blueprint("integral", __name__, url_prefix="/integral")
+
+
+@integral_bp.get("/")
 def index():
-    return IntegralController.index()
+    return redirect("/integral-v2")
 
 
-@integral_bp.route("/panel", methods=["GET"])
+@integral_bp.get("/panel")
 def panel():
-    return IntegralController.panel()
+    return redirect("/integral-v2")
 
 
-@integral_bp.route("/validar", methods=["POST"])
+@integral_bp.post("/validar")
 def validar():
-    return IntegralController.validar()
+    return redirect("/integral-v2")

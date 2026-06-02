@@ -5,26 +5,25 @@
 
     <div class="card-body">
         <form id="integral-validar-form">
-
             <div class="mb-3">
-                <label for="conexion" class="form-label">Conexión</label>
-                <select name="conexion" id="conexion" class="form-select">
+                <label for="integral-conexion" class="form-label">Conexión</label>
+                <select name="conexion" id="integral-conexion" class="form-select">
                     <option value="local">Local</option>
                     <option value="remoto">Remoto</option>
                 </select>
             </div>
 
             <div class="mb-3">
-                <label for="fecha" class="form-label">Fecha de proceso</label>
-                <input type="date" name="fecha" id="fecha" class="form-control">
+                <label for="integral-fecha" class="form-label">Fecha de proceso</label>
+                <input type="date" name="fecha" id="integral-fecha" class="form-control">
             </div>
 
             <div class="mb-3">
-                <label for="entidad" class="form-label">Entidad</label>
+                <label for="integral-entidad" class="form-label">Entidad</label>
                 <input
                     type="text"
                     name="entidad"
-                    id="entidad"
+                    id="integral-entidad"
                     class="form-control"
                     placeholder="Ej: Manual_Base_Churn_18052026"
                 >
@@ -33,7 +32,6 @@
             <button type="submit" class="btn btn-primary">
                 Validar Integral
             </button>
-
         </form>
     </div>
 </div>

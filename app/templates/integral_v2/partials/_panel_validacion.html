@@ -1,0 +1,30 @@
+<section class="integral-v2-card">
+    <div class="integral-v2-section-header">
+        <h3>Validación inicial Integral</h3>
+        <p>Compara conteos de usuarios y comentarios entre origen y destino.</p>
+    </div>
+
+    <form id="integral-v2-validar-form" action="/accion/integral-v2/validar" method="post" class="integral-v2-form">
+        <label>
+            Conexión
+            <select name="conexion" id="integral-v2-conexion">
+                <option value="local" selected>LOCAL - Pruebas</option>
+                <option value="remoto">REMOTO - Producción</option>
+            </select>
+        </label>
+
+        <label>
+            Fecha proceso
+            <input name="fecha" id="integral-v2-fecha" type="text" value="20260518" placeholder="YYYYMMDD o YYYY-MM-DD">
+        </label>
+
+        <label>
+            Entidad
+            <input name="entidad" id="integral-v2-entidad" type="text" value="Manual_Base_Churn_18052026" placeholder="Manual_Base_Churn_18052026">
+        </label>
+
+        <button type="submit" class="integral-v2-btn primary">
+            Validar conteos Integral
+        </button>
+    </form>
+</section>

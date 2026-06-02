@@ -1,4 +1,4 @@
 <div class="alert alert-danger mt-3">
     <strong>Error en proceso Integral:</strong><br>
-    {{ mensaje }}
+    {{ mensaje | default("Error de comunicación con el servidor.") }}
 </div>

@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+from flask import Blueprint
+
+from app.controllers.integral_controller import IntegralController
+
+
+integral_bp = Blueprint(
+    "integral",
+    __name__,
+    url_prefix="/integral",
+)
+
+
+@integral_bp.route("/", methods=["GET"])
+def index():
+    return IntegralController.index()
+
+
+@integral_bp.route("/modulo", methods=["GET"])
+def modulo():
+    return IntegralController.modulo()
+
+
+@integral_bp.route("/sidebar", methods=["GET"])
+def sidebar():
+    return IntegralController.sidebar()
+
+
+@integral_bp.route("/panel", methods=["GET"])
+def panel():
+    return IntegralController.panel()
+
+
+@integral_bp.route("/loading", methods=["GET"])
+def loading():
+    return IntegralController.loading()
+
+
+@integral_bp.route("/error-comunicacion", methods=["GET"])
+def error_comunicacion():
+    return IntegralController.error_comunicacion()
+
+
+@integral_bp.route("/validar", methods=["POST"])
+def validar():
+    return IntegralController.validar()
