@@ -4280,3 +4280,119 @@ body.gc-body.gc-embedded .gc-process-panels {
 }
 
 /* === INTEGRACION_MODULOS_V2_NAV_END === */
+
+/* === CONSOLIDAR_V2_FASE_I_AUDITORIA_TIEMPOS_V2_BEGIN === */
+
+.gc-fase-i-tiempo-box {
+    margin-top: 14px;
+    border: 1px solid rgba(148, 163, 184, .28);
+    border-radius: 14px;
+    background: #08111f;
+    overflow: hidden;
+}
+
+.gc-fase-i-tiempo-box h3 {
+    margin: 0;
+    padding: 12px 14px;
+    background: #12385c;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 1000;
+}
+
+.gc-fase-i-tiempo-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.gc-fase-i-tiempo-table th,
+.gc-fase-i-tiempo-table td {
+    border: 1px solid rgba(148, 163, 184, .25);
+    padding: 8px 10px;
+    vertical-align: top;
+}
+
+.gc-fase-i-tiempo-table th {
+    background: #0d1b2f;
+    color: #00e5ff;
+    text-align: left;
+    font-weight: 1000;
+}
+
+.gc-fase-i-tiempo-table td {
+    color: #dbeafe;
+}
+
+.gc-fase-i-tiempo-num {
+    text-align: right;
+    font-family: Consolas, monospace;
+    white-space: nowrap;
+}
+
+.gc-fase-i-tiempo-total td {
+    background: rgba(34, 211, 238, .08);
+    color: #ffffff;
+}
+
+/* === CONSOLIDAR_V2_FASE_I_AUDITORIA_TIEMPOS_V2_END === */
+
+/* === CONSOLIDAR_V2_MOSTRAR_AUDITORIA_SERVICIO_BEGIN === */
+
+.gc-fase-i-servicio-box {
+    margin-top: 14px;
+    border: 1px solid rgba(148, 163, 184, .28);
+    border-radius: 14px;
+    background: #08111f;
+    overflow: hidden;
+}
+
+.gc-fase-i-servicio-box h3 {
+    margin: 0;
+    padding: 12px 14px;
+    background: #0f3d2e;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 1000;
+}
+
+.gc-fase-i-servicio-warning h3 {
+    background: #5c3f12;
+}
+
+.gc-fase-i-servicio-warning p {
+    margin: 0;
+    padding: 12px 14px;
+    color: #fde68a;
+}
+
+.gc-fase-i-servicio-warning code {
+    color: #ffffff;
+    background: rgba(255, 255, 255, .08);
+    padding: 2px 5px;
+    border-radius: 6px;
+}
+
+.gc-fase-i-servicio-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.gc-fase-i-servicio-table th,
+.gc-fase-i-servicio-table td {
+    border: 1px solid rgba(148, 163, 184, .25);
+    padding: 8px 10px;
+    vertical-align: top;
+}
+
+.gc-fase-i-servicio-table th {
+    background: #0d1b2f;
+    color: #86efac;
+    text-align: left;
+    font-weight: 1000;
+}
+
+.gc-fase-i-servicio-table td {
+    color: #dbeafe;
+}
+
+/* === CONSOLIDAR_V2_MOSTRAR_AUDITORIA_SERVICIO_END === */

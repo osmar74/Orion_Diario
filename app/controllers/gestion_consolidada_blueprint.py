@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flask import Blueprint, current_app, render_template, request
+from app.config import DATA_DIR
 
 from app.services.gestion_consolidada_service import (
     consultar_resumen_sql,
@@ -17,7 +18,8 @@ from app.services.gestion_consolidada_service import (
     cargar_informacion_gestion_sql,
 )
 from app.services.gestion_consolidada_renderer_service import (
-    render_preparar_proceso,
+
+render_preparar_proceso,
     render_resumen_sql,
     render_unir_archivos_gestion,
     render_verificar_calidad_gestion,
@@ -33,13 +35,121 @@ from app.services.gestion_consolidada_renderer_service import (
 gestion_consolidada_bp = Blueprint("gestion_consolidada", __name__)
 
 
-def _data_dir() -> Path:
-    configured = current_app.config.get("DATA_DIR")
+# === CONSOLIDAR_V2_FASE_I_AUDITORIA_TIEMPOS_V2_BEGIN ===
 
-    if configured:
-        return Path(configured)
+def _gc_fase_i_perf_now():
+    from time import perf_counter
+    return perf_counter()
 
-    return Path(current_app.root_path).parent / "data"
+
+def _gc_fase_i_clock_now():
+    from datetime import datetime
+    return datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
+
+def _gc_fase_i_add_timing(auditoria, paso, inicio_perf, inicio_clock, detalle=""):
+    fin_perf = _gc_fase_i_perf_now()
+    fin_clock = _gc_fase_i_clock_now()
+
+    auditoria.append({
+        "paso": paso,
+        "inicio": inicio_clock,
+        "fin": fin_clock,
+        "segundos": round(fin_perf - inicio_perf, 3),
+        "detalle": detalle or "",
+    })
+
+    return fin_perf, fin_clock
+
+
+def _gc_fase_i_html_tiempos(auditoria):
+    total = sum(float(x.get("segundos") or 0) for x in auditoria if not str(x.get("paso", "")).lower().startswith("tiempo total"))
+
+    rows = []
+
+    for item in auditoria:
+        rows.append(
+            "<tr>"
+            f"<td>{item.get('paso', '')}</td>"
+            f"<td>{item.get('inicio', '')}</td>"
+            f"<td>{item.get('fin', '')}</td>"
+            f"<td class='gc-fase-i-tiempo-num'>{item.get('segundos', '')}</td>"
+            f"<td>{item.get('detalle', '')}</td>"
+            "</tr>"
+        )
+
+    rows.append(
+        "<tr class='gc-fase-i-tiempo-total'>"
+        "<td><b>Tiempo total medido</b></td>"
+        "<td></td>"
+        "<td></td>"
+        f"<td class='gc-fase-i-tiempo-num'><b>{round(total, 3)}</b></td>"
+        "<td>Tiempo total registrado en backend.</td>"
+        "</tr>"
+    )
+
+    return (
+        "<section class='gc-fase-i-tiempo-box'>"
+        "<h3>⏱ Auditoría de tiempos — Fase I</h3>"
+        "<table class='gc-fase-i-tiempo-table'>"
+        "<thead>"
+        "<tr>"
+        "<th>Paso</th>"
+        "<th>Inicio</th>"
+        "<th>Fin</th>"
+        "<th>Segundos</th>"
+        "<th>Detalle</th>"
+        "</tr>"
+        "</thead>"
+        "<tbody>"
+        + "".join(rows)
+        + "</tbody>"
+        "</table>"
+        "</section>"
+    )
+
+
+def _gc_fase_i_append_html(response, extra_html):
+    if response is None:
+        return extra_html
+
+    if isinstance(response, str):
+        return response + extra_html
+
+    if isinstance(response, tuple):
+        body = response[0]
+
+        if isinstance(body, str):
+            return (body + extra_html, *response[1:])
+
+        if hasattr(body, "get_data") and hasattr(body, "set_data"):
+            data = body.get_data(as_text=True)
+            body.set_data(data + extra_html)
+            return response
+
+        return response
+
+    if hasattr(response, "get_data") and hasattr(response, "set_data"):
+        try:
+            data = response.get_data(as_text=True)
+            response.set_data(data + extra_html)
+            return response
+        except Exception:
+            return response
+
+    return response
+
+# === CONSOLIDAR_V2_FASE_I_AUDITORIA_TIEMPOS_V2_END ===
+
+def _data_dir():
+    """
+    Raíz de datos para Consolidar Gestión.
+
+    Debe respetar la configuración central app.config.DATA_DIR.
+    No debe volver a la carpeta local del proyecto salvo que no exista configuración.
+    """
+    configured = current_app.config.get("DATA_DIR") or DATA_DIR
+    return Path(str(configured)).expanduser()
 
 
 @gestion_consolidada_bp.route("/gestion-consolidada", methods=["GET"])
@@ -140,11 +250,145 @@ def accion_gestion_consolidada_archivos_generados():
 
 
 
+# === CONSOLIDAR_V2_MOSTRAR_AUDITORIA_SERVICIO_BEGIN ===
+
+def _gc_fase_i_html_auditoria_servicio(resultado):
+    """
+    Renderiza la auditoría interna devuelta por cargar_informacion_gestion_sql.
+    """
+    auditoria = []
+
+    if isinstance(resultado, dict):
+        auditoria = resultado.get("auditoria_servicio") or []
+
+    if not auditoria:
+        return (
+            "<section class='gc-fase-i-servicio-box gc-fase-i-servicio-warning'>"
+            "<h3>🔎 Auditoría interna del servicio</h3>"
+            "<p>No se recibió auditoría interna del servicio. "
+            "Esto indica que el patch de medición interna aún no está activo dentro de "
+            "<code>cargar_informacion_gestion_sql</code> o que el resultado no está devolviendo "
+            "el campo <code>auditoria_servicio</code>.</p>"
+            "</section>"
+        )
+
+    rows = []
+
+    for item in auditoria:
+        rows.append(
+            "<tr>"
+            f"<td>{item.get('paso', '')}</td>"
+            f"<td>{item.get('inicio', '')}</td>"
+            f"<td>{item.get('fin', '')}</td>"
+            f"<td class='gc-fase-i-tiempo-num'>{item.get('segundos', '')}</td>"
+            f"<td>{item.get('detalle', '')}</td>"
+            "</tr>"
+        )
+
+    total = sum(
+        float(x.get("segundos") or 0)
+        for x in auditoria
+        if not str(x.get("paso", "")).lower().startswith("total")
+    )
+
+    return (
+        "<section class='gc-fase-i-servicio-box'>"
+        "<h3>🔎 Auditoría interna del servicio — cargar_informacion_gestion_sql</h3>"
+        "<table class='gc-fase-i-servicio-table'>"
+        "<thead>"
+        "<tr>"
+        "<th>Paso interno</th>"
+        "<th>Inicio</th>"
+        "<th>Fin</th>"
+        "<th>Segundos</th>"
+        "<th>Detalle</th>"
+        "</tr>"
+        "</thead>"
+        "<tbody>"
+        + "".join(rows)
+        + "<tr class='gc-fase-i-tiempo-total'>"
+        "<td><b>Total interno sin duplicar</b></td>"
+        "<td></td>"
+        "<td></td>"
+        f"<td class='gc-fase-i-tiempo-num'><b>{round(total, 3)}</b></td>"
+        "<td>Suma de pasos internos, excluyendo filas tipo Total.</td>"
+        "</tr>"
+        "</tbody>"
+        "</table>"
+        "</section>"
+    )
+
+
+def _gc_fase_i_adjuntar_auditoria_servicio(response, resultado):
+    html = _gc_fase_i_html_auditoria_servicio(resultado)
+    return _gc_fase_i_append_html(response, html)
+
+# === CONSOLIDAR_V2_MOSTRAR_AUDITORIA_SERVICIO_END ===
+
 @gestion_consolidada_bp.route("/accion/gestion-consolidada/cargar-sql", methods=["POST"])
+
 def accion_gestion_consolidada_cargar_sql():
+    auditoria = []
+
+    inicio_total_perf = _gc_fase_i_perf_now()
+    inicio_total_clock = _gc_fase_i_clock_now()
+
+    # 1. Parámetros recibidos desde la pantalla
+    inicio_params_perf = _gc_fase_i_perf_now()
+    inicio_params_clock = _gc_fase_i_clock_now()
+
     fecha = request.form.get("fecha", "")
     conexion = request.form.get("conexion", "local")
 
+    _gc_fase_i_add_timing(
+        auditoria,
+        "Lectura de parámetros",
+        inicio_params_perf,
+        inicio_params_clock,
+        f"fecha={fecha}; conexion={conexion}",
+    )
+
+    # 2. Servicio principal de carga SQL
+    inicio_servicio_perf = _gc_fase_i_perf_now()
+    inicio_servicio_clock = _gc_fase_i_clock_now()
+
     resultado = cargar_informacion_gestion_sql(_data_dir(), fecha, conexion)
 
-    return render_carga_sql_gestion(resultado)
+    _gc_fase_i_add_timing(
+        auditoria,
+        "Ejecución servicio cargar_informacion_gestion_sql",
+        inicio_servicio_perf,
+        inicio_servicio_clock,
+        "Aquí se mide lectura, validación y carga SQL interna de la Fase I.",
+    )
+
+    # 3. Renderizado de respuesta
+    inicio_render_perf = _gc_fase_i_perf_now()
+    inicio_render_clock = _gc_fase_i_clock_now()
+
+    response = render_carga_sql_gestion(resultado)
+
+    _gc_fase_i_add_timing(
+        auditoria,
+        "Renderizado de resultado",
+        inicio_render_perf,
+        inicio_render_clock,
+        "Construcción visual de la respuesta de Fase I.",
+    )
+
+    # 4. Total general de esta ruta
+    _gc_fase_i_add_timing(
+        auditoria,
+        "Tiempo total ruta Fase I",
+        inicio_total_perf,
+        inicio_total_clock,
+        "Incluye parámetros, servicio y renderizado.",
+    )
+
+    html = _gc_fase_i_html_tiempos(auditoria)
+
+    response = _gc_fase_i_append_html(response, html)
+    response = _gc_fase_i_adjuntar_auditoria_servicio(response, resultado)
+
+    return response
+

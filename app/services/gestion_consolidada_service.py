@@ -6,6 +6,49 @@ import os
 import re
 from typing import Any
 
+# === CONSOLIDAR_V2_DATA_DIR_RUTAS_FIX_BEGIN ===
+
+def _gc_v2_resolver_archivo_aster_gestion(base, fecha):
+    """
+    ASTER actual:
+        E:\data\YYYYMMDD\Aster\Gestion\YYYYMMDD_Gestion_aster.xlsx
+
+    ASTER legado:
+        E:\data\YYYYMMDD\Aster\aster_YYYYMMDD\Gestion\YYYYMMDD_Gestion_aster.xlsx
+    """
+    from pathlib import Path
+
+    base = Path(base)
+
+    actual = base / "Aster" / "Gestion" / f"{fecha}_Gestion_aster.xlsx"
+    legado = base / "Aster" / f"aster_{fecha}" / "Gestion" / f"{fecha}_Gestion_aster.xlsx"
+
+    if actual.exists():
+        return actual
+
+    if legado.exists():
+        return legado
+
+    # Devolver actual como ruta esperada para que la pantalla muestre dónde debe estar.
+    return actual
+
+
+def _gc_v2_resolver_archivo_orion_gestion(base, fecha):
+    """
+    ORION:
+        E:\data\YYYYMMDD\Orion\Salidas\YYYYMMDD_Gestion_orion.xlsx
+    """
+    from pathlib import Path
+
+    base = Path(base)
+
+    actual = base / "Orion" / "Salidas" / f"{fecha}_Gestion_orion.xlsx"
+
+    return actual
+
+# === CONSOLIDAR_V2_DATA_DIR_RUTAS_FIX_END ===
+
+
 try:
     from openpyxl import load_workbook
 except Exception:  # pragma: no cover
@@ -14,14 +57,23 @@ except Exception:  # pragma: no cover
 
 RESUMEN_SQL = """
 SELECT
-    (SELECT COUNT(*) FROM Aster_Api.dbo.aster_dia_nc WHERE CAST(Fecha_Hora AS DATE) = ?) AS Total_Aster_dia_nc,
-    (SELECT COUNT(*) FROM Aster_Api.dbo.comentarios WHERE CAST(fecha AS DATE) = ?) AS Total_Aster_comentarios,
-    (SELECT COUNT(*) FROM Aster_Api.dbo.usuarios) AS Total_Aster_Usuarios,
-    (SELECT COUNT(*) FROM Orion.dbo.Causales WHERE CAST(FechayHora AS DATE) = ?) AS Total_Orion_Causales,
-    (SELECT COUNT(*) FROM Orion.dbo.Lote WHERE CAST(Fecha AS DATE) = ?) AS Total_Orion_Lote,
-    (SELECT COUNT(*) FROM Orion.dbo.Discador WHERE CAST(FechayHora AS DATE) = ?) AS Total_Orion_Discador;
-"""
+    (SELECT COUNT_BIG(*) FROM Aster_Api.dbo.aster_dia_nc
+     WHERE Fecha_Hora >= ? AND Fecha_Hora < ?) AS Total_Aster_dia_nc,
 
+    (SELECT COUNT_BIG(*) FROM Aster_Api.dbo.comentarios
+     WHERE fecha >= ? AND fecha < ?) AS Total_Aster_comentarios,
+
+    (SELECT COUNT_BIG(*) FROM Aster_Api.dbo.usuarios) AS Total_Aster_Usuarios,
+
+    (SELECT COUNT_BIG(*) FROM Orion.dbo.Causales
+     WHERE FechayHora >= ? AND FechayHora < ?) AS Total_Orion_Causales,
+
+    (SELECT COUNT_BIG(*) FROM Orion.dbo.Lote
+     WHERE Fecha >= ? AND Fecha < ?) AS Total_Orion_Lote,
+
+    (SELECT COUNT_BIG(*) FROM Orion.dbo.Discador
+     WHERE FechayHora >= ? AND FechayHora < ?) AS Total_Orion_Discador;
+"""
 
 FASES = [
     ("A", "Preparar archivos"),
@@ -58,8 +110,8 @@ def resolver_rutas(data_dir: str | Path, fecha_raw: str) -> dict[str, Any]:
     fecha = normalizar_fecha_yyyymmdd(fecha_raw)
     base = Path(data_dir) / fecha
 
-    ruta_orion = base / "Orion" / "Salidas" / f"{fecha}_Gestion_orion.xlsx"
-    ruta_aster = base / "Aster" / f"aster_{fecha}" / "Gestion" / f"{fecha}_Gestion_aster.xlsx"
+    ruta_orion = _gc_v2_resolver_archivo_orion_gestion(base, fecha)
+    ruta_aster = _gc_v2_resolver_archivo_aster_gestion(base, fecha)
 
     carpeta_consolidado = base / "Consolidado" / "Gestion"
 
@@ -249,7 +301,21 @@ def consultar_resumen_sql(fecha_raw: str, conexion: str) -> dict[str, Any]:
         }
 
     fecha = fecha_iso(fecha_raw)
-    params = [fecha, fecha, fecha, fecha, fecha]
+
+    from datetime import datetime as _dt_resumen_sql, timedelta as _td_resumen_sql
+
+    fecha_fin = (
+        _dt_resumen_sql.strptime(fecha, "%Y-%m-%d")
+        + _td_resumen_sql(days=1)
+    ).strftime("%Y-%m-%d")
+
+    params = [
+        fecha, fecha_fin,
+        fecha, fecha_fin,
+        fecha, fecha_fin,
+        fecha, fecha_fin,
+        fecha, fecha_fin,
+    ]
 
     try:
         with pyodbc.connect(_connection_string(conexion), timeout=15) as conn:
@@ -1551,6 +1617,47 @@ def listar_archivos_generados_gestion(data_dir: str | Path, fecha_raw: str) -> d
 
 
 
+def _gc_existe_fecha_gestion_sql(cursor: Any, schema: str, table: str, fecha_yyyymmdd: str) -> dict[str, Any]:
+    """
+    Verifica si ya existen registros para la fecha del proceso.
+
+    Usa rango de fecha:
+        Fecha_De_Gestion >= yyyy-mm-dd
+        Fecha_De_Gestion <  yyyy-mm-dd + 1
+
+    No usa CAST(Fecha_De_Gestion AS DATE) para permitir uso de índice si existe.
+    """
+    from datetime import datetime, timedelta
+
+    fecha_limpia = normalizar_fecha_yyyymmdd(fecha_yyyymmdd)
+    fecha_inicio_dt = datetime.strptime(fecha_limpia, "%Y%m%d")
+    fecha_fin_dt = fecha_inicio_dt + timedelta(days=1)
+
+    fecha_inicio = fecha_inicio_dt.strftime("%Y-%m-%d")
+    fecha_fin = fecha_fin_dt.strftime("%Y-%m-%d")
+
+    sql_existe = f"""
+    SELECT TOP (1) 1
+    FROM [{schema}].[{table}]
+    WHERE [Fecha_De_Gestion] >= ?
+      AND [Fecha_De_Gestion] < ?
+    """
+
+    row = cursor.execute(sql_existe, fecha_inicio, fecha_fin).fetchone()
+    existe = row is not None
+
+    return {
+        "existe": existe,
+        "fecha_columna": "Fecha_De_Gestion",
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "mensaje": (
+            "Ya existen registros para la fecha del proceso. Inserción bloqueada para evitar duplicados."
+            if existe
+            else "No existen registros previos para la fecha del proceso."
+        ),
+    }
+
 def _connection_string_vencorp(conexion: str) -> str:
     """
     Conexión SQL Server para carga final de Consolidar Gestión.
@@ -1646,12 +1753,34 @@ def _columnas_insertables_sql(cursor: Any, schema: str, table: str) -> list[str]
 
 
 def _contar_registros_tabla_sql(cursor: Any, schema: str, table: str) -> int | None:
+    """
+    Conteo rápido de registros usando metadatos de SQL Server.
+
+    Evita SELECT COUNT(*) sobre tablas grandes, porque en
+    gestion.gestion_adminfo_onedrive puede tardar varios minutos.
+
+    Usa sys.dm_db_partition_stats para obtener el total de filas del heap
+    o índice clustered. Si falla por permisos u otra causa, devuelve None
+    para no bloquear la Fase I con un conteo completo lento.
+    """
     try:
-        row = cursor.execute(f"SELECT COUNT(*) FROM [{schema}].[{table}]").fetchone()
-        return int(row[0]) if row else 0
-    except Exception:
+        sql = """
+        SELECT SUM(row_count) AS total_rows
+        FROM sys.dm_db_partition_stats
+        WHERE object_id = OBJECT_ID(?)
+          AND index_id IN (0, 1)
+        """
+
+        object_name = f"[{schema}].[{table}]"
+        row = cursor.execute(sql, object_name).fetchone()
+
+        if row and row[0] is not None:
+            return int(row[0])
+
         return None
 
+    except Exception:
+        return None
 
 # ============================================================
 # CONSOLIDAR GESTIÓN FASE I - MAPEO EXACTO SQL
@@ -1760,7 +1889,6 @@ GESTION_SQL_SCHEMA_EXACTO = [
         "aliases": ["crm", "CRM"],
     },
 ]
-
 
 def _gc_col_key(nombre: Any) -> str:
     import unicodedata
@@ -2007,6 +2135,28 @@ def cargar_informacion_gestion_sql(
             "error": f"No se pudo importar pyodbc: {exc}",
         }
 
+    from time import perf_counter
+    from datetime import datetime as _dt_audit
+
+    auditoria_servicio = []
+
+    def _audit_start():
+        return perf_counter(), _dt_audit.now().strftime("%H:%M:%S.%f")[:-3]
+
+    def _audit_end(paso, inicio_perf, inicio_clock, detalle=""):
+        fin_perf = perf_counter()
+        fin_clock = _dt_audit.now().strftime("%H:%M:%S.%f")[:-3]
+        auditoria_servicio.append({
+            "paso": paso,
+            "inicio": inicio_clock,
+            "fin": fin_clock,
+            "segundos": round(fin_perf - inicio_perf, 3),
+            "detalle": detalle or "",
+        })
+
+    inicio_total_serv_perf, inicio_total_serv_clock = _audit_start()
+
+    inicio_rutas_perf, inicio_rutas_clock = _audit_start()
     rutas = resolver_rutas(data_dir, fecha_raw)
     fecha = rutas["fecha"]
     conexion_normalizada = str(conexion or "local").lower()
@@ -2024,6 +2174,13 @@ def cargar_informacion_gestion_sql(
     carpeta_reportes.mkdir(parents=True, exist_ok=True)
     ruta_reporte = carpeta_reportes / f"{fecha}_reporte_carga_sql.xlsx"
 
+    _audit_end(
+        "Resolver rutas y preparar carpetas",
+        inicio_rutas_perf,
+        inicio_rutas_clock,
+        f"ruta_excel={ruta_excel}; ruta_reporte={ruta_reporte}",
+    )
+
     if not ruta_excel.exists():
         return {
             "ok": False,
@@ -2037,10 +2194,19 @@ def cargar_informacion_gestion_sql(
         }
 
     try:
+        inicio_excel_perf, inicio_excel_clock = _audit_start()
+
         df = pd.read_excel(ruta_excel)
         df.columns = [str(col).strip() for col in df.columns]
 
         filas_leidas = len(df)
+
+        _audit_end(
+            "Lectura Excel final",
+            inicio_excel_perf,
+            inicio_excel_clock,
+            f"filas={filas_leidas}; columnas={len(df.columns)}",
+        )
 
         if filas_leidas == 0:
             return {
@@ -2052,7 +2218,16 @@ def cargar_informacion_gestion_sql(
                 "filas_leidas": 0,
             }
 
+        inicio_prep_perf, inicio_prep_clock = _audit_start()
+
         columnas_sql, rows, errores_conversion, advertencias, mapeo = _gc_preparar_carga_exacta(df)
+
+        _audit_end(
+            "Preparación y conversión exacta",
+            inicio_prep_perf,
+            inicio_prep_clock,
+            f"rows={len(rows)}; columnas_sql={len(columnas_sql)}; errores_conversion={len(errores_conversion)}; advertencias={len(advertencias)}",
+        )
 
         # Si hay errores reales de conversión, NO se inserta.
         if errores_conversion:
@@ -2103,10 +2278,74 @@ def cargar_informacion_gestion_sql(
 
         conn_str = _connection_string_vencorp(conexion_normalizada)
 
+        inicio_conn_perf, inicio_conn_clock = _audit_start()
+
         with pyodbc.connect(conn_str, timeout=30) as conn:
             cursor = conn.cursor()
 
+            _audit_end(
+                "Conexión SQL Server",
+                inicio_conn_perf,
+                inicio_conn_clock,
+                f"conexion={conexion_normalizada}; database={database}",
+            )
+
+            inicio_count_antes_perf, inicio_count_antes_clock = _audit_start()
+
             total_antes = _contar_registros_tabla_sql(cursor, schema, table)
+
+            _audit_end(
+                "Conteo total antes",
+                inicio_count_antes_perf,
+                inicio_count_antes_clock,
+                f"total_antes={total_antes}",
+            )
+
+            inicio_dup_perf, inicio_dup_clock = _audit_start()
+
+            control_fecha = _gc_existe_fecha_gestion_sql(cursor, schema, table, fecha)
+
+            _audit_end(
+                "Control anti-duplicado por Fecha_De_Gestion",
+                inicio_dup_perf,
+                inicio_dup_clock,
+                f"existe={control_fecha.get('existe')}; rango={control_fecha.get('fecha_inicio')} a {control_fecha.get('fecha_fin')}",
+            )
+
+            if control_fecha.get("existe"):
+                _audit_end(
+                    "Total servicio cargar_informacion_gestion_sql",
+                    inicio_total_serv_perf,
+                    inicio_total_serv_clock,
+                    "Servicio finalizado sin insertar por control anti-duplicado.",
+                )
+
+                return {
+                    "ok": False,
+                    "tipo_error": "duplicado_fecha",
+                    "fecha": fecha,
+                    "conexion": conexion_normalizada,
+                    "database": database,
+                    "schema": schema,
+                    "table": table,
+                    "tabla_destino": f"{database}.{schema}.{table}",
+                    "ruta_excel": str(ruta_excel),
+                    "ruta_reporte": str(ruta_reporte),
+                    "archivo_excel": ruta_excel.name,
+                    "filas_leidas": filas_leidas,
+                    "filas_insertadas": 0,
+                    "columnas_insertadas": columnas_sql,
+                    "columnas_omitidas_excel": [],
+                    "columnas_tabla_sin_excel": [],
+                    "advertencias": advertencias[:250],
+                    "mapeo": mapeo,
+                    "total_antes": total_antes,
+                    "total_despues": total_antes,
+                    "errores": [],
+                    "control_duplicado_fecha": control_fecha,
+                    "error": control_fecha.get("mensaje"),
+                    "auditoria_servicio": auditoria_servicio,
+                }
 
             placeholders = ", ".join(["?"] * len(columnas_sql))
             columnas_sql_brackets = ", ".join(f"[{col}]" for col in columnas_sql)
@@ -2121,6 +2360,8 @@ def cargar_informacion_gestion_sql(
             filas_insertadas = 0
             errores_sql = []
             chunk_size = 1000
+
+            inicio_insert_perf, inicio_insert_clock = _audit_start()
 
             for inicio in range(0, len(rows), chunk_size):
                 chunk = rows[inicio: inicio + chunk_size]
@@ -2139,8 +2380,34 @@ def cargar_informacion_gestion_sql(
                     conn.rollback()
                     raise
 
+            _audit_end(
+                "Inserción SQL por bloques",
+                inicio_insert_perf,
+                inicio_insert_clock,
+                f"filas_insertadas={filas_insertadas}; chunk_size={chunk_size}",
+            )
+
+            inicio_commit_perf, inicio_commit_clock = _audit_start()
+
             conn.commit()
+
+            _audit_end(
+                "Commit SQL",
+                inicio_commit_perf,
+                inicio_commit_clock,
+                "Confirmación de transacción SQL.",
+            )
+
+            inicio_count_despues_perf, inicio_count_despues_clock = _audit_start()
+
             total_despues = _contar_registros_tabla_sql(cursor, schema, table)
+
+            _audit_end(
+                "Conteo total después",
+                inicio_count_despues_perf,
+                inicio_count_despues_clock,
+                f"total_despues={total_despues}",
+            )
 
         resumen = pd.DataFrame(
             [
@@ -2158,12 +2425,28 @@ def cargar_informacion_gestion_sql(
             ]
         )
 
+        inicio_reporte_perf, inicio_reporte_clock = _audit_start()
+
         with pd.ExcelWriter(ruta_reporte) as writer:
             resumen.to_excel(writer, sheet_name="Resumen", index=False)
             pd.DataFrame(mapeo).to_excel(writer, sheet_name="MapeoColumnas", index=False)
             pd.DataFrame({"columna_insertada": columnas_sql}).to_excel(writer, sheet_name="ColumnasInsertadas", index=False)
             pd.DataFrame(advertencias).to_excel(writer, sheet_name="Advertencias", index=False)
             pd.DataFrame(errores_sql).to_excel(writer, sheet_name="ErroresSQL", index=False)
+
+        _audit_end(
+            "Generación reporte Excel",
+            inicio_reporte_perf,
+            inicio_reporte_clock,
+            f"ruta_reporte={ruta_reporte}",
+        )
+
+        _audit_end(
+            "Total servicio cargar_informacion_gestion_sql",
+            inicio_total_serv_perf,
+            inicio_total_serv_clock,
+            "Tiempo total dentro del servicio.",
+        )
 
         return {
             "ok": True,
@@ -2187,6 +2470,7 @@ def cargar_informacion_gestion_sql(
             "total_antes": total_antes,
             "total_despues": total_despues,
             "errores": errores_sql,
+            "auditoria_servicio": auditoria_servicio,
         }
     except Exception as exc:
         return {
