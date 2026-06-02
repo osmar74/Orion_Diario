@@ -1,0 +1,53 @@
+<div class="card shadow-sm mt-3">
+    <div class="card-header">
+        <strong>Resultado de validación Integral</strong>
+    </div>
+
+    <div class="card-body">
+
+        <p>
+            <strong>Conexión:</strong> {{ resultado.conexion }}<br>
+            <strong>Fecha:</strong> {{ resultado.fecha }}<br>
+            <strong>Entidad:</strong> {{ resultado.entidad }}
+        </p>
+
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Proceso</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Usuarios CRM</td>
+                    <td>{{ resultado.usuarios.origen }}</td>
+                    <td>{{ resultado.usuarios.destino }}</td>
+                    <td>
+                        {% if resultado.usuarios.coincide %}
+                            <span class="badge bg-success">Coincide</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">No coincide</span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Comentarios</td>
+                    <td>{{ resultado.comentarios.origen }}</td>
+                    <td>{{ resultado.comentarios.destino }}</td>
+                    <td>
+                        {% if resultado.comentarios.coincide %}
+                            <span class="badge bg-success">Coincide</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">No coincide</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+</div>

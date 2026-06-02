@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="orion-page">
+
+    <div class="orion-header">
+        <h2>Proceso Integral</h2>
+        <p>Pipeline de carga Integral con conexión local/remota.</p>
+    </div>
+
+    <div id="integral-panel-container">
+        {% include "integral/partials/panel.html" %}
+    </div>
+
+    <div id="integral-resultado-container"></div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/integral.js') }}"></script>
+{% endblock %}
