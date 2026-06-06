@@ -3529,7 +3529,14 @@
 
     function renderContexto(data) {
         data = normalizarFasesVisuales(data);
+
+        /*
+        * Cargar contexto debe reiniciar la vista operativa.
+        * Si no se limpian los resultados previos, las fases pueden conservar
+        * estados antiguos aunque el backend devuelva el contexto en pendiente.
+        */
         state.contexto = data;
+        state.resultados = {};
 
         $("aster-v2-badge").textContent = data.conexion === "local" ? "LOCAL" : "REMOTO";
         $("aster-v2-badge").className = data.conexion === "local"
