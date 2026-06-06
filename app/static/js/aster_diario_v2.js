@@ -3538,10 +3538,13 @@
         state.contexto = data;
         state.resultados = {};
 
-        $("aster-v2-badge").textContent = data.conexion === "local" ? "LOCAL" : "REMOTO";
-        $("aster-v2-badge").className = data.conexion === "local"
-            ? "aster-v2-badge ok"
-            : "aster-v2-badge warn";
+        const badge = $("aster-v2-badge");
+        if (badge) {
+            badge.textContent = data.conexion === "local" ? "LOCAL" : "REMOTO";
+            badge.className = data.conexion === "local"
+                ? "aster-v2-badge ok"
+                : "aster-v2-badge warn";
+        }
 
         renderConfig(data);
         renderInfo(data);

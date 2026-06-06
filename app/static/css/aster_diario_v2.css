@@ -3584,3 +3584,372 @@ body.aster-v2-body {
 }
 
 /* === ASTER_V2_ESTADO_STICKY_BOTONES_CONTEXT_END === */
+/* === ASTER_V2_INTEGRAL_FORMAT_CLEAN_BEGIN === */
+
+/* El panel monitor fue removido del HTML; esto queda como defensa visual */
+.aster-v2-hero {
+    display: none !important;
+}
+
+/* Página con scroll controlado por columnas */
+body.aster-v2-body,
+.aster-v2-body {
+    overflow: hidden !important;
+}
+
+/* Layout principal alineado a Integral / Orion */
+.aster-v2-layout {
+    display: grid !important;
+    grid-template-columns: 320px minmax(0, 1fr) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: calc(100vh - 175px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 16px 8px 0 8px !important;
+    box-sizing: border-box !important;
+}
+
+/* Sidebar con scroll propio */
+.aster-v2-sidebar {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 6px !important;
+    scrollbar-width: thin !important;
+}
+
+/* Panel central con scroll propio */
+.aster-v2-main {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px !important;
+    scrollbar-width: thin !important;
+}
+
+.aster-v2-main > * {
+    flex: 0 0 auto !important;
+}
+
+/* Neutralizar sticky heredado */
+.aster-v2-estado-sticky-panel {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Estado ASTER compacto */
+.aster-v2-sidebar > .aster-v2-card:first-child {
+    max-height: 48vh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.aster-v2-sidebar > .aster-v2-card:first-child .aster-v2-phase-list-mini {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0 !important;
+    max-height: calc(48vh - 70px) !important;
+    padding: 8px 8px 10px 8px !important;
+    scrollbar-width: thin !important;
+}
+
+/* Estado de fases lateral estilo Integral / Orion */
+.aster-v2-phase-list-mini {
+    gap: 8px !important;
+}
+
+.aster-v2-phase-mini {
+    grid-template-columns: 34px minmax(0, 1fr) 92px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-height: 46px !important;
+    padding: 8px 10px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(74, 115, 165, 0.55) !important;
+    background: rgba(8, 16, 32, 0.94) !important;
+}
+
+.aster-v2-phase-mini b {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 999px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+}
+
+.aster-v2-phase-mini span {
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.15 !important;
+    color: #dbeafe !important;
+}
+
+.aster-v2-phase-mini em,
+.aster-v2-estado-badge-pendiente,
+.aster-v2-estado-badge-correcto,
+.aster-v2-estado-badge-error,
+.aster-v2-estado-badge-revisar {
+    min-width: 82px !important;
+    height: 24px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: #020817 !important;
+    font-style: normal !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+.aster-v2-phase-mini em,
+.aster-v2-estado-badge-pendiente,
+.aster-v2-estado-row-pendiente em {
+    color: #ffe600 !important;
+    border: 1px solid rgba(255, 230, 0, 0.35) !important;
+}
+
+.aster-v2-estado-badge-correcto,
+.aster-v2-estado-row-correcto em {
+    color: #5cff9a !important;
+    border: 1px solid rgba(31, 185, 94, 0.65) !important;
+}
+
+.aster-v2-estado-badge-error,
+.aster-v2-estado-row-error em {
+    color: #ff8b9d !important;
+    border: 1px solid rgba(255, 77, 109, 0.65) !important;
+}
+
+.aster-v2-estado-badge-revisar,
+.aster-v2-estado-row-revisar em {
+    color: #ffcf5a !important;
+    border: 1px solid rgba(255, 176, 32, 0.65) !important;
+}
+
+/* Tarjetas centrales */
+.aster-v2-main > .aster-v2-card,
+.aster-v2-main > details.aster-v2-card,
+.aster-v2-main .aster-v2-collapsible {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+}
+
+.aster-v2-collapsible > summary {
+    min-height: 54px !important;
+    border-radius: 18px 18px 0 0 !important;
+}
+
+/* Fases centrales */
+.aster-v2-phase-card {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    max-width: none !important;
+}
+
+.aster-v2-phase-header {
+    min-height: 48px !important;
+    padding: 14px 18px !important;
+}
+
+.aster-v2-card-result {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+}
+
+/* Barra superior y controles */
+.aster-v2-topbar,
+.aster-v2-controls {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.aster-v2-controls {
+    grid-template-columns: 190px 260px auto auto minmax(0, 1fr) !important;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    body.aster-v2-body,
+    .aster-v2-body {
+        overflow: auto !important;
+    }
+
+    .aster-v2-layout {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .aster-v2-sidebar,
+    .aster-v2-main {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .aster-v2-sidebar > .aster-v2-card:first-child,
+    .aster-v2-sidebar > .aster-v2-card:first-child .aster-v2-phase-list-mini {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .aster-v2-controls {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* === ASTER_V2_SIDEBAR_BOXES_INTEGRAL_BEGIN === */
+
+/*
+   Sidebar Estado ASTER alineado visualmente a Integral / Orion:
+   - sin franja lateral amarilla heredada;
+   - box oscuro uniforme;
+   - borde completo;
+   - círculo azul;
+   - badge tipo píldora a la derecha.
+*/
+
+.aster-v2-phase-mini,
+.aster-v2-phase-mini.aster-v2-estado-row-pendiente,
+.aster-v2-phase-mini.aster-v2-estado-row-correcto,
+.aster-v2-phase-mini.aster-v2-estado-row-error,
+.aster-v2-phase-mini.aster-v2-estado-row-revisar,
+.aster-v2-estado-row-pendiente,
+.aster-v2-estado-row-correcto,
+.aster-v2-estado-row-error,
+.aster-v2-estado-row-revisar {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) 92px !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-height: 48px !important;
+    padding: 8px 10px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(68, 110, 165, 0.58) !important;
+    border-left: 1px solid rgba(68, 110, 165, 0.58) !important;
+    background: rgba(8, 16, 32, 0.96) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Anula franjas laterales o decoraciones heredadas */
+.aster-v2-phase-mini::before,
+.aster-v2-phase-mini::after,
+.aster-v2-estado-row-pendiente::before,
+.aster-v2-estado-row-pendiente::after,
+.aster-v2-estado-row-correcto::before,
+.aster-v2-estado-row-correcto::after,
+.aster-v2-estado-row-error::before,
+.aster-v2-estado-row-error::after,
+.aster-v2-estado-row-revisar::before,
+.aster-v2-estado-row-revisar::after {
+    content: none !important;
+    display: none !important;
+    width: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Círculo de letra */
+.aster-v2-phase-mini b {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    border-radius: 999px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+}
+
+/* Texto de fase */
+.aster-v2-phase-mini span {
+    min-width: 0 !important;
+    color: #dbeafe !important;
+    font-size: 13px !important;
+    line-height: 1.16 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Badge de estado */
+.aster-v2-phase-mini em {
+    min-width: 84px !important;
+    max-width: 92px !important;
+    height: 24px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    justify-self: end !important;
+    border-radius: 999px !important;
+    background: #020817 !important;
+    font-style: normal !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Colores por estado, sin franja lateral */
+.aster-v2-estado-row-pendiente em,
+.aster-v2-phase-mini em {
+    color: #ffe600 !important;
+    border: 1px solid rgba(255, 230, 0, 0.35) !important;
+}
+
+.aster-v2-estado-row-correcto em {
+    color: #5cff9a !important;
+    border: 1px solid rgba(31, 185, 94, 0.65) !important;
+}
+
+.aster-v2-estado-row-error em {
+    color: #ff8b9d !important;
+    border: 1px solid rgba(255, 77, 109, 0.65) !important;
+}
+
+.aster-v2-estado-row-revisar em {
+    color: #ffcf5a !important;
+    border: 1px solid rgba(255, 176, 32, 0.65) !important;
+}
+
+/* === ASTER_V2_SIDEBAR_BOXES_INTEGRAL_END === */
+
+/* === ASTER_V2_INTEGRAL_FORMAT_CLEAN_END === */
