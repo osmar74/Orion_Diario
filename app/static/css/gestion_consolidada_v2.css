@@ -1277,3 +1277,82 @@ body.gc-v2-body {
         max-height: 360px !important;
     }
 }
+
+/* === GC V2 RESTORE SIDEBAR AND BITACORA BODY === */
+
+/* Si la tarjeta NO está colapsada, su cuerpo debe verse sí o sí */
+.gc-v2-body .intv2-card:not(.is-collapsed) > .intv2-card-body {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Estado de fases: restaurar cuerpo y lista */
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"]:not(.is-collapsed) > .intv2-card-body {
+    display: block !important;
+    min-height: 220px !important;
+    max-height: calc(100vh - 260px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 14px !important;
+    box-sizing: border-box !important;
+}
+
+.gc-v2-body #gcEstadoFases,
+.gc-v2-body .gc-phase-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-height: 120px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.gc-v2-body .gc-phase-card {
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Bitácora: restaurar cuerpo y fases centrales */
+.gc-v2-body .gc-bitacora-card:not(.is-collapsed) > .intv2-card-body {
+    display: block !important;
+    min-height: 260px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 14px !important;
+    box-sizing: border-box !important;
+}
+
+.gc-v2-body .gc-central-fases,
+.gc-v2-body .integral-central-fases-orion {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    min-height: 180px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.gc-v2-body .gc-central-fase-card {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Si por error quedó una clase is-collapsed visual con flecha abajo, al menos no romper contenido */
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"].is-collapsed > .intv2-card-body,
+.gc-v2-body .gc-bitacora-card.is-collapsed > .intv2-card-body {
+    display: none !important;
+}
+
+/* Scroll central real */
+.gc-v2-body .gc-integral-main {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 90px !important;
+}

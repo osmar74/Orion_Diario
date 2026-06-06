@@ -42,10 +42,32 @@
         return valor;
     }
 
+
+    function getConexionActual() {
+        const remoto = byId("gcBtnRemoto");
+        const local = byId("gcBtnLocal");
+
+        if (remoto && remoto.classList.contains("active")) {
+            return "remoto";
+        }
+
+        if (local && local.classList.contains("active")) {
+            return "local";
+        }
+
+        try {
+            const saved = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
+            return saved === "remoto" ? "remoto" : "local";
+        } catch (error) {
+            return "local";
+        }
+    }
+
+
     function formBase() {
         const formData = new FormData();
         formData.append("fecha", getFecha());
-        formData.append("conexion", conexionGlobal);
+        formData.append("conexion", getConexionActual());
         return formData;
     }
 
@@ -1201,4 +1223,211 @@
     }
 
     window.gcReiniciarEstadoBackend = gcReiniciarEstadoBackend;
+})();
+
+/* === GC V2 FIX LOCAL REMOTO BUTTONS === */
+(function () {
+    "use strict";
+
+    function byId(id) {
+        return document.getElementById(id);
+    }
+
+    function setConnection(conn) {
+        conn = conn === "remoto" ? "remoto" : "local";
+
+        const btnLocal = byId("gcBtnLocal");
+        const btnRemoto = byId("gcBtnRemoto");
+        const estado = byId("gcConexionEstado");
+
+        if (btnLocal) {
+            btnLocal.classList.toggle("active", conn === "local");
+            btnLocal.classList.toggle("primary", conn === "local");
+        }
+
+        if (btnRemoto) {
+            btnRemoto.classList.toggle("active", conn === "remoto");
+            btnRemoto.classList.toggle("primary", conn === "remoto");
+        }
+
+        if (estado) {
+            if (conn === "remoto") {
+                estado.className = "wf-status-chip info";
+                estado.textContent = "⚠️ Remoto activo";
+            } else {
+                estado.className = "wf-status-chip done";
+                estado.textContent = "✅ Local activo";
+            }
+        }
+
+        try {
+            localStorage.setItem("gestionConsolidada.v1A.conexion", conn);
+        } catch (error) {
+            // No bloquear por localStorage.
+        }
+
+        if (window.gcBackendRefreshState) {
+            setTimeout(window.gcBackendRefreshState, 100);
+        }
+    }
+
+    function initConnectionButtons() {
+        const btnLocal = byId("gcBtnLocal");
+        const btnRemoto = byId("gcBtnRemoto");
+
+        if (btnLocal && btnLocal.dataset.gcRemoteFixBound !== "1") {
+            btnLocal.dataset.gcRemoteFixBound = "1";
+            btnLocal.addEventListener("click", function () {
+                setConnection("local");
+            });
+        }
+
+        if (btnRemoto && btnRemoto.dataset.gcRemoteFixBound !== "1") {
+            btnRemoto.dataset.gcRemoteFixBound = "1";
+            btnRemoto.addEventListener("click", function () {
+                setConnection("remoto");
+            });
+        }
+
+        let saved = "local";
+        try {
+            saved = localStorage.getItem("gestionConsolidada.v1A.conexion") || "local";
+        } catch (error) {
+            saved = "local";
+        }
+
+        setConnection(saved === "remoto" ? "remoto" : "local");
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initConnectionButtons);
+    } else {
+        initConnectionButtons();
+    }
+
+    window.gcSetConnection = setConnection;
+})();
+
+/* === GC V2 CONNECTION SUMMARY SYNC FINAL === */
+(function () {
+    "use strict";
+
+    function byId(id) {
+        return document.getElementById(id);
+    }
+
+    function getConexionActivaFinal() {
+        const remoto = byId("gcBtnRemoto");
+        const local = byId("gcBtnLocal");
+
+        if (remoto && remoto.classList.contains("active")) {
+            return "remoto";
+        }
+
+        if (local && local.classList.contains("active")) {
+            return "local";
+        }
+
+        try {
+            return localStorage.getItem("gestionConsolidada.v1A.conexion") === "remoto"
+                ? "remoto"
+                : "local";
+        } catch (error) {
+            return "local";
+        }
+    }
+
+    function actualizarVisualConexionFinal(conn) {
+        conn = conn === "remoto" ? "remoto" : "local";
+
+        const btnLocal = byId("gcBtnLocal");
+        const btnRemoto = byId("gcBtnRemoto");
+        const estado = byId("gcConexionEstado");
+        const resumen = byId("gcResumenSql");
+
+        if (btnLocal) {
+            btnLocal.classList.toggle("active", conn === "local");
+            btnLocal.classList.toggle("primary", conn === "local");
+        }
+
+        if (btnRemoto) {
+            btnRemoto.classList.toggle("active", conn === "remoto");
+            btnRemoto.classList.toggle("primary", conn === "remoto");
+        }
+
+        if (estado) {
+            if (conn === "remoto") {
+                estado.className = "wf-status-chip info";
+                estado.textContent = "⚠️ Remoto activo";
+            } else {
+                estado.className = "wf-status-chip done";
+                estado.textContent = "✅ Local activo";
+            }
+        }
+
+        if (resumen) {
+            resumen.innerHTML = `
+                <div class="log-line info">
+                    ℹ️ Conexión cambiada a <b>${conn}</b>. Presione “Actualizar tabla resumen” para recalcular.
+                </div>
+            `;
+        }
+
+        try {
+            localStorage.setItem("gestionConsolidada.v1A.conexion", conn);
+        } catch (error) {
+            // No bloquear por localStorage.
+        }
+
+        if (window.gcBackendRefreshState) {
+            setTimeout(window.gcBackendRefreshState, 100);
+        }
+    }
+
+    function reforzarFormData() {
+        if (!window.FormData || window.__gcFormDataPatched) return;
+
+        window.__gcFormDataPatched = true;
+
+        const originalAppend = FormData.prototype.append;
+
+        FormData.prototype.append = function (name, value) {
+            if (name === "conexion") {
+                return originalAppend.call(this, name, getConexionActivaFinal());
+            }
+
+            return originalAppend.call(this, name, value);
+        };
+    }
+
+    function initConexionFinal() {
+        reforzarFormData();
+
+        const btnLocal = byId("gcBtnLocal");
+        const btnRemoto = byId("gcBtnRemoto");
+
+        if (btnLocal && btnLocal.dataset.gcConnectionFinalBound !== "1") {
+            btnLocal.dataset.gcConnectionFinalBound = "1";
+            btnLocal.addEventListener("click", function () {
+                actualizarVisualConexionFinal("local");
+            });
+        }
+
+        if (btnRemoto && btnRemoto.dataset.gcConnectionFinalBound !== "1") {
+            btnRemoto.dataset.gcConnectionFinalBound = "1";
+            btnRemoto.addEventListener("click", function () {
+                actualizarVisualConexionFinal("remoto");
+            });
+        }
+
+        actualizarVisualConexionFinal(getConexionActivaFinal());
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initConexionFinal);
+    } else {
+        initConexionFinal();
+    }
+
+    window.gcGetConexionActivaFinal = getConexionActivaFinal;
 })();
