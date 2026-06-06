@@ -1120,3 +1120,73 @@ body {
     min-height: 52px !important;
     border-radius: 14px !important;
 }
+
+/* === ORION V2 ESTADOS DE FASE — COLORES OFICIALES === */
+
+#odv2-sidebar-phases .odv2-badge,
+#odv2-sidebar-phases .odv2-phase-status,
+.odv2-main .odv2-badge,
+.odv2-main .odv2-phase-status {
+    border: 1px solid transparent !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+}
+
+/* Pendiente */
+#odv2-sidebar-phases .odv2-badge.pending,
+#odv2-sidebar-phases .odv2-phase-status.pending,
+.odv2-main .odv2-badge.pending,
+.odv2-main .odv2-phase-status.pending {
+    background: rgba(255, 230, 0, 0.10) !important;
+    border-color: rgba(255, 230, 0, 0.35) !important;
+    color: #ffe600 !important;
+}
+
+/* Ejecutando / Procesando */
+#odv2-sidebar-phases .odv2-badge.running,
+#odv2-sidebar-phases .odv2-phase-status.running,
+.odv2-main .odv2-badge.running,
+.odv2-main .odv2-phase-status.running {
+    background: rgba(0, 180, 255, 0.14) !important;
+    border-color: rgba(0, 180, 255, 0.55) !important;
+    color: #35d6ff !important;
+}
+
+/* Correcto / Completado / Copiado / Insertado / Verificado */
+#odv2-sidebar-phases .odv2-badge.success,
+#odv2-sidebar-phases .odv2-phase-status.success,
+.odv2-main .odv2-badge.success,
+.odv2-main .odv2-phase-status.success {
+    background: rgba(31, 185, 94, 0.16) !important;
+    border-color: rgba(31, 185, 94, 0.60) !important;
+    color: #5cff9a !important;
+}
+
+/* Revisar / Advertencia */
+#odv2-sidebar-phases .odv2-badge.warning,
+#odv2-sidebar-phases .odv2-phase-status.warning,
+.odv2-main .odv2-badge.warning,
+.odv2-main .odv2-phase-status.warning {
+    background: rgba(255, 176, 32, 0.16) !important;
+    border-color: rgba(255, 176, 32, 0.60) !important;
+    color: #ffcf5a !important;
+}
+
+/* Bloqueado */
+#odv2-sidebar-phases .odv2-badge.blocked,
+#odv2-sidebar-phases .odv2-phase-status.blocked,
+.odv2-main .odv2-badge.blocked,
+.odv2-main .odv2-phase-status.blocked {
+    background: rgba(156, 120, 255, 0.16) !important;
+    border-color: rgba(156, 120, 255, 0.60) !important;
+    color: #cbb8ff !important;
+}
+
+/* Error */
+#odv2-sidebar-phases .odv2-badge.error,
+#odv2-sidebar-phases .odv2-phase-status.error,
+.odv2-main .odv2-badge.error,
+.odv2-main .odv2-phase-status.error {
+    background: rgba(255, 77, 109, 0.16) !important;
+    border-color: rgba(255, 77, 109, 0.65) !important;
+    color: #ff8b9d !important;
+}
