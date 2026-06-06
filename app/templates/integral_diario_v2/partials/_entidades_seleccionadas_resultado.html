@@ -1,0 +1,6 @@
+<section class="integral-result-section intv2-collapsible" data-collapse-key="entidades-seleccionadas">
+    <button type="button" class="integral-result-section-head intv2-card-head"><span>Entidades seleccionadas</span><b>v</b></button>
+    <div class="integral-result-section-body intv2-card-body">
+        {% if resultado.entidades %}<input type="hidden" id="integralEntidadesSeleccionadasCsv" value="{{ resultado.entidades_csv }}"><div class="integral-table-wrap"><table class="integral-data-table integral-selected-entities-table"><thead><tr><th>Entidad</th><th>Reg. SQL</th><th>Reg. archivo</th><th>Diferencia</th></tr></thead><tbody>{% for item in resultado.entidades %}<tr><td>{{ item.entidad }}</td><td>{{ item.reg_sql }}</td><td>{{ item.reg_archivo }}</td><td>{{ item.diferencia }}</td></tr>{% endfor %}<tr class="integral-total-row"><td><strong>Totales</strong></td><td><strong>{{ resultado.totales.reg_sql }}</strong></td><td><strong>{{ resultado.totales.reg_archivo }}</strong></td><td><strong>{{ resultado.totales.diferencia }}</strong></td></tr></tbody></table></div>{% else %}<div class="integral-alert warning">No hay entidades seleccionadas.</div>{% endif %}
+    </div>
+</section>

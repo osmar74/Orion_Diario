@@ -1,0 +1,21 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    {% if resultado.archivo %}<input type="hidden" id="integralArchivoSeleccionadoPorFaseC" value="{{ resultado.archivo }}">{% endif %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-c-detalle">
+        <button type="button" class="integral-result-section-head intv2-card-head"><span>Detalle de archivo</span><b>v</b></button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-env-detail-table-wrap"><table class="integral-env-detail-table">
+                <thead><tr><th>Conexión</th><th>Ruta búsqueda</th><th>Carpeta destino</th><th>Archivo copiado</th><th>Cant. encontrados</th></tr></thead>
+                <tbody><tr><td>{{ resultado.detalle.conexion }}</td><td>{{ resultado.detalle.ruta_busqueda }}</td><td>{{ resultado.detalle.carpeta_destino }}</td><td>{{ resultado.detalle.archivo_copiado }}</td><td>{{ resultado.detalle.cantidad_archivos }}</td></tr></tbody>
+            </table></div>
+        </div>
+    </section>
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-c-tiempos">
+        <button type="button" class="integral-result-section-head intv2-card-head"><span>Tiempos de ejecución</span><b>v</b></button>
+        <div class="integral-result-section-body intv2-card-body"><div class="integral-exec-table-wrap"><table class="integral-exec-table">
+            <thead><tr><th>#</th><th>Código</th><th>Paso</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Seg.</th><th>Entrada</th><th>Salida</th><th>Mensaje</th></tr></thead>
+            <tbody>{% for fila in resultado.tiempos %}<tr><td>{{ fila['#'] }}</td><td>{{ fila['Código'] }}</td><td>{{ fila['Paso'] }}</td><td>{{ fila['Estado'] }}</td><td>{{ fila['Inicio'] }}</td><td>{{ fila['Fin'] }}</td><td>{{ fila['Seg.'] }}</td><td>{{ fila['Entrada'] }}</td><td>{{ fila['Salida'] }}</td><td>{{ fila['Mensaje'] }}</td></tr>{% endfor %}</tbody>
+        </table></div></div>
+    </section>
+    {% if resultado.candidatos %}<section class="integral-result-section intv2-collapsible" data-collapse-key="fase-c-candidatos"><button type="button" class="integral-result-section-head intv2-card-head"><span>Archivos encontrados</span><b>v</b></button><div class="integral-result-section-body intv2-card-body"><div class="integral-table-wrap"><table class="integral-data-table"><thead><tr><th>Usado</th><th>Nombre</th><th>Ruta</th><th>KB</th></tr></thead><tbody>{% for item in resultado.candidatos %}<tr><td>{{ 'Sí' if item.seleccionado else '' }}</td><td>{{ item.nombre }}</td><td>{{ item.ruta }}</td><td>{{ item.tamano_kb }}</td></tr>{% endfor %}</tbody></table></div></div></section>{% endif %}
+    {% if resultado.advertencias %}<section class="integral-result-section intv2-collapsible" data-collapse-key="fase-c-advertencias"><button type="button" class="integral-result-section-head intv2-card-head"><span>Advertencias</span><b>v</b></button><div class="integral-result-section-body intv2-card-body"><div class="integral-phase-warnings">{% for advertencia in resultado.advertencias %}<div>{{ advertencia }}</div>{% endfor %}</div></div></section>{% endif %}
+</div>

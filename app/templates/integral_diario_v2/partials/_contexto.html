@@ -1,0 +1,49 @@
+<template id="integralContextSummaryReturned">
+    {% include "integral_diario_v2/partials/_context_summary.html" %}
+</template>
+
+<template id="integralSidebarPhasesReturned">
+    {% set fases = data.fases %}
+    {% include "integral_diario_v2/partials/_fases_sidebar.html" %}
+</template>
+
+<template id="integralCentralPhasesReturned">
+    {% set fases = data.fases %}
+    {% include "integral_diario_v2/partials/_fases_central.html" %}
+</template>
+
+<div class="integral-v2-card integral-context-loaded-card">
+    <h3>Contexto Integral reiniciado</h3>
+    <p>
+        Fecha proceso: <strong>{{ data.fecha_proceso }}</strong><br>
+        Fecha SQL: <strong>{{ data.fecha_sql }}</strong><br>
+        Fecha archivo DDMMYYYY: <strong>{{ data.fecha_ddmmaaaa }}</strong><br>
+        Mes gestión: <strong>{{ data.mes_gestion }}</strong><br>
+        Ambiente: <strong>{{ data.ambiente }}</strong><br>
+        Servidor: <strong>{{ data.servidor }}</strong>
+    </p>
+
+    <div class="integral-context-check-grid">
+        <div class="integral-context-check {{ 'ok' if data.origen.ok else 'error' }}">
+            <b>Origen</b>
+            <span>{{ data.origen.server }} / {{ data.origen.database }}</span>
+            <span>{{ data.origen.tablas }}</span>
+            <em>{{ data.origen.estado }}</em>
+        </div>
+        <div class="integral-context-check {{ 'ok' if data.destino_aster.ok else 'error' }}">
+            <b>Aster Integral</b>
+            <span>{{ data.destino_aster.server }} / {{ data.destino_aster.database }}</span>
+            <span>{{ data.destino_aster.tablas }}</span>
+            <em>{{ data.destino_aster.estado }}</em>
+        </div>
+        <div class="integral-context-check {{ 'ok' if data.destino_vencorp.ok else 'error' }}">
+            <b>Vencorp Integral</b>
+            <span>{{ data.destino_vencorp.server }} / {{ data.destino_vencorp.database }}</span>
+            <span>{{ data.destino_vencorp.tablas }}</span>
+            <em>{{ data.destino_vencorp.estado }}</em>
+        </div>
+    </div>
+</div>
+
+{% set pasos = data.pasos %}
+{% include "integral_diario_v2/partials/_pasos.html" %}

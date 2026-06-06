@@ -62,3 +62,24 @@ logs/
 # Permitir versionar plantilla sin secretos
 !.env.exampleinstance/
 instance/
+
+
+# Backups temporales generados durante desarrollo
+*.bak
+*.bak_*
+*.antes_*
+*.antes_revert_*
+*_backup_*
+_backup_*/
+
+# Archivos comprimidos temporales
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs / temporales
+*.log
+*.tmp

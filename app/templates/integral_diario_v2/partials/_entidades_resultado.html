@@ -1,0 +1,6 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="entidades-sql"><button type="button" class="integral-result-section-head intv2-card-head"><span>Entidades SQL</span><b>v</b></button><div class="integral-result-section-body intv2-card-body">
+        <div class="integral-env-detail-table-wrap"><table class="integral-env-detail-table"><thead><tr><th>Conexión</th><th>Fecha SQL</th><th>Cantidad entidades</th></tr></thead><tbody><tr><td>{{ resultado.detalle.conexion }}</td><td>{{ resultado.detalle.fecha_sql }}</td><td>{{ resultado.detalle.cantidad }}</td></tr></tbody></table></div>
+        {% if resultado.entidades %}<div class="integral-table-wrap"><table class="integral-data-table"><thead><tr><th>Entidad</th><th>Registros</th></tr></thead><tbody>{% for item in resultado.entidades %}<tr><td>{{ item.entidad }}</td><td>{{ item.registros }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+    </div></section>
+</div>

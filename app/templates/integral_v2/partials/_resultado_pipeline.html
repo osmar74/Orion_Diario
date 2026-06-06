@@ -1,0 +1,88 @@
+<div class="integral-v2-result-card">
+    <div class="integral-v2-result-header">
+        <div>
+            <h4>Resultado de ejecución Integral</h4>
+            <p>
+                Conexión: <strong>{{ resultado.conexion|upper }}</strong> ·
+                Fecha SQL: <strong>{{ resultado.fecha_sql }}</strong> ·
+                Entidad: <strong>{{ resultado.entidad }}</strong>
+            </p>
+        </div>
+
+        {% if resultado.ok %}
+            <span class="integral-v2-chip ok">Correcto</span>
+        {% else %}
+            <span class="integral-v2-chip warn">Revisar</span>
+        {% endif %}
+    </div>
+
+    <div class="integral-v2-note">
+        {{ resultado.mensaje }}
+    </div>
+
+    {% if resultado.usuarios is defined and resultado.comentarios is defined %}
+        <table class="integral-v2-table">
+            <thead>
+                <tr>
+                    <th>Bloque</th>
+                    <th>Origen</th>
+                    <th>Borrados</th>
+                    <th>Insertados</th>
+                    <th>Destino final</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Usuarios</td>
+                    <td>{{ resultado.usuarios.origen }}</td>
+                    <td>{{ resultado.usuarios.borrados|default('-') }}</td>
+                    <td>{{ resultado.usuarios.insertados }}</td>
+                    <td>{{ resultado.usuarios.destino }}</td>
+                </tr>
+                <tr>
+                    <td>Comentarios</td>
+                    <td>{{ resultado.comentarios.origen }}</td>
+                    <td>{{ resultado.comentarios.borrados|default('-') }}</td>
+                    <td>{{ resultado.comentarios.insertados }}</td>
+                    <td>{{ resultado.comentarios.destino }}</td>
+                </tr>
+            </tbody>
+        </table>
+    {% endif %}
+
+    <h4 class="integral-v2-subtitle">Pipeline ejecutado</h4>
+    <table class="integral-v2-table">
+        <thead>
+            <tr>
+                <th>Paso</th>
+                <th>Proceso</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Acción</th>
+                <th>Cantidad</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for paso in resultado.pipeline %}
+                <tr>
+                    <td>{{ paso.paso }}</td>
+                    <td>{{ paso.proceso }}</td>
+                    <td>{{ paso.origen }}</td>
+                    <td>{{ paso.destino }}</td>
+                    <td>{{ paso.accion }}</td>
+                    <td>{{ paso.cantidad }}</td>
+                    <td>
+                        {% if paso.estado == 'OK' %}
+                            <span class="integral-v2-chip ok">OK</span>
+                        {% elif paso.estado == 'ERROR' %}
+                            <span class="integral-v2-chip error">ERROR</span>
+                        {% else %}
+                            <span class="integral-v2-chip warn">{{ paso.estado }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

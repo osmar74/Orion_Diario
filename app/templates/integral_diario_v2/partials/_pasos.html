@@ -1,0 +1,36 @@
+{% if pasos %}
+<div class="integral-table-wrap">
+    <table class="integral-result-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Código</th>
+                <th>Paso</th>
+                <th>Estado</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Seg.</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Mensaje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pasos %}
+            <tr>
+                <td>{{ p.orden }}</td>
+                <td>{{ p.codigo }}</td>
+                <td>{{ p.nombre }}</td>
+                <td><span class="integral-status integral-status-{{ p.estado|lower }}">{{ p.estado }}</span></td>
+                <td>{{ p.inicio }}</td>
+                <td>{{ p.fin }}</td>
+                <td>{{ p.segundos }}</td>
+                <td>{{ p.registros_entrada if p.registros_entrada is not none else '' }}</td>
+                <td>{{ p.registros_salida if p.registros_salida is not none else '' }}</td>
+                <td>{{ p.mensaje }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}

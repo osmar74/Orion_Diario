@@ -1,0 +1,226 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-tiempos">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Tiempos de ejecución</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-exec-table-wrap">
+                <table class="integral-exec-table">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Código</th><th>Paso</th><th>Estado</th><th>Inicio</th>
+                            <th>Fin</th><th>Seg.</th><th>Entrada</th><th>Salida</th><th>Mensaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in resultado.tiempos %}
+                        <tr>
+                            <td>{{ fila['#'] }}</td>
+                            <td>{{ fila['Código'] }}</td>
+                            <td>{{ fila['Paso'] }}</td>
+                            <td>{{ fila['Estado'] }}</td>
+                            <td>{{ fila['Inicio'] }}</td>
+                            <td>{{ fila['Fin'] }}</td>
+                            <td>{{ fila['Seg.'] }}</td>
+                            <td>{{ fila['Entrada'] }}</td>
+                            <td>{{ fila['Salida'] }}</td>
+                            <td>{{ fila['Mensaje'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-archivos">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Archivos validados</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table integral-check-table">
+                    <thead>
+                        <tr>
+                            <th>Estado</th><th>Archivo</th><th>Tipo</th><th>Registros</th>
+                            <th>Columnas</th><th>Tamaño bytes</th><th>Modificado</th><th>Ruta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultado.archivos %}
+                        <tr>
+                            <td>
+                                {% if item.existe %}
+                                    <span class="integral-check-ok">✓</span>
+                                {% else %}
+                                    <span class="integral-check-bad">✕</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.nombre }}</td>
+                            <td>{{ item.tipo }}</td>
+                            <td>{{ item.registros }}</td>
+                            <td>{{ item.columnas }}</td>
+                            <td>{{ item.tamano_bytes }}</td>
+                            <td>{{ item.modificado }}</td>
+                            <td>{{ item.ruta }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-vencorp">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Validación Vencorp_Integral</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-env-detail-table-wrap">
+                <table class="integral-env-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Tabla</th><th>Criterio</th><th>Archivo oficial</th>
+                            <th>Columnas archivo</th><th>Registros BD</th>
+                            <th>Diferencia</th><th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ resultado.validacion_vencorp.tabla or '-' }}</td>
+                            <td>{{ resultado.validacion_vencorp.criterio or '-' }}</td>
+                            <td>{{ resultado.validacion_vencorp.archivo_oficial or 0 }}</td>
+                            <td>{{ resultado.validacion_vencorp.columnas_archivo or 0 }}</td>
+                            <td>{{ resultado.validacion_vencorp.registros_bd or 0 }}</td>
+                            <td>{{ resultado.validacion_vencorp.diferencia or 0 }}</td>
+                            <td>{{ resultado.validacion_vencorp.estado or '-' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-rutas">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Rutas y carpetas de copia</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table integral-check-table">
+                    <thead>
+                        <tr>
+                            <th>Estado</th><th>Grupo</th><th>Nombre</th><th>Acción</th><th>Detalle</th><th>Ruta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultado.rutas_copia %}
+                        <tr>
+                            <td>
+                                {% if item.existe %}
+                                    <span class="integral-check-ok">✓</span>
+                                {% else %}
+                                    <span class="integral-check-bad">✕</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.grupo }}</td>
+                            <td>{{ item.nombre }}</td>
+                            <td>{{ item.accion }}</td>
+                            <td>{{ item.detalle }}</td>
+                            <td>{{ item.ruta }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="integral-sql-note">
+                <strong>Regla SDD:</strong> Integral/Discador se copia en Preventivo; Manual se copia en Churn.
+                Microvoz_MM_YY se crea si no existe.
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-copias">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Archivos copiados</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table integral-check-table">
+                    <thead>
+                        <tr>
+                            <th>Estado</th><th>Descripción</th><th>Origen</th><th>Destino</th><th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultado.copias %}
+                        <tr>
+                            <td>
+                                {% if item.copiado %}
+                                    <span class="integral-check-ok">✓</span>
+                                {% else %}
+                                    <span class="integral-check-bad">✕</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.descripcion }}</td>
+                            <td>{{ item.origen }}</td>
+                            <td>{{ item.destino }}</td>
+                            <td>{{ item.detalle }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-manifiesto">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Resumen / manifiesto final</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-env-detail-table-wrap">
+                <table class="integral-env-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Conexión</th><th>Fecha proceso</th><th>Fecha SQL</th>
+                            <th>Mes gestión</th><th>Tipo proceso</th><th>Destino Integral</th>
+                            <th>Carpeta final</th><th>Manifiesto</th><th>Cubo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ resultado.detalle.conexion }}</td>
+                            <td>{{ resultado.detalle.fecha_proceso }}</td>
+                            <td>{{ resultado.detalle.fecha_sql }}</td>
+                            <td>{{ resultado.detalle.mes_gestion }}</td>
+                            <td>{{ resultado.detalle.tipo_proceso }}</td>
+                            <td>{{ resultado.detalle.subcarpeta_integral }}</td>
+                            <td>{{ resultado.detalle.final_dir }}</td>
+                            <td>{{ resultado.manifiesto.ruta }}</td>
+                            <td>{{ resultado.cubo.estado }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="integral-alert info">
+                <strong>Cubo Excel:</strong> {{ resultado.cubo.mensaje }}
+            </div>
+        </div>
+    </section>
+
+    {% if resultado.advertencias %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-j-advertencias">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Advertencias</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-phase-warnings">
+                {% for advertencia in resultado.advertencias %}
+                    <div>{{ advertencia }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</div>

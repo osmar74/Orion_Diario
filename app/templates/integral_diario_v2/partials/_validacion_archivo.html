@@ -1,0 +1,28 @@
+<div class="integral-section-result">
+    <h3>Validación de archivo</h3>
+    <p>Filas: <strong>{{ data.filas }}</strong> | Columna usada: <strong>{{ data.columna or '' }}</strong></p>
+
+    <div class="integral-table-wrap">
+        <table class="integral-result-table">
+            <thead>
+                <tr>
+                    <th>Entidad</th>
+                    <th>Existe en archivo</th>
+                    <th>Registros</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in data.detalles %}
+                <tr>
+                    <td>{{ d.entidad }}</td>
+                    <td>{{ 'Sí' if d.en_archivo else 'No' }}</td>
+                    <td>{{ d.registros }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% set pasos = data.pasos %}
+{% include "integral_diario_v2/partials/_pasos.html" %}

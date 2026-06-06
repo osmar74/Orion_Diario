@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Integral Diario v2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/integral_diario_v2.css') }}">
+</head>
+
+<body class="intv2-body">
+<div class="intv2-page">
+
+    <header class="intv2-header">
+        <div class="intv2-brand">
+            <span class="intv2-logo">⚙️</span>
+            <div>
+                <h1>Orion Procesos</h1>
+                <p>Integral Diario v2 — SDD, SQL externo, limpieza y trazabilidad por fases</p>
+            </div>
+        </div>
+
+        <nav class="intv2-nav">
+            <a class="intv2-nav-btn" href="/orion-diario-v2">Gestión Diaria Orion</a>
+            <a class="intv2-nav-btn" href="/aster-diario-v2">Gestión Diaria ASTER</a>
+            <a class="intv2-nav-btn" href="/consolidar-gestion-v2">Consolidar Gestión</a>
+            <a class="intv2-nav-btn active" href="/integral-diario-v2">Integral</a>
+        </nav>
+    </header>
+
+    <form id="integralV2Form" class="intv2-form">
+        <input type="hidden" id="integralConexion" name="conexion" value="local">
+        <input type="hidden" id="integralTipo" name="tipo_proceso" value="discador">
+
+        <section class="intv2-topbar">
+            <div class="intv2-field">
+                <label for="integralFecha">Fecha proceso</label>
+                <input id="integralFecha" name="fecha_proceso" value="20260429" placeholder="20260429 o 2026-04-29">
+            </div>
+
+            <div class="intv2-field">
+                <label for="integralMesGestion">Mes gestión</label>
+                <input id="integralMesGestion" name="mes_gestion_texto" value="abril" placeholder="abril">
+            </div>
+
+            <div class="intv2-field intv2-field-connection">
+                <label>Conexión global</label>
+                <div class="intv2-connection-buttons">
+                    <button type="button" class="intv2-btn intv2-conn-btn active" data-integral-conn="local">LOCAL - Pruebas</button>
+                    <button type="button" class="intv2-btn intv2-conn-btn danger" data-integral-conn="remoto">REMOTO - Producción</button>
+                </div>
+            </div>
+
+            <div class="intv2-topbar-actions">
+                <button id="integralLoadContext" type="button" class="intv2-main-btn">Cargar contexto</button>
+            </div>
+        </section>
+
+        <section class="intv2-shell">
+            <aside class="intv2-sidebar">
+                <section class="intv2-card intv2-collapsible" data-collapse-key="integral-phase-sidebar">
+                    <button type="button" class="intv2-card-head">
+                        <span>📌 Estado de fases</span>
+                        <b>▾</b>
+                    </button>
+                    <div class="intv2-card-body" id="integralSidebarFasesContainer">
+                        {% set fases = none %}
+                        {% include "integral_diario_v2/partials/_fases_sidebar.html" %}
+                    </div>
+                </section>
+
+                <section class="intv2-card intv2-collapsible" data-collapse-key="integral-context-sidebar">
+                    <button type="button" class="intv2-card-head">
+                        <span>🧭 Resumen contexto</span>
+                        <b>▾</b>
+                    </button>
+                    <div class="intv2-card-body">
+                        <div id="integralContextSummary" class="integral-context-summary">
+                            {% include "integral_diario_v2/partials/_context_summary.html" %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="intv2-card intv2-collapsible" data-collapse-key="integral-config-sidebar">
+                    <button type="button" class="intv2-card-head">
+                        <span>⚙ Configuración Integral</span>
+                        <b>▾</b>
+                    </button>
+                    <div class="intv2-card-body">
+                        <div class="intv2-mini">
+                            <span>Ambiente</span>
+                            <b id="integralSidebarAmbiente">LOCAL - Pruebas</b>
+                        </div>
+                        <div class="intv2-mini">
+                            <span>Servidor local</span>
+                            <b>localhost\SQL2025DEV</b>
+                        </div>
+                        <div class="intv2-mini">
+                            <span>Servidor remoto</span>
+                            <b>172.24.80.32</b>
+                        </div>
+                        <div class="intv2-mini">
+                            <span>Origen local</span>
+                            <b>gestioncomercial_dev / dbo.comentarios / dbo.usuarios</b>
+                        </div>
+                        <div class="intv2-mini">
+                            <span>Destino</span>
+                            <b>Aster_Integral_Api / Vencorp_Integral</b>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+
+            <main class="intv2-main">
+                <section class="intv2-card intv2-collapsible intv2-bitacora-card" data-collapse-key="integral-bitacora">
+                    <button type="button" class="intv2-card-head">
+                        <span>📊 Bitácora de ejecución Integral</span>
+                        <b>▾</b>
+                    </button>
+                    <div class="intv2-card-body">
+                        <div id="integralV2Resultado">
+                            {% include "integral_diario_v2/partials/_fases_central.html" %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="intv2-card intv2-collapsible intv2-param-card" data-collapse-key="integral-parametros">
+                    <button type="button" class="intv2-card-head">
+                        <span>🧾 Parámetros avanzados</span>
+                        <b>▾</b>
+                    </button>
+                    <div class="intv2-card-body intv2-param-grid">
+                        <div class="intv2-field">
+                            <label for="integralEntidadesCsv">Entidades seleccionadas</label>
+                            <textarea id="integralEntidadesCsv" name="entidades_csv" rows="3" placeholder="Se llenará al obtener/aplicar entidades"></textarea>
+                        </div>
+                        <div class="intv2-field">
+                            <label for="integralArchivo">Archivo seleccionado</label>
+                            <input id="integralArchivo" name="archivo" placeholder="Ruta completa del archivo encontrado/seleccionado">
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </section>
+    </form>
+
+    <template id="integralV2LoadingTemplate">{% include "integral_diario_v2/partials/_loading.html" %}</template>
+    <template id="integralV2ErrorComTemplate">{% include "integral_diario_v2/partials/_error_comunicacion.html" %}</template>
+
+    <script src="{{ url_for('static', filename='js/integral_diario_v2.js') }}"></script>
+</div>
+</body>
+</html>

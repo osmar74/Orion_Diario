@@ -1,0 +1,45 @@
+{% set ctx = contexto|default({}) %}
+{% set conexion = ctx.get('conexion', 'local') %}
+{% set servidor = ctx.get('servidor', 'localhost\\SQL2025DEV' if conexion == 'local' else '172.24.80.32') %}
+{% set origen = ctx.get('origen', 'gestioncomercial_dev' if conexion == 'local' else 'gestioncomercial') %}
+{% set tablas = ctx.get('tablas', 'dbo.comentarios / dbo.usuarios' if conexion == 'local' else 'comentarios / crm') %}
+
+<div class="integral-resumen-list">
+    <div class="integral-resumen-row">
+        <span class="integral-dot {{ ctx.get('servidor_estado', 'sin-verificar') }}"></span>
+        <span>Servidor: <strong>{{ servidor }}</strong> — {{ ctx.get('servidor_texto', 'Sin verificar') }}</span>
+    </div>
+
+    <div class="integral-resumen-row">
+        <span class="integral-dot {{ ctx.get('origen_estado', 'sin-verificar') }}"></span>
+        <span>Origen: <strong>{{ origen }}</strong> — {{ tablas }} — {{ ctx.get('origen_texto', 'Sin verificar') }}</span>
+    </div>
+
+    <div class="integral-resumen-row">
+        <span class="integral-dot {{ ctx.get('aster_estado', 'sin-verificar') }}"></span>
+        <span>Aster: <strong>Aster_Integral_Api</strong> — {{ ctx.get('aster_texto', 'Sin verificar') }}</span>
+    </div>
+
+    <div class="integral-resumen-row">
+        <span class="integral-dot {{ ctx.get('vencorp_estado', 'sin-verificar') }}"></span>
+        <span>Vencorp: <strong>Vencorp_Integral</strong> — {{ ctx.get('vencorp_texto', 'Sin verificar') }}</span>
+    </div>
+
+    {% if ctx.get('fecha_sql') %}
+    <div class="integral-resumen-row muted">
+        <span>Fecha SQL: <strong>{{ ctx.get('fecha_sql') }}</strong></span>
+    </div>
+    {% endif %}
+
+    {% if ctx.get('fecha_ddmmaaaa') %}
+    <div class="integral-resumen-row muted">
+        <span>Fecha archivo: <strong>{{ ctx.get('fecha_ddmmaaaa') }}</strong></span>
+    </div>
+    {% endif %}
+
+    {% if ctx.get('mes_gestion_codigo') %}
+    <div class="integral-resumen-row muted">
+        <span>Mes gestión: <strong>{{ ctx.get('mes_gestion_codigo') }}</strong></span>
+    </div>
+    {% endif %}
+</div>

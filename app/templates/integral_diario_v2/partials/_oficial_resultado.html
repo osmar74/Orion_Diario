@@ -1,0 +1,119 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-h-tiempos">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Tiempos de ejecución</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-exec-table-wrap">
+                <table class="integral-exec-table">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Código</th><th>Paso</th><th>Estado</th><th>Inicio</th>
+                            <th>Fin</th><th>Seg.</th><th>Entrada</th><th>Salida</th><th>Mensaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in resultado.tiempos %}
+                        <tr>
+                            <td>{{ fila['#'] }}</td>
+                            <td>{{ fila['Código'] }}</td>
+                            <td>{{ fila['Paso'] }}</td>
+                            <td>{{ fila['Estado'] }}</td>
+                            <td>{{ fila['Inicio'] }}</td>
+                            <td>{{ fila['Fin'] }}</td>
+                            <td>{{ fila['Seg.'] }}</td>
+                            <td>{{ fila['Entrada'] }}</td>
+                            <td>{{ fila['Salida'] }}</td>
+                            <td>{{ fila['Mensaje'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-h-transformaciones">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Transformaciones oficiales aplicadas</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table integral-official-transform-table">
+                    <thead>
+                        <tr>
+                            <th>Regla</th>
+                            <th>Campo</th>
+                            <th>Antes</th>
+                            <th>Después</th>
+                            <th>Acción</th>
+                            <th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultado.transformaciones %}
+                        <tr>
+                            <td>{{ item.regla }}</td>
+                            <td>{{ item.campo }}</td>
+                            <td>{{ item.antes }}</td>
+                            <td>{{ item.despues }}</td>
+                            <td>{{ item.accion }}</td>
+                            <td>{{ item.detalle }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-h-detalle">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Archivos oficiales generados</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-env-detail-table-wrap">
+                <table class="integral-env-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Conexión</th>
+                            <th>Fecha proceso</th>
+                            <th>Mes gestión</th>
+                            <th>Filas</th>
+                            <th>Columnas</th>
+                            <th>CSV oficial</th>
+                            <th>Excel oficial</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ resultado.detalle.conexion }}</td>
+                            <td>{{ resultado.detalle.fecha_proceso }}</td>
+                            <td>{{ resultado.detalle.mes_gestion }}</td>
+                            <td>{{ resultado.detalle.filas }}</td>
+                            <td>{{ resultado.detalle.columnas }}</td>
+                            <td>{{ resultado.detalle.csv_oficial }}</td>
+                            <td>{{ resultado.detalle.xlsx_oficial }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="integral-sql-note"><strong>CSV limpio origen:</strong> {{ resultado.detalle.csv_limpio }}</div>
+        </div>
+    </section>
+
+    {% if resultado.advertencias %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-h-advertencias">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Advertencias</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-phase-warnings">
+                {% for advertencia in resultado.advertencias %}
+                    <div>{{ advertencia }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</div>

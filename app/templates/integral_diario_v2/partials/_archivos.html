@@ -1,0 +1,30 @@
+<div class="integral-section-result">
+    <h3>Archivos encontrados</h3>
+    <p>Ruta base: <strong>{{ data.ruta_base or '' }}</strong> | Total archivos: {{ data.total }}</p>
+
+    <div class="integral-table-wrap">
+        <table class="integral-result-table">
+            <thead>
+                <tr>
+                    <th>Usar</th>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Ruta</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in data.archivos %}
+                <tr>
+                    <td><button type="button" class="odv2-secondary integral-usar-archivo" data-ruta="{{ a.ruta }}">Usar</button></td>
+                    <td>{{ a.nombre }}</td>
+                    <td>{{ a.tipo_detectado }}</td>
+                    <td>{{ a.ruta }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% set pasos = data.pasos %}
+{% include "integral_diario_v2/partials/_pasos.html" %}

@@ -1,0 +1,115 @@
+{% set codigo_fase = resultado.codigo|string %}
+{% set codigo_map = {
+    'A': 'INT-CTX-01',
+    'B': 'INT-ENV-01',
+    'C': 'INT-ARC-01',
+    'D': 'INT-CMP-01',
+    'E': 'INT-SYN-01',
+    'F': 'INT-CAR-01',
+    'G': 'INT-SQL-01',
+    'H': 'INT-OFC-01',
+    'I': 'INT-VEN-01',
+    'J': 'INT-FIN-01'
+} %}
+{% set codigo_exec = codigo_map.get(codigo_fase, 'INT-' ~ codigo_fase ~ '-01') %}
+
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <div class="integral-exec-table-wrap">
+        <table class="integral-exec-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Código</th>
+                    <th>Paso</th>
+                    <th>Estado</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Seg.</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>Mensaje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>{{ codigo_exec }}</td>
+                    <td>{{ resultado.titulo }}</td>
+                    <td>{{ resultado.estado }}</td>
+                    <td>{{ resultado.inicio or '-' }}</td>
+                    <td>{{ resultado.fin or '-' }}</td>
+                    <td>{{ "%.2f"|format(resultado.duracion_segundos or 0) }}</td>
+                    <td>{{ resultado.registros_entrada if resultado.registros_entrada is not none else '-' }}</td>
+                    <td>{{ resultado.registros_salida if resultado.registros_salida is not none else '-' }}</td>
+                    <td>{{ resultado.mensaje or '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    {% if resultado.detalle %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="detalle-{{ codigo_exec }}">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Detalle de ejecución</span>
+            <b>▾</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-detail-list">
+                {% for clave, valor in resultado.detalle.items() %}
+                    <div class="integral-detail-item">
+                        <span>{{ clave }}</span>
+                        <strong>{{ valor }}</strong>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if resultado.advertencias %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="advertencias-{{ codigo_exec }}">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Advertencias</span>
+            <b>▾</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-phase-warnings">
+                {% for advertencia in resultado.advertencias %}
+                    <div>{{ advertencia }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if resultado.tabla %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="tabla-{{ codigo_exec }}">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Tabla de datos creada</span>
+            <b>▾</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table">
+                    <thead>
+                        <tr>
+                            {% for columna in resultado.tabla[0].keys() %}
+                                <th>{{ columna }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in resultado.tabla %}
+                            <tr>
+                                {% for valor in fila.values() %}
+                                    <td>{{ valor }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</div>

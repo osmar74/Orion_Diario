@@ -1,0 +1,26 @@
+{% set fases_default = [
+    {'codigo':'A','nombre':'Cargar contexto','estado':'Pendiente'},
+    {'codigo':'B','nombre':'Preparar entorno','estado':'Pendiente'},
+    {'codigo':'C','nombre':'Gestionar archivo','estado':'Pendiente'},
+    {'codigo':'D','nombre':'Obtener y comparar entidades','estado':'Pendiente'},
+    {'codigo':'E','nombre':'Sincronizar origen','estado':'Pendiente'},
+    {'codigo':'F','nombre':'Cargar tabla inicial','estado':'Pendiente'},
+    {'codigo':'G','nombre':'SQL + Limpieza','estado':'Pendiente'},
+    {'codigo':'H','nombre':'Generar oficiales','estado':'Pendiente'},
+    {'codigo':'I','nombre':'Vencorp / Cubo','estado':'Pendiente'},
+    {'codigo':'J','nombre':'Copiar / Validar final','estado':'Pendiente'}
+] %}
+{% set fases = fases if fases else fases_default %}
+
+<div class="integral-fases-sidebar-list">
+    {% for fase in fases %}
+        {% set estado = fase.estado|default('Pendiente') %}
+        <div class="integral-fase-sidebar-row" data-integral-fase="{{ fase.codigo }}">
+            <div class="integral-fase-sidebar-left">
+                <span class="integral-fase-badge">{{ fase.codigo }}</span>
+                <span class="integral-fase-sidebar-name">{{ fase.nombre }}</span>
+            </div>
+            <span class="integral-fase-sidebar-status {{ estado|lower|replace(' ', '-') }}">{{ estado }}</span>
+        </div>
+    {% endfor %}
+</div>

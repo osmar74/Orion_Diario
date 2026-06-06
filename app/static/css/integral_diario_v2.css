@@ -1,0 +1,1371 @@
+/* Integral Diario v2 - CSS independiente */
+
+:root {
+    --intv2-bg: #050b14;
+    --intv2-header: #101010;
+    --intv2-panel: #0d1626;
+    --intv2-panel-2: #07101f;
+    --intv2-border: #203a5b;
+    --intv2-border-soft: rgba(80, 120, 170, .35);
+    --intv2-title: #f8fbff;
+    --intv2-text: #c8d4e7;
+    --intv2-muted: #94a8c4;
+    --intv2-blue: #2867e8;
+    --intv2-cyan: #20b7ff;
+    --intv2-green: #22c55e;
+    --intv2-red: #ef4444;
+    --intv2-yellow: #facc15;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+.intv2-body {
+    background: var(--intv2-bg);
+    color: var(--intv2-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.intv2-page {
+    height: 100vh;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: 74px minmax(0, 1fr);
+    overflow: hidden;
+}
+
+/* HEADER */
+.intv2-header {
+    min-height: 74px;
+    height: 74px;
+    background: var(--intv2-header);
+    border-bottom: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 0 18px;
+    overflow: hidden;
+}
+
+.intv2-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 340px;
+}
+
+.intv2-logo { font-size: 34px; }
+
+.intv2-brand h1 {
+    margin: 0;
+    color: var(--intv2-title);
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.intv2-brand p {
+    margin: 4px 0 0;
+    color: var(--intv2-muted);
+    font-size: 14px;
+}
+
+.intv2-nav {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.intv2-nav-btn {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid #303030;
+    border-radius: 8px;
+    background: #111;
+    color: #fff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.intv2-nav-btn.active,
+.intv2-nav-btn:hover {
+    border-color: #00aaff;
+    color: #00aaff;
+}
+
+/* ROOT FORM */
+.intv2-form {
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 18px;
+    gap: 18px;
+}
+
+/* TOPBAR */
+.intv2-topbar {
+    width: 100%;
+    background: var(--intv2-panel);
+    border: 1px solid var(--intv2-border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: minmax(180px, 230px) minmax(180px, 230px) minmax(320px, 1fr) auto;
+    gap: 18px;
+    align-items: end;
+}
+
+.intv2-field label {
+    display: block;
+    color: var(--intv2-muted);
+    font-size: 12px;
+    font-weight: 900;
+    margin-bottom: 7px;
+}
+
+.intv2-field input,
+.intv2-field textarea {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #284462;
+    border-radius: 10px;
+    background: #07101f;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 17px;
+    font-weight: 800;
+    outline: none;
+}
+
+.intv2-field textarea {
+    resize: vertical;
+    font-size: 13px;
+}
+
+.intv2-connection-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.intv2-btn,
+.intv2-main-btn {
+    min-height: 44px;
+    border: 1px solid #2c3e5d;
+    border-radius: 10px;
+    background: #1b273a;
+    color: #fff;
+    padding: 0 18px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.intv2-btn.active {
+    background: linear-gradient(135deg, #2f6fea, #13a8e5);
+    border-color: #2fa9ff;
+}
+
+.intv2-btn.danger.active {
+    background: linear-gradient(135deg, #b91c1c, #ef4444);
+    border-color: #f87171;
+}
+
+.intv2-main-btn:hover,
+.intv2-btn:hover { filter: brightness(1.08); }
+
+/* SHELL */
+.intv2-shell {
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* SIDEBAR */
+.intv2-sidebar {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.intv2-card {
+    background: var(--intv2-panel);
+    border: 1px solid var(--intv2-border);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.intv2-card-head {
+    width: 100%;
+    min-height: 46px;
+    border: 0;
+    background: #11314e;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.intv2-card-body { padding: 14px; }
+
+.intv2-collapsed .intv2-card-body { display: none; }
+
+/* MAIN */
+.intv2-main {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 10px;
+    scrollbar-gutter: stable;
+}
+
+.intv2-main::-webkit-scrollbar { width: 12px; }
+.intv2-main::-webkit-scrollbar-track {
+    background: rgba(5, 11, 20, .85);
+    border-radius: 999px;
+}
+.intv2-main::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, .7);
+    border-radius: 999px;
+    border: 2px solid rgba(5, 11, 20, .85);
+}
+
+/* SIDEBAR FASES */
+.integral-fases-sidebar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.integral-fase-sidebar-row {
+    min-height: 36px;
+    padding: 6px 8px;
+    border: 1px solid rgba(70, 110, 160, .45);
+    border-radius: 12px;
+    background: rgba(7, 16, 31, .9);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.integral-fase-sidebar-left {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.integral-fase-badge {
+    width: 27px;
+    height: 27px;
+    border-radius: 999px;
+    background: #245ee8;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    flex: 0 0 auto;
+}
+
+.integral-fase-sidebar-name {
+    color: #c7d7ee;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.integral-fase-sidebar-status {
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+    color: var(--intv2-yellow);
+}
+
+.integral-fase-sidebar-status.correcto,
+.integral-fase-sidebar-status.completado { color: #76ffa1; }
+
+.integral-fase-sidebar-status.proceso { color: #38bdf8; }
+
+.integral-fase-sidebar-status.error,
+.integral-fase-sidebar-status.revisar { color: #ff8297; }
+
+/* RESUMEN */
+.integral-context-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.integral-context-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: var(--intv2-text);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.integral-context-row strong { color: #fff; }
+
+.integral-context-extra {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(120, 160, 210, .18);
+    display: grid;
+    gap: 4px;
+    color: var(--intv2-muted);
+    font-size: 12px;
+}
+
+.integral-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    margin-top: 3px;
+    background: #64748b;
+    box-shadow: 0 0 0 3px rgba(100, 116, 139, .18);
+}
+
+.integral-dot.ok {
+    background: var(--intv2-green);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .18);
+}
+
+.integral-dot.error {
+    background: var(--intv2-red);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, .18);
+}
+
+/* MINI CONFIG */
+.intv2-mini {
+    border: 1px solid rgba(80, 120, 170, .32);
+    border-radius: 10px;
+    padding: 8px;
+    background: rgba(7, 16, 31, .75);
+    margin-bottom: 8px;
+}
+
+.intv2-mini span {
+    display: block;
+    color: var(--intv2-muted);
+    font-size: 11px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.intv2-mini b {
+    color: #fff;
+    font-size: 12px;
+    word-break: break-word;
+}
+
+/* PANEL CENTRAL TIPO ORION */
+.integral-central-fases-orion {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.integral-central-fase-card {
+    border: 1px solid rgba(50, 95, 145, .72);
+    border-radius: 16px;
+    background: var(--intv2-panel-2);
+    overflow: hidden;
+}
+
+.integral-central-fase-head {
+    min-height: 54px;
+    padding: 0 18px;
+    background: linear-gradient(90deg, #155e7d, #0e8792);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.integral-central-fase-title {
+    color: #b8cbe2;
+    font-weight: 900;
+    font-size: 17px;
+}
+
+.integral-central-fase-status {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #07101f;
+    color: var(--intv2-yellow);
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.integral-central-fase-body {
+    min-height: 104px;
+    padding: 20px 18px 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+}
+
+.integral-central-fase-copy strong {
+    display: block;
+    color: #dce9ff;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.integral-central-fase-copy p {
+    margin: 0 0 8px;
+    color: #aac0dc;
+    font-size: 15px;
+}
+
+.integral-central-fase-copy code {
+    color: #00e5ff;
+    background: transparent;
+    font-size: 13px;
+}
+
+.integral-central-fase-btn {
+    min-width: 130px;
+    min-height: 42px;
+    border: 0;
+    border-radius: 10px;
+    background: #17b75b;
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.integral-central-fase-result {
+    margin: 0 18px 16px;
+    padding: 14px;
+    border: 1px dashed rgba(120, 160, 210, .28);
+    border-radius: 12px;
+    color: #9fb1cc;
+    background: rgba(5, 11, 20, .38);
+    overflow-x: auto;
+}
+
+.integral-central-fase-card.correcto .integral-central-fase-status { color: #76ffa1; }
+.integral-central-fase-card.proceso .integral-central-fase-status { color: #38bdf8; }
+
+.integral-central-fase-card.revisar .integral-central-fase-status,
+.integral-central-fase-card.error .integral-central-fase-status { color: #ff8297; }
+
+/* RESULTADOS */
+.integral-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #b9d7ff;
+    font-weight: 800;
+}
+
+.integral-spinner {
+    width: 16px;
+    height: 16px;
+    border: 3px solid rgba(255,255,255,.25);
+    border-top-color: #38bdf8;
+    border-radius: 50%;
+    animation: integral-spin .8s linear infinite;
+}
+
+@keyframes integral-spin { to { transform: rotate(360deg); } }
+
+.integral-alert.error {
+    border: 1px solid rgba(239, 68, 68, .5);
+    background: rgba(239, 68, 68, .1);
+    color: #fecaca;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.integral-phase-result-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.integral-phase-result-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.integral-phase-result-head strong { color: #fff; }
+
+.integral-phase-result-status {
+    font-weight: 900;
+    color: var(--intv2-yellow);
+}
+
+.integral-phase-result-meta,
+.integral-phase-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(90px, 1fr));
+    gap: 8px;
+}
+
+.integral-phase-detail-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+
+.integral-phase-result-meta div,
+.integral-phase-detail-grid div {
+    border: 1px solid rgba(80, 120, 170, .32);
+    border-radius: 10px;
+    padding: 8px;
+    background: rgba(6, 14, 26, .65);
+}
+
+.integral-phase-result-meta span,
+.integral-phase-detail-grid span {
+    display: block;
+    color: #8ea2bd;
+    font-size: 11px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.integral-phase-result-meta strong,
+.integral-phase-detail-grid strong {
+    color: #fff;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+.integral-phase-message { color: #c9d7ec; }
+
+.integral-phase-warnings {
+    border: 1px solid rgba(250, 204, 21, .35);
+    border-radius: 10px;
+    padding: 10px;
+    color: #fde68a;
+    background: rgba(250, 204, 21, .08);
+}
+
+.intv2-param-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.intv2-main table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.intv2-main th,
+.intv2-main td {
+    border: 1px solid rgba(80, 120, 170, .35);
+    padding: 8px;
+}
+
+.intv2-main th {
+    color: #00e5ff;
+    text-align: left;
+}
+
+@media (max-width: 1200px) {
+    .intv2-shell { grid-template-columns: 300px minmax(0, 1fr); }
+    .intv2-topbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .integral-phase-result-meta { grid-template-columns: repeat(2, minmax(90px, 1fr)); }
+}
+
+/* === Integral v2: tablas de tiempo + colapsables === */
+
+/* Tabla de ejecucion con formato solicitado */
+.integral-exec-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(80, 120, 170, .45);
+}
+
+.integral-exec-table {
+    width: 100%;
+    min-width: 980px;
+    border-collapse: collapse;
+    background: #0d1626;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.integral-exec-table th,
+.integral-exec-table td {
+    border: 1px solid rgba(80, 120, 170, .45);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.integral-exec-table th {
+    color: #00e5ff;
+    font-weight: 900;
+    background: #111c2d;
+    white-space: nowrap;
+}
+
+.integral-exec-table td {
+    color: #ffffff;
+}
+
+.integral-exec-table th:nth-child(1),
+.integral-exec-table td:nth-child(1) {
+    width: 48px;
+    text-align: center;
+}
+
+.integral-exec-table th:nth-child(2),
+.integral-exec-table td:nth-child(2) {
+    width: 160px;
+    white-space: nowrap;
+}
+
+.integral-exec-table th:nth-child(4),
+.integral-exec-table td:nth-child(4),
+.integral-exec-table th:nth-child(7),
+.integral-exec-table td:nth-child(7),
+.integral-exec-table th:nth-child(8),
+.integral-exec-table td:nth-child(8),
+.integral-exec-table th:nth-child(9),
+.integral-exec-table td:nth-child(9) {
+    white-space: nowrap;
+}
+
+/* Secciones internas colapsables del resultado */
+.integral-result-section {
+    margin-top: 12px;
+    border: 1px solid rgba(80, 120, 170, .35);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(7, 16, 31, .62);
+}
+
+.integral-result-section-head {
+    min-height: 40px;
+    background: #10283f;
+    font-size: 13px;
+}
+
+.integral-result-section-body {
+    padding: 12px;
+}
+
+/* Fase central colapsable */
+.integral-central-fase-head {
+    cursor: pointer;
+    user-select: none;
+}
+
+.integral-central-fase-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.integral-central-fase-caret {
+    color: #dbeafe;
+    transition: transform .18s ease;
+}
+
+.integral-central-fase-card.intv2-phase-collapsed .integral-central-fase-body,
+.integral-central-fase-card.intv2-phase-collapsed .integral-central-fase-result {
+    display: none;
+}
+
+.integral-central-fase-card.intv2-phase-collapsed .integral-central-fase-caret {
+    transform: rotate(-90deg);
+}
+
+/* Card colapsable general */
+.intv2-collapsed > .intv2-card-body,
+.intv2-collapsed > .integral-result-section-body {
+    display: none !important;
+}
+
+.intv2-collapsed .intv2-card-head b,
+.intv2-collapsed .integral-result-section-head b {
+    transform: rotate(-90deg);
+}
+
+.intv2-card-head b,
+.integral-result-section-head b {
+    transition: transform .18s ease;
+}
+
+/* Separacion visual entre tabla de tiempos y detalle */
+.integral-phase-result-card {
+    gap: 12px;
+}
+
+/* Tabla de datos regular */
+.integral-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.integral-data-table th,
+.integral-data-table td {
+    border: 1px solid rgba(80, 120, 170, .35);
+    padding: 8px;
+}
+
+.integral-data-table th {
+    color: #00e5ff;
+    text-align: left;
+    background: #111c2d;
+}
+
+/* === FIX RESTAURAR COLAPSABLES INTEGRAL V2 === */
+
+/* Paneles principales: sidebar, bitacora, parametros, detalle interno */
+.intv2-card.intv2-collapsed > .intv2-card-body,
+.intv2-collapsible.intv2-collapsed > .intv2-card-body,
+.integral-result-section.intv2-collapsed > .integral-result-section-body,
+.integral-result-section.intv2-collapsed > .intv2-card-body {
+    display: none !important;
+}
+
+/* Tarjetas de fase central */
+.integral-central-fase-card.intv2-phase-collapsed > .integral-central-fase-body,
+.integral-central-fase-card.intv2-phase-collapsed > .integral-central-fase-result {
+    display: none !important;
+}
+
+/* Cursores */
+.intv2-card-head,
+.integral-result-section-head,
+.integral-central-fase-head {
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+/* Flechas */
+.intv2-card-head b,
+.integral-result-section-head b,
+.integral-central-fase-caret {
+    display: inline-block;
+    transition: transform .18s ease;
+}
+
+.intv2-collapsed > .intv2-card-head b,
+.intv2-collapsed > .integral-result-section-head b,
+.intv2-phase-collapsed .integral-central-fase-caret {
+    transform: rotate(-90deg);
+}
+
+/* Si una fase no tiene caret por HTML viejo, igual debe poder colapsar */
+.integral-central-fase-head::after {
+    content: "";
+}
+
+/* === Integral v2: resultado entidades SQL externo === */
+
+.integral-result-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+    color: #c8d4e7;
+}
+
+.integral-alert.warning {
+    border: 1px solid rgba(250, 204, 21, .45);
+    background: rgba(250, 204, 21, .10);
+    color: #fde68a;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+/* === Integral v2: mejora visual detalle entidades === */
+
+.integral-detail-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.integral-detail-metric {
+    border: 1px solid rgba(80, 120, 170, .38);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(10, 25, 45, .92), rgba(6, 14, 26, .92));
+    padding: 14px;
+}
+
+.integral-detail-metric.primary {
+    border-color: rgba(56, 189, 248, .55);
+    box-shadow: inset 0 0 0 1px rgba(56, 189, 248, .16);
+}
+
+.integral-detail-metric span {
+    display: block;
+    color: #8ea2bd;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+}
+
+.integral-detail-metric strong {
+    color: #ffffff;
+    font-size: 22px;
+    line-height: 1.1;
+}
+
+.integral-sql-note {
+    margin-top: 12px;
+    border: 1px solid rgba(34, 197, 94, .35);
+    background: rgba(34, 197, 94, .08);
+    color: #c7f9d4;
+    border-radius: 12px;
+    padding: 12px;
+    line-height: 1.45;
+}
+
+.integral-sql-note code {
+    color: #67e8f9;
+    background: rgba(8, 18, 31, .85);
+    border: 1px solid rgba(103, 232, 249, .18);
+    border-radius: 6px;
+    padding: 2px 5px;
+}
+
+.integral-detail-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.integral-detail-item {
+    border: 1px solid rgba(80, 120, 170, .32);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(6, 14, 26, .72);
+    min-height: 72px;
+}
+
+.integral-detail-item span {
+    display: block;
+    color: #8ea2bd;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+}
+
+.integral-detail-item strong {
+    color: #ffffff;
+    font-size: 14px;
+    word-break: break-word;
+}
+
+.integral-entities-table th:nth-child(1),
+.integral-entities-table td:nth-child(1) {
+    width: 110px;
+    text-align: center;
+}
+
+.integral-entities-table th:nth-child(4),
+.integral-entities-table td:nth-child(4) {
+    width: 120px;
+    text-align: right;
+}
+
+@media (max-width: 1200px) {
+    .integral-detail-summary {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+    }
+
+    .integral-detail-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === Integral v2: reorden fases entorno antes entidades === */
+
+.integral-central-fase-card.intv2-phase-collapsed > .integral-central-fase-body,
+.integral-central-fase-card.intv2-phase-collapsed > .integral-central-fase-result {
+    display: none !important;
+}
+
+.intv2-collapsible.intv2-collapsed > .intv2-card-body,
+.integral-result-section.intv2-collapsed > .integral-result-section-body,
+.integral-result-section.intv2-collapsed > .intv2-card-body {
+    display: none !important;
+}
+
+.integral-central-fase-head,
+.intv2-card-head,
+.integral-result-section-head {
+    cursor: pointer;
+    user-select: none;
+}
+
+.integral-central-fase-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.integral-central-fase-caret {
+    display: inline-block;
+    transition: transform .18s ease;
+}
+
+.intv2-phase-collapsed .integral-central-fase-caret,
+.intv2-collapsed > .intv2-card-head b,
+.intv2-collapsed > .integral-result-section-head b {
+    transform: rotate(-90deg);
+}
+
+/* === FIX Integral v2 botones y colapsables delegados === */
+
+.intv2-collapsible.intv2-collapsed > .intv2-card-body,
+.integral-result-section.intv2-collapsed > .integral-result-section-body,
+.integral-result-section.intv2-collapsed > .intv2-card-body {
+    display: none !important;
+}
+
+.integral-central-fase-card.intv2-phase-collapsed > .integral-central-fase-body,
+.integral-central-fase-card.intv2-phase-collapsed > .integral-central-fase-result {
+    display: none !important;
+}
+
+.intv2-card-head,
+.integral-result-section-head,
+.integral-central-fase-head {
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+.integral-central-fase-btn {
+    cursor: pointer !important;
+    position: relative;
+    z-index: 2;
+}
+
+.integral-central-fase-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.integral-central-fase-caret,
+.intv2-card-head b,
+.integral-result-section-head b {
+    display: inline-block;
+    transition: transform .18s ease;
+}
+
+.intv2-phase-collapsed .integral-central-fase-caret,
+.intv2-collapsed > .intv2-card-head b,
+.intv2-collapsed > .integral-result-section-head b {
+    transform: rotate(-90deg);
+}
+
+/* === Integral v2: Fase A detalle de contexto en tabla === */
+
+.integral-context-detail-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid rgba(80, 120, 170, .38);
+    border-radius: 12px;
+    background: #07101f;
+}
+
+.integral-context-detail-table {
+    width: 100%;
+    min-width: 860px;
+    border-collapse: collapse;
+    background: #07101f;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.integral-context-detail-table th,
+.integral-context-detail-table td {
+    border: 1px solid rgba(80, 120, 170, .38);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.integral-context-detail-table th {
+    color: #00e5ff;
+    background: #111c2d;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.integral-context-detail-table td {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.integral-context-detail-table .integral-context-detail-spacer td {
+    height: 24px;
+    background: rgba(255, 255, 255, .025);
+    border-left-color: rgba(80, 120, 170, .18);
+    border-right-color: rgba(80, 120, 170, .18);
+}
+
+/* === Integral v2: Fase B detalle entorno en tabla === */
+
+.integral-env-detail-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid rgba(80, 120, 170, .38);
+    border-radius: 12px;
+    background: #07101f;
+}
+
+.integral-env-detail-table {
+    width: 100%;
+    min-width: 860px;
+    border-collapse: collapse;
+    background: #07101f;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.integral-env-detail-table th,
+.integral-env-detail-table td {
+    border: 1px solid rgba(80, 120, 170, .38);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.integral-env-detail-table th {
+    color: #00e5ff;
+    background: #111c2d;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.integral-env-detail-table td {
+    color: #ffffff;
+    font-weight: 700;
+    word-break: break-word;
+}
+
+.integral-env-detail-table th:nth-child(1),
+.integral-env-detail-table td:nth-child(1) {
+    width: 130px;
+    white-space: nowrap;
+}
+
+.integral-env-detail-table th:nth-child(2),
+.integral-env-detail-table td:nth-child(2) {
+    width: 180px;
+    white-space: nowrap;
+}
+
+/* === Integral v2: C archivo y D comparación entidades === */
+
+.integral-comparison-table th:nth-child(1),
+.integral-comparison-table td:nth-child(1) {
+    width: 105px;
+    text-align: center;
+}
+
+.integral-comparison-table th:nth-child(3),
+.integral-comparison-table td:nth-child(3),
+.integral-comparison-table th:nth-child(5),
+.integral-comparison-table td:nth-child(5),
+.integral-comparison-table th:nth-child(6),
+.integral-comparison-table td:nth-child(6) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.integral-comparison-table tr.estado-ok td {
+    background: rgba(34, 197, 94, .06);
+}
+
+.integral-comparison-table tr.estado-diferencia-cantidad td,
+.integral-comparison-table tr.estado-falta-en-archivo td,
+.integral-comparison-table tr.estado-falta-en-sql td {
+    background: rgba(250, 204, 21, .06);
+}
+
+.integral-result-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+    color: #c8d4e7;
+}
+
+.integral-table-wrap {
+    overflow-x: auto;
+}
+
+/* === Integral v2: entidades seleccionadas === */
+
+.integral-selected-entities-result {
+    margin-top: 14px;
+}
+
+.integral-alert.info {
+    border: 1px solid rgba(56, 189, 248, .35);
+    background: rgba(56, 189, 248, .08);
+    color: #bae6fd;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.integral-selected-entities-table th:nth-child(2),
+.integral-selected-entities-table td:nth-child(2),
+.integral-selected-entities-table th:nth-child(3),
+.integral-selected-entities-table td:nth-child(3),
+.integral-selected-entities-table th:nth-child(4),
+.integral-selected-entities-table td:nth-child(4) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.integral-total-row td {
+    background: rgba(56, 189, 248, .10);
+    border-top: 2px solid rgba(56, 189, 248, .55);
+    color: #ffffff;
+}
+
+.integral-entidad-compare-check {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* === Integral v2: Fase E sincronizar origen === */
+
+.integral-phase-warnings div {
+    margin-bottom: 6px;
+}
+
+.integral-env-detail-table th,
+.integral-env-detail-table td {
+    white-space: normal;
+}
+
+/* === Integral v2: Fase D botón verde y estado correcto === */
+
+#integralAplicarEntidadesComparadas.intv2-success-btn,
+.integral-apply-entities-btn {
+    background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+    border: 1px solid rgba(34, 197, 94, .85) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 24px rgba(34, 197, 94, .22) !important;
+}
+
+#integralAplicarEntidadesComparadas.intv2-success-btn:hover,
+.integral-apply-entities-btn:hover {
+    background: linear-gradient(135deg, #15803d, #16a34a) !important;
+    border-color: rgba(74, 222, 128, .95) !important;
+    transform: translateY(-1px);
+}
+
+#integralAplicarEntidadesComparadas.intv2-success-btn:active,
+.integral-apply-entities-btn:active {
+    transform: translateY(0);
+}
+
+/* === Integral v2: Fase E guardia duplicidad === */
+
+.integral-duplicate-table th,
+.integral-duplicate-table td {
+    white-space: nowrap;
+}
+
+.intv2-danger-btn {
+    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+    border: 1px solid rgba(248, 113, 113, .85) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 24px rgba(239, 68, 68, .20) !important;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.intv2-danger-btn:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626) !important;
+    border-color: rgba(252, 165, 165, .95) !important;
+    transform: translateY(-1px);
+}
+
+.integral-alert.warning {
+    border: 1px solid rgba(250, 204, 21, .45);
+    background: rgba(250, 204, 21, .10);
+    color: #fde68a;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+/* === Integral v2: Fase F carga inicial === */
+.integral-sql-note { margin-top: 12px; }
+.integral-duplicate-table th,
+.integral-duplicate-table td { white-space: nowrap; }
+
+/* === Integral v2: Fase G SQL + Limpieza === */
+
+.integral-sql-note {
+    margin-top: 10px;
+    color: #c8d4e7;
+    word-break: break-word;
+}
+
+.integral-phase-warnings div {
+    margin-bottom: 6px;
+}
+
+/* === Integral v2 Bloque 1 C-D === */
+.integral-selected-entities-result { margin-top: 14px; }
+.integral-total-row td { background: rgba(56, 189, 248, .10); border-top: 2px solid rgba(56, 189, 248, .55); color: #ffffff; }
+#integralAplicarEntidadesComparadas.intv2-success-btn, .integral-apply-entities-btn { background: linear-gradient(135deg, #16a34a, #22c55e) !important; border: 1px solid rgba(34, 197, 94, .85) !important; color: #ffffff !important; box-shadow: 0 10px 24px rgba(34, 197, 94, .22) !important; }
+.integral-alert.info { border: 1px solid rgba(56, 189, 248, .35); background: rgba(56, 189, 248, .08); color: #bae6fd; border-radius: 12px; padding: 12px; }
+.integral-alert.warning { border: 1px solid rgba(250, 204, 21, .45); background: rgba(250, 204, 21, .10); color: #fde68a; border-radius: 12px; padding: 12px; }
+
+/* === Integral v2 Bloque 2 E === */
+
+.intv2-danger-btn {
+    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+    border: 1px solid rgba(248, 113, 113, .85) !important;
+    color: #ffffff !important;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.intv2-danger-btn:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626) !important;
+}
+
+/* === Integral v2 Fase G SQL + Limpieza === */
+
+.integral-sql-note {
+    margin-top: 10px;
+    color: #c8d4e7;
+    word-break: break-word;
+}
+
+/* === Integral v2 Fase G: tabla resumen limpieza === */
+
+.integral-cleaning-summary-table td:nth-child(3),
+.integral-cleaning-summary-table td:nth-child(4) {
+    text-align: right;
+    font-weight: 800;
+}
+
+.integral-cleaning-summary-table td:nth-child(5) {
+    color: #d9f99d;
+}
+
+/* === Integral v2 Fase H Oficial === */
+
+.integral-official-transform-table td:nth-child(3),
+.integral-official-transform-table td:nth-child(4) {
+    text-align: right;
+    font-weight: 800;
+}
+
+.integral-official-transform-table td:nth-child(5) {
+    color: #d9f99d;
+}
+
+/* === Integral v2 Fase I Vencorp BD === */
+.integral-vencorp-column-table td:nth-child(4) {
+    font-weight: 900;
+}
+
+/* === Integral v2 Fase J Validación Final === */
+
+.integral-check-ok,
+.integral-check-bad {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    font-weight: 1000;
+}
+
+.integral-check-ok {
+    background: rgba(34, 197, 94, .18);
+    border: 1px solid rgba(34, 197, 94, .65);
+    color: #86efac;
+}
+
+.integral-check-bad {
+    background: rgba(239, 68, 68, .18);
+    border: 1px solid rgba(239, 68, 68, .65);
+    color: #fecaca;
+}
+
+.integral-check-table td:first-child {
+    text-align: center;
+    width: 56px;
+}
+
+/* === Integral v2 Fase B Entorno === */
+
+.integral-check-ok,
+.integral-check-bad {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    font-weight: 1000;
+}
+
+.integral-check-ok {
+    background: rgba(34, 197, 94, .18);
+    border: 1px solid rgba(34, 197, 94, .65);
+    color: #86efac;
+}
+
+.integral-check-bad {
+    background: rgba(239, 68, 68, .18);
+    border: 1px solid rgba(239, 68, 68, .65);
+    color: #fecaca;
+}
+
+.integral-check-table td:first-child {
+    text-align: center;
+    width: 56px;
+}

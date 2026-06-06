@@ -1,0 +1,22 @@
+{
+  "rutas": {
+    "local": {
+      "integral_local": "D:\\Develop\\ETL\\Nicaragua_Proceso\\unidad_red_integral\\Cobranzas Integrales"
+    },
+    "remoto": {
+      "integral_remoto": "\\\\10.24.90.118\\Vencorp\\COBRANZA %\\2024\\ Prueba_carga_diaria_Aster_voip\\Cobranzas Integrales"
+    }
+  },
+  "integral_diario_v2": {
+    "rutas_copia": {
+      "local": {
+        "integral_procesado": "D:\\Develop\\ETL\\Nicaragua_Proceso\\unidad_red_integral\\Cobranzas Integrales Procesado",
+        "cobranza_base": "D:\\Develop\\ETL\\Nicaragua_Proceso\\unidad_red_integral"
+      },
+      "remoto": {
+        "integral_procesado": "Z:\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip\\Cobranzas Integrales Procesado",
+        "cobranza_base": "Z:\\COBRANZA %\\2024\\Prueba _carga_diaria_Aster_voip"
+      }
+    }
+  }
+}

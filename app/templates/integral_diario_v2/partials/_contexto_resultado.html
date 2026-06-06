@@ -1,0 +1,81 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <div class="integral-exec-table-wrap">
+        <table class="integral-exec-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Código</th>
+                    <th>Paso</th>
+                    <th>Estado</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Seg.</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>Mensaje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>INT-CTX-01</td>
+                    <td>{{ resultado.titulo }}</td>
+                    <td>{{ resultado.estado }}</td>
+                    <td>{{ resultado.inicio or '-' }}</td>
+                    <td>{{ resultado.fin or '-' }}</td>
+                    <td>{{ "%.2f"|format(resultado.duracion_segundos or 0) }}</td>
+                    <td>{{ resultado.registros_entrada if resultado.registros_entrada is not none else '-' }}</td>
+                    <td>{{ resultado.registros_salida if resultado.registros_salida is not none else '-' }}</td>
+                    <td>{{ resultado.mensaje or '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="detalle-contexto">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Detalle de ejecución</span>
+            <b>▾</b>
+        </button>
+
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-context-detail-table-wrap">
+                <table class="integral-context-detail-table">
+                    <tbody>
+                        <tr>
+                            <th>Servidor</th>
+                            <th>Origen</th>
+                            <th>Tablas</th>
+                            <th>Aster</th>
+                            <th>Vencorp</th>
+                        </tr>
+                        <tr>
+                            <td>{{ contexto.servidor or '-' }}</td>
+                            <td>{{ contexto.origen or '-' }}</td>
+                            <td>{{ contexto.tablas or '-' }}</td>
+                            <td>{{ contexto.aster_estado_texto or contexto.aster_texto or '-' }}</td>
+                            <td>{{ contexto.vencorp_estado_texto or contexto.vencorp_texto or '-' }}</td>
+                        </tr>
+                        <tr class="integral-context-detail-spacer">
+                            <td colspan="5"></td>
+                        </tr>
+                        <tr>
+                            <th>Fecha SQL</th>
+                            <th>Fecha archivo</th>
+                            <th>Mes gestión</th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                        <tr>
+                            <td>{{ contexto.fecha_sql or '-' }}</td>
+                            <td>{{ contexto.fecha_ddmmaaaa or '-' }}</td>
+                            <td>{{ contexto.mes_gestion_codigo or '-' }}</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>

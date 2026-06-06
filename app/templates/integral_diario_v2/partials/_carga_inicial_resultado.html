@@ -1,0 +1,93 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-f-tiempos">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Tiempos de ejecución</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-exec-table-wrap">
+                <table class="integral-exec-table">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Código</th><th>Paso</th><th>Estado</th><th>Inicio</th>
+                            <th>Fin</th><th>Seg.</th><th>Entrada</th><th>Salida</th><th>Mensaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in resultado.tiempos %}
+                        <tr>
+                            <td>{{ fila['#'] }}</td><td>{{ fila['Código'] }}</td><td>{{ fila['Paso'] }}</td>
+                            <td>{{ fila['Estado'] }}</td><td>{{ fila['Inicio'] }}</td><td>{{ fila['Fin'] }}</td>
+                            <td>{{ fila['Seg.'] }}</td><td>{{ fila['Entrada'] }}</td><td>{{ fila['Salida'] }}</td>
+                            <td>{{ fila['Mensaje'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    {% if resultado.duplicidad and resultado.duplicidad.existe %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-f-duplicidad">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Duplicidad detectada</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-alert warning">
+                Ya existen <strong>{{ resultado.duplicidad.total }}</strong> registros en
+                <strong>{{ resultado.duplicidad.tabla }}</strong> para la fecha
+                <strong>{{ resultado.duplicidad.fecha_sql }}</strong>. Se muestran máximo 3 registros.
+            </div>
+            {% if resultado.duplicidad.muestra %}
+            <div class="integral-table-wrap">
+                <table class="integral-data-table">
+                    <thead><tr>{% for c in resultado.duplicidad.columnas %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                        {% for fila in resultado.duplicidad.muestra %}
+                        <tr>{% for c in resultado.duplicidad.columnas %}<td>{{ fila.get(c, '') }}</td>{% endfor %}</tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            <div class="integral-result-toolbar">
+                <button type="button" id="integralEliminarDuplicadosFaseF" class="intv2-danger-btn">
+                    Eliminar datos existentes de esta fecha
+                </button>
+                <span>Después vuelve a ejecutar la Fase F.</span>
+            </div>
+            <div id="integralFaseFDuplicidadAccionResultado"></div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-f-detalle">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Detalle</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-env-detail-table-wrap">
+                <table class="integral-env-detail-table">
+                    <thead>
+                        <tr><th>Conexión</th><th>Tipo</th><th>Tabla</th><th>Fecha SQL</th><th>Archivo</th><th>Col. fecha</th><th>Col. entidad</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ resultado.detalle.conexion }}</td><td>{{ resultado.detalle.tipo }}</td>
+                            <td>{{ resultado.detalle.tabla }}</td><td>{{ resultado.detalle.fecha_sql }}</td>
+                            <td>{{ resultado.detalle.archivo }}</td><td>{{ resultado.detalle.columna_fecha }}</td>
+                            <td>{{ resultado.detalle.columna_entidad }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    {% if resultado.advertencias %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-f-advertencias">
+        <button type="button" class="integral-result-section-head intv2-card-head"><span>Advertencias</span><b>v</b></button>
+        <div class="integral-result-section-body intv2-card-body"><div class="integral-phase-warnings">{% for a in resultado.advertencias %}<div>{{ a }}</div>{% endfor %}</div></div>
+    </section>
+    {% endif %}
+</div>

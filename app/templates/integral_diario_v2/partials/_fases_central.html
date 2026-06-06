@@ -1,0 +1,121 @@
+{% set fases_default = [
+    {
+        'codigo':'A',
+        'titulo':'Cargar contexto',
+        'grupo':'Preparación',
+        'descripcion':'Lee fecha, mes y conexión; normaliza fechas; prueba conexiones y reinicia la pantalla Integral.',
+        'accion':'contexto',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'B',
+        'titulo':'Preparar entorno',
+        'grupo':'Carpetas y rutas',
+        'descripcion':'Crea carpetas locales de trabajo, verifica rutas base y deja preparado el entorno antes de consultar datos.',
+        'accion':'preparar-entorno',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'C',
+        'titulo':'Gestionar archivo',
+        'grupo':'Archivo',
+        'descripcion':'Busca el archivo por fecha, permite seleccionar si hay más de uno y copia el archivo a la carpeta local de trabajo.',
+        'accion':'gestionar-archivo',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'D',
+        'titulo':'Obtener y comparar entidades',
+        'grupo':'Entidades SQL vs Archivo',
+        'descripcion':'Consulta SQL, abre y lee el Excel/CSV copiado; ordena y compara nombres de entidades y cantidades.',
+        'accion':'comparar-entidades',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'E',
+        'titulo':'Sincronizar origen',
+        'grupo':'Origen',
+        'descripcion':'Sincroniza usuarios y gestiones hacia Aster_Integral_Api.Integral.',
+        'accion':'sincronizar-origen',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'F',
+        'titulo':'Cargar tabla inicial',
+        'grupo':'Carga inicial',
+        'descripcion':'Carga Discador en integral.aster_dia_nc o Manual en integral.detalle_duracion.',
+        'accion':'cargar-tabla-inicial',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'G',
+        'titulo':'SQL + Limpieza',
+        'grupo':'Procesamiento',
+        'descripcion':'Ejecuta SQL externo Discador/Manual y aplica reglas de limpieza integral.',
+        'accion':'ejecutar-sql',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'H',
+        'titulo':'Generar oficiales',
+        'grupo':'Exportación',
+        'descripcion':'Genera CSV y Excel oficial con Actividad, Mes_Gestion y origen_datos.',
+        'accion':'generar-oficiales',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'I',
+        'titulo':'Vencorp / Cubo',
+        'grupo':'Carga final a Vencorp',
+        'descripcion':'Carga gestion_integral en Vencorp_Integral. Cubo Excel en stand by.',
+        'accion':'cargar-vencorp-cubo',
+        'boton':'Ejecutar fase'
+    },
+    {
+        'codigo':'J',
+        'titulo':'Copiar finales / Validación final',
+        'grupo':'Cierre',
+        'descripcion':'Copia archivos finales, verifica conteos, archivos generados y tiempos totales.',
+        'accion':'copiar-validar-final',
+        'boton':'Ejecutar fase'
+    }
+] %}
+{% set fases = fases if fases else fases_default %}
+
+<div class="integral-central-fases-orion">
+    {% for fase in fases %}
+    <article class="integral-central-fase-card pendiente intv2-phase-collapsible"
+             id="integral-central-fase-{{ fase.codigo|lower }}"
+             data-phase-collapse-key="fase-{{ fase.codigo }}">
+        <header class="integral-central-fase-head" role="button" tabindex="0" aria-label="Colapsar fase {{ fase.codigo }}">
+            <div class="integral-central-fase-title">{{ fase.codigo }} — {{ fase.titulo }}</div>
+            <span class="integral-central-fase-right">
+                <span class="integral-central-fase-status">Pendiente</span>
+                <b class="integral-central-fase-caret">▾</b>
+            </span>
+        </header>
+
+        <div class="integral-central-fase-body">
+            <div class="integral-central-fase-copy">
+                <strong>{{ fase.grupo }}</strong>
+                <p>{{ fase.descripcion }}</p>
+                <code>{{ fase.accion }}</code>
+            </div>
+
+            <button type="button"
+                    class="integral-central-fase-btn"
+                    data-integral-action="{{ fase.accion }}"
+                    data-integral-target="integral-fase-result-{{ fase.codigo|lower }}"
+                    data-integral-fase="{{ fase.codigo }}">
+                {{ fase.boton }}
+            </button>
+        </div>
+
+        <div class="integral-central-fase-result"
+             id="integral-fase-result-{{ fase.codigo|lower }}"
+             data-integral-result="{{ fase.codigo }}">
+            Resultado pendiente.
+        </div>
+    </article>
+    {% endfor %}
+</div>

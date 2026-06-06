@@ -1,0 +1,32 @@
+<div class="integral-section-result">
+    <h3>Entidades encontradas</h3>
+    <p>Fecha SQL usada: <strong>{{ data.fecha_sql }}</strong> | Total entidades: {{ data.total }}</p>
+
+    <div class="integral-table-wrap">
+        <table class="integral-result-table">
+            <thead>
+                <tr>
+                    <th>Seleccionar</th>
+                    <th>Entidad</th>
+                    <th>Registros</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in data.entidades %}
+                <tr>
+                    <td><input type="checkbox" class="integral-entidad-check" value="{{ e.entidad }}" checked></td>
+                    <td>{{ e.entidad }}</td>
+                    <td>{{ e.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="button" class="odv2-primary integral-inline-action" id="integralAplicarEntidades">
+        Aplicar entidades seleccionadas
+    </button>
+</div>
+
+{% set pasos = data.pasos %}
+{% include "integral_diario_v2/partials/_pasos.html" %}

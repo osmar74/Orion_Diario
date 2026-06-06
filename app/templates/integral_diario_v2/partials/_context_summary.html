@@ -1,0 +1,67 @@
+{% set ctx = contexto|default({}) %}
+{% set conexion = ctx.get('conexion', 'local') %}
+{% set servidor = ctx.get('servidor', 'localhost\\SQL2025DEV' if conexion == 'local' else '172.24.80.32') %}
+{% set origen = ctx.get('origen', 'gestioncomercial_dev' if conexion == 'local' else 'gestioncomercial') %}
+{% set tablas = ctx.get('tablas', 'dbo.comentarios / dbo.usuarios' if conexion == 'local' else 'comentarios / crm') %}
+
+{% macro status_class(raw_estado, raw_texto) -%}
+    {%- set estado = (raw_estado|string)|lower|trim -%}
+    {%- set texto = (raw_texto|string)|lower|trim -%}
+    {%- if estado in ['ok', 'activo', 'correcto', 'conectado', 'true', '1'] or texto == 'activo' -%}
+        ok
+    {%- elif estado in ['error', 'sin-conexion', 'sin conexion', 'false', '0'] or texto == 'sin conexion' or texto == 'sin conexión' or 'login failed' in texto or 'cannot open database' in texto or 'odbc' in texto -%}
+        error
+    {%- else -%}
+        pending
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro status_label(raw_estado, raw_texto) -%}
+    {%- set estado = (raw_estado|string)|lower|trim -%}
+    {%- set texto = (raw_texto|string)|lower|trim -%}
+    {%- if estado in ['ok', 'activo', 'correcto', 'conectado', 'true', '1'] or texto == 'activo' -%}
+        Activo
+    {%- elif estado in ['error', 'sin-conexion', 'sin conexion', 'false', '0'] or texto == 'sin conexion' or texto == 'sin conexión' or 'login failed' in texto or 'cannot open database' in texto or 'odbc' in texto -%}
+        Sin conexión
+    {%- elif raw_texto and raw_texto != 'None' -%}
+        {{ raw_texto }}
+    {%- else -%}
+        Sin verificar
+    {%- endif -%}
+{%- endmacro %}
+
+{% set servidor_estado = ctx.get('servidor_estado', ctx.get('server_estado', ctx.get('servidor_ok', 'pending'))) %}
+{% set servidor_texto = ctx.get('servidor_texto', ctx.get('server_texto', ctx.get('servidor_error', 'Sin verificar'))) %}
+{% set origen_estado = ctx.get('origen_estado', ctx.get('origen_ok', 'pending')) %}
+{% set origen_texto = ctx.get('origen_texto', ctx.get('origen_error', 'Sin verificar')) %}
+{% set aster_estado = ctx.get('aster_estado', ctx.get('aster_ok', 'pending')) %}
+{% set aster_texto = ctx.get('aster_texto', ctx.get('aster_error', 'Sin verificar')) %}
+{% set vencorp_estado = ctx.get('vencorp_estado', ctx.get('vencorp_ok', 'pending')) %}
+{% set vencorp_texto = ctx.get('vencorp_texto', ctx.get('vencorp_error', 'Sin verificar')) %}
+
+<div class="integral-context-mini">
+    <div class="integral-context-row">
+        <span class="integral-dot {{ status_class(servidor_estado, servidor_texto) }}"></span>
+        <span>Servidor: <strong>{{ servidor }}</strong> - {{ status_label(servidor_estado, servidor_texto) }}</span>
+    </div>
+    <div class="integral-context-row">
+        <span class="integral-dot {{ status_class(origen_estado, origen_texto) }}"></span>
+        <span>Origen: <strong>{{ origen }}</strong> - {{ tablas }} - {{ status_label(origen_estado, origen_texto) }}</span>
+    </div>
+    <div class="integral-context-row">
+        <span class="integral-dot {{ status_class(aster_estado, aster_texto) }}"></span>
+        <span>Aster: <strong>Aster_Integral_Api</strong> - {{ status_label(aster_estado, aster_texto) }}</span>
+    </div>
+    <div class="integral-context-row">
+        <span class="integral-dot {{ status_class(vencorp_estado, vencorp_texto) }}"></span>
+        <span>Vencorp: <strong>Vencorp_Integral</strong> - {{ status_label(vencorp_estado, vencorp_texto) }}</span>
+    </div>
+
+    {% if ctx.get('fecha_sql') or ctx.get('fecha_ddmmaaaa') or ctx.get('mes_gestion_codigo') %}
+    <div class="integral-context-extra">
+        {% if ctx.get('fecha_sql') %}<div>Fecha SQL: <strong>{{ ctx.get('fecha_sql') }}</strong></div>{% endif %}
+        {% if ctx.get('fecha_ddmmaaaa') %}<div>Fecha archivo: <strong>{{ ctx.get('fecha_ddmmaaaa') }}</strong></div>{% endif %}
+        {% if ctx.get('mes_gestion_codigo') %}<div>Mes gestión: <strong>{{ ctx.get('mes_gestion_codigo') }}</strong></div>{% endif %}
+    </div>
+    {% endif %}
+</div>

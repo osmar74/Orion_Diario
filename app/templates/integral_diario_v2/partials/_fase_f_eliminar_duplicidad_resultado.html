@@ -1,0 +1,11 @@
+<section class="integral-result-section intv2-collapsible" data-collapse-key="fase-f-del-dup">
+    <button type="button" class="integral-result-section-head intv2-card-head"><span>Resultado eliminación</span><b>v</b></button>
+    <div class="integral-result-section-body intv2-card-body">
+        <div class="integral-exec-table-wrap">
+            <table class="integral-exec-table">
+                <thead><tr><th>#</th><th>Código</th><th>Paso</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Seg.</th><th>Entrada</th><th>Salida</th><th>Mensaje</th></tr></thead>
+                <tbody>{% for fila in resultado.tiempos %}<tr><td>{{ fila['#'] }}</td><td>{{ fila['Código'] }}</td><td>{{ fila['Paso'] }}</td><td>{{ fila['Estado'] }}</td><td>{{ fila['Inicio'] }}</td><td>{{ fila['Fin'] }}</td><td>{{ fila['Seg.'] }}</td><td>{{ fila['Entrada'] }}</td><td>{{ fila['Salida'] }}</td><td>{{ fila['Mensaje'] }}</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+    </div>
+</section>

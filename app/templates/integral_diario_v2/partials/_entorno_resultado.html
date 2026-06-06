@@ -1,0 +1,117 @@
+<div class="integral-phase-result-card {{ resultado.estado|lower|replace(' ', '-') }}">
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-b-tiempos">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Tiempos de ejecución</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-exec-table-wrap">
+                <table class="integral-exec-table">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Código</th><th>Paso</th><th>Estado</th><th>Inicio</th>
+                            <th>Fin</th><th>Seg.</th><th>Entrada</th><th>Salida</th><th>Mensaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in resultado.tiempos %}
+                        <tr>
+                            <td>{{ fila['#'] }}</td>
+                            <td>{{ fila['Código'] }}</td>
+                            <td>{{ fila['Paso'] }}</td>
+                            <td>{{ fila['Estado'] }}</td>
+                            <td>{{ fila['Inicio'] }}</td>
+                            <td>{{ fila['Fin'] }}</td>
+                            <td>{{ fila['Seg.'] }}</td>
+                            <td>{{ fila['Entrada'] }}</td>
+                            <td>{{ fila['Salida'] }}</td>
+                            <td>{{ fila['Mensaje'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-b-carpetas">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Carpetas locales de trabajo</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table integral-check-table">
+                    <thead>
+                        <tr><th>Estado</th><th>Grupo</th><th>Nombre</th><th>Creada</th><th>Ruta</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultado.carpetas_locales %}
+                        <tr>
+                            <td>
+                                {% if item.existe %}
+                                    <span class="integral-check-ok">✓</span>
+                                {% else %}
+                                    <span class="integral-check-bad">✕</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.grupo }}</td>
+                            <td>{{ item.nombre }}</td>
+                            <td>{{ 'Sí' if item.creada else 'No' }}</td>
+                            <td>{{ item.ruta }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-b-rutas">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Rutas base LOCAL / REMOTO</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-table-wrap">
+                <table class="integral-data-table integral-check-table">
+                    <thead>
+                        <tr><th>Estado</th><th>Grupo</th><th>Nombre</th><th>Detalle</th><th>Ruta</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultado.rutas_base %}
+                        <tr>
+                            <td>
+                                {% if item.existe %}
+                                    <span class="integral-check-ok">✓</span>
+                                {% else %}
+                                    <span class="integral-check-bad">✕</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.grupo }}</td>
+                            <td>{{ item.nombre }}</td>
+                            <td>{{ item.detalle }}</td>
+                            <td>{{ item.ruta }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="integral-sql-note">
+                <strong>Nota:</strong> las rutas de red pueden aparecer en rojo si la unidad no está montada o no hay conexión. No impide pruebas locales.
+            </div>
+        </div>
+    </section>
+
+    {% if resultado.advertencias %}
+    <section class="integral-result-section intv2-collapsible" data-collapse-key="fase-b-advertencias">
+        <button type="button" class="integral-result-section-head intv2-card-head">
+            <span>Advertencias</span><b>v</b>
+        </button>
+        <div class="integral-result-section-body intv2-card-body">
+            <div class="integral-phase-warnings">
+                {% for advertencia in resultado.advertencias %}
+                    <div>{{ advertencia }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</div>

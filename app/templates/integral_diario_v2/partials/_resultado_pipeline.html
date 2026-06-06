@@ -1,0 +1,41 @@
+<div class="integral-section-result">
+    <h3>Resultado pipeline Integral</h3>
+    <p>Fecha: <strong>{{ data.fecha_proceso }}</strong> | Tipo: <strong>{{ data.tipo_proceso }}</strong></p>
+
+    <h4>Reporte de limpieza</h4>
+    <div class="integral-table-wrap">
+        <table class="integral-result-table">
+            <thead>
+                <tr>
+                    <th>Regla</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>Modificados</th>
+                    <th>Eliminados</th>
+                    <th>Mensaje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in data.reporte_limpieza %}
+                <tr>
+                    <td>{{ r.regla }}</td>
+                    <td>{{ r.entrada }}</td>
+                    <td>{{ r.salida }}</td>
+                    <td>{{ r.modificados }}</td>
+                    <td>{{ r.eliminados }}</td>
+                    <td>{{ r.mensaje }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h4>Archivos generados</h4>
+    <div class="integral-generated-files">
+        <div><span>CSV</span><b>{{ data.exportacion.csv }}</b></div>
+        <div><span>Excel</span><b>{{ data.exportacion.excel }}</b></div>
+    </div>
+</div>
+
+{% set pasos = data.pasos %}
+{% include "integral_diario_v2/partials/_pasos.html" %}
