@@ -6,7 +6,7 @@ import os
 from app.config import LOG_DB_PATH, DATA_DIR
 from app.controllers.helpers import obtener_log_service
 from app.services.sql_loader import cargar_sql
-from flask import Blueprint, render_template, send_file
+from flask import Blueprint, render_template, send_file, redirect
 from flask import request
 from flask import session
 
@@ -18,24 +18,8 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def index():
-    """Página principal con los valores actuales de la sesión."""
-    totales_orion = session.get("totales_orion")
-    totales_aister = session.get("totales_aister")
-    ultima_fecha = session.get("ultima_fecha", "202605_12")
-
-    if totales_orion is None:
-        totales_orion = "--"
-    if totales_aister is None:
-        totales_aister = "--"
-
-    return render_template(
-        "index.html",
-        titulo="Orion Procesos",
-        totales_orion=totales_orion,
-        totales_aister=totales_aister,
-        ultima_fecha=ultima_fecha,
-    )
-
+    """Redirige la entrada principal V4 hacia ORION Diario v2."""
+    return redirect("/orion-diario-v2")
 
 @main_bp.route("/logs")
 def logs():
