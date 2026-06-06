@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flask import Blueprint, current_app, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 from app.config import DATA_DIR
 
 from app.services.gestion_consolidada_service import (
@@ -31,6 +31,8 @@ render_preparar_proceso,
     render_carga_sql_gestion,
 )
 
+from app.services.gestion_consolidada_ui_service import GestionConsolidadaUiService
+from app.services.gestion_consolidada_state_service import GestionConsolidadaStateService
 
 gestion_consolidada_bp = Blueprint("gestion_consolidada", __name__)
 
@@ -152,11 +154,94 @@ def _data_dir():
     return Path(str(configured)).expanduser()
 
 
+# === GC V2 BACKEND STATE HELPERS ===
+
+def _gc_state_service():
+    instance = Path(current_app.instance_path)
+    instance.mkdir(parents=True, exist_ok=True)
+    return GestionConsolidadaStateService(instance / "gestion_consolidada_estado.json")
+
+
+def _gc_estado_desde_resultado(codigo_fase, resultado):
+    if not isinstance(resultado, dict):
+        return "Error", "El servicio no devolvió un resultado válido."
+
+    if resultado.get("error"):
+        return "Error", resultado.get("error", "")
+
+    codigo_fase = str(codigo_fase or "").upper()
+
+    if codigo_fase == "C":
+        if resultado.get("observaciones") or resultado.get("advertencias"):
+            return "Revisar", "Verificación completada con observaciones."
+
+    return "Correcto", resultado.get("mensaje", "Fase ejecutada correctamente.")
+
+
+def _gc_guardar_estado_fase(codigo_fase, fecha, resultado):
+    conexion = request.form.get("conexion", "local")
+    estado, detalle = _gc_estado_desde_resultado(codigo_fase, resultado)
+
+    _gc_state_service().actualizar_fase(
+        fecha=fecha,
+        conexion=conexion,
+        codigo=codigo_fase,
+        estado=estado,
+        detalle=detalle,
+        tiene_detalle=True,
+    )
+
+
+def _gc_fases_con_estado(fecha, conexion):
+    estados = _gc_state_service().obtener_estados(fecha, conexion)
+    return GestionConsolidadaUiService().obtener_fases(estados)
+
+
 @gestion_consolidada_bp.route("/gestion-consolidada", methods=["GET"])
 @gestion_consolidada_bp.route("/consolidar-gestion-v2", methods=["GET"])
 def vista_gestion_consolidada():
     embedded = request.args.get("embedded", "0") == "1"
-    return render_template("gestion_consolidada.html", embedded=embedded)
+    fecha = request.args.get("fecha", "20260429")
+    conexion = request.args.get("conexion", "local")
+    return render_template(
+        "gestion_consolidada.html",
+        embedded=embedded,
+        fecha_proceso=fecha,
+        conexion=conexion,
+        gc_fases=_gc_fases_con_estado(fecha, conexion),
+    )
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/reiniciar-estado", methods=["POST"])
+def accion_gestion_consolidada_reiniciar_estado():
+    fecha = request.form.get("fecha", "20260429")
+    conexion = request.form.get("conexion", "local")
+
+    _gc_state_service().reiniciar(fecha, conexion)
+
+    return jsonify(
+        {
+            "ok": True,
+            "fecha": fecha,
+            "conexion": conexion,
+            "fases": _gc_fases_con_estado(fecha, conexion),
+        }
+    )
+
+
+@gestion_consolidada_bp.route("/accion/gestion-consolidada/estado", methods=["POST"])
+def accion_gestion_consolidada_estado():
+    fecha = request.form.get("fecha", "20260429")
+    conexion = request.form.get("conexion", "local")
+
+    return jsonify(
+        {
+            "ok": True,
+            "fecha": fecha,
+            "conexion": conexion,
+            "fases": _gc_fases_con_estado(fecha, conexion),
+        }
+    )
 
 
 @gestion_consolidada_bp.route("/accion/gestion-consolidada/resumen", methods=["POST"])
@@ -175,6 +260,7 @@ def accion_gestion_consolidada_preparar():
 
     resultado = preparar_proceso(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("A", fecha, resultado)
     return render_preparar_proceso(resultado)
 
 
@@ -185,6 +271,7 @@ def accion_gestion_consolidada_unir():
 
     resultado = unir_archivos_gestion(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("B", fecha, resultado)
     return render_unir_archivos_gestion(resultado)
 
 
@@ -195,6 +282,7 @@ def accion_gestion_consolidada_verificar_calidad():
 
     resultado = verificar_calidad_gestion(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("C", fecha, resultado)
     return render_verificar_calidad_gestion(resultado)
 
 
@@ -206,6 +294,7 @@ def accion_gestion_consolidada_ajuste_no_contestan():
 
     resultado = aplicar_ajuste_no_contestan_gestion(_data_dir(), fecha, porcentaje)
 
+    _gc_guardar_estado_fase("D", fecha, resultado)
     return render_ajuste_no_contestan_gestion(resultado)
 
 
@@ -216,6 +305,7 @@ def accion_gestion_consolidada_limpiar_nota():
 
     resultado = limpiar_nota_gestion(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("E", fecha, resultado)
     return render_limpiar_nota_gestion(resultado)
 
 
@@ -226,6 +316,7 @@ def accion_gestion_consolidada_compromiso():
 
     resultado = procesar_compromiso_gestion(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("F", fecha, resultado)
     return render_compromiso_gestion(resultado)
 
 
@@ -236,6 +327,7 @@ def accion_gestion_consolidada_archivo_final():
 
     resultado = generar_archivo_final_gestion(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("G", fecha, resultado)
     return render_archivo_final_gestion(resultado)
 
 
@@ -246,6 +338,7 @@ def accion_gestion_consolidada_archivos_generados():
 
     resultado = listar_archivos_generados_gestion(_data_dir(), fecha)
 
+    _gc_guardar_estado_fase("H", fecha, resultado)
     return render_archivos_generados_gestion(resultado)
 
 
@@ -367,6 +460,7 @@ def accion_gestion_consolidada_cargar_sql():
     inicio_render_clock = _gc_fase_i_clock_now()
 
     response = render_carga_sql_gestion(resultado)
+    _gc_guardar_estado_fase("I", fecha, resultado)
 
     _gc_fase_i_add_timing(
         auditoria,

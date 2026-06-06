@@ -1,0 +1,63 @@
+<section class="intv2-card intv2-param-card gc-context-card">
+    <div class="intv2-param-grid gc-context-grid">
+
+        <div class="intv2-field">
+            <label for="gcFechaProceso">Fecha proceso</label>
+            <input
+                id="gcFechaProceso"
+                type="text"
+                placeholder="20260429 o 2026-04-29"
+                value="{{ fecha_proceso|default('20260429') }}"
+                autocomplete="off">
+        </div>
+
+        <div class="intv2-field">
+            <label for="gcMesGestion">Mes gestión</label>
+            <input
+                id="gcMesGestion"
+                type="text"
+                value="abril"
+                readonly>
+        </div>
+
+        <div class="intv2-field">
+            <label>Conexión global</label>
+            <div class="gc-connection-actions">
+                <button
+                    id="gcBtnLocal"
+                    type="button"
+                    class="gc-btn primary active"
+                    data-gc-connection="local">
+                    LOCAL - Pruebas
+                </button>
+
+                <button
+                    id="gcBtnRemoto"
+                    type="button"
+                    class="gc-btn"
+                    data-gc-connection="remoto">
+                    REMOTO - Producción
+                </button>
+            </div>
+        </div>
+
+        <div class="intv2-field">
+            <label>Estado</label>
+            <span id="gcConexionEstado" class="wf-status-chip done">✅ Local activo</span>
+        </div>
+
+        <div class="intv2-field gc-actions-field">
+            <label>Acciones</label>
+            <div class="gc-actions-buttons">
+                <button type="button" class="gc-btn primary" onclick="gcCargarResumen()">
+                    Actualizar tabla resumen
+                </button>
+
+                <button type="button" class="gc-btn gc-btn-reset" onclick="gcReiniciarEstadoBackend()">
+                    Reiniciar estado
+                </button>
+            </div>
+        </div>
+
+    </div>
+</section>

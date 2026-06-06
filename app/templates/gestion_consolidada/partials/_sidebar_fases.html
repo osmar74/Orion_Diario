@@ -1,0 +1,44 @@
+<section class="intv2-card intv2-collapsible gc-sidebar-card" data-collapse-key="gc-sidebar-fases">
+    <button type="button" class="intv2-card-head">
+        <span>📌 Estado de fases</span>
+        <b>▾</b>
+    </button>
+
+    <div class="intv2-card-body">
+        <div id="gcEstadoFases" class="gc-phase-grid">
+            {% for fase in gc_fases %}
+                <div class="gc-phase-card {{ fase.estado_clase|default('pending') }}" data-gc-phase="{{ fase.codigo }}">
+                    <b>{{ fase.codigo }}</b>
+                    <span>{{ fase.nombre }}</span>
+                    <em>{{ fase.estado|default('Pendiente') }}</em>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="intv2-card intv2-collapsible gc-sidebar-card" data-collapse-key="gc-contexto">
+    <button type="button" class="intv2-card-head">
+        <span>🧭 Resumen contexto</span>
+        <b>▾</b>
+    </button>
+
+    <div class="intv2-card-body">
+        <div class="gc-mini-note">
+            Fecha, conexión, resumen SQL y resultados por fase se actualizan desde la pantalla central.
+        </div>
+    </div>
+</section>
+
+<section class="intv2-card intv2-collapsible gc-sidebar-card" data-collapse-key="gc-config">
+    <button type="button" class="intv2-card-head">
+        <span>⚙ Configuración Consolidar</span>
+        <b>▾</b>
+    </button>
+
+    <div class="intv2-card-body">
+        <div class="gc-mini-note">
+            Conexión local para pruebas. Conexión remota solo para producción.
+        </div>
+    </div>
+</section>

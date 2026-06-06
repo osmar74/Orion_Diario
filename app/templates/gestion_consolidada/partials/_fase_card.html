@@ -1,0 +1,50 @@
+<article
+    class="integral-central-fase-card {{ fase.estado_clase|default('pending') }} intv2-phase-collapsible gc-central-fase-card"
+    id="gc-central-fase-{{ fase.codigo|lower }}"
+    data-gc-phase="{{ fase.codigo }}"
+    data-phase-collapse-key="gc-fase-{{ fase.codigo }}">
+
+    <header class="integral-central-fase-head" role="button" tabindex="0">
+        <div class="integral-central-fase-title">
+            {{ fase.codigo }} — {{ fase.titulo }}
+        </div>
+
+        <span class="integral-central-fase-right">
+            <span class="integral-central-fase-status">{{ fase.estado|default('Pendiente') }}</span>
+            <b class="integral-central-fase-caret">▾</b>
+        </span>
+    </header>
+
+    <div class="integral-central-fase-body">
+        <div class="integral-central-fase-copy">
+            <strong>{{ fase.nombre }}</strong>
+            <p>{{ fase.descripcion }}</p>
+
+            {% if fase.usa_porcentaje is defined and fase.usa_porcentaje %}
+                <div class="intv2-field gc-inline-field">
+                    <label for="gcPorcentajeNoContestan">Porcentaje reemplazo</label>
+                    <input
+                        id="gcPorcentajeNoContestan"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="12">
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="integral-central-fase-actions">
+            <button
+                type="button"
+                class="integral-central-fase-btn gc-btn success"
+                onclick="{{ fase.onclick }}">
+                {{ fase.boton }}
+            </button>
+        </div>
+    </div>
+
+    <div id="{{ fase.resultado_id }}" class="integral-central-fase-result gc-result-block">
+        <div class="gc-result-pending">Resultado pendiente.</div>
+    </div>
+</article>

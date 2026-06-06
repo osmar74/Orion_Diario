@@ -1,0 +1,1279 @@
+.gc-v2-body {
+    margin: 0;
+    min-height: 100vh;
+    background: #05080d;
+    color: #edf6ff;
+    overflow-x: hidden;
+}
+
+.gc-v2-body .gc-integral-shell {
+    width: min(1580px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 10px 0 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.gc-v2-body .gc-topbar {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 20px;
+}
+
+.gc-v2-body .intv2-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 320px;
+}
+
+.gc-v2-body .intv2-brand h1 {
+    margin: 0;
+}
+
+.gc-v2-body .intv2-brand p {
+    margin: 4px 0 0;
+}
+
+.gc-v2-body .gc-top-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.gc-v2-body .gc-context-card {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.gc-v2-body .gc-context-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.5fr) minmax(280px, 1fr) minmax(160px, 0.6fr) auto;
+    gap: 16px;
+    align-items: end;
+}
+
+.gc-v2-body .gc-connection-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.gc-v2-body .gc-actions-field {
+    align-items: flex-start;
+}
+
+.gc-v2-body .gc-integral-layout {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.gc-v2-body .gc-phase-sidebar {
+    width: 100%;
+    min-width: 0;
+}
+
+.gc-v2-body .gc-integral-main {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.gc-v2-body .intv2-card {
+    box-sizing: border-box;
+}
+
+.gc-v2-body .intv2-card-head {
+    width: 100%;
+}
+
+.gc-v2-body .intv2-card-body {
+    display: block;
+}
+
+.gc-v2-body .gc-phase-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gc-v2-body .gc-phase-card {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid rgba(82, 146, 220, 0.45);
+    border-radius: 12px;
+    background: rgba(6, 14, 29, 0.92);
+}
+
+.gc-v2-body .gc-phase-card b {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #1f67dc;
+    color: #fff;
+}
+
+.gc-v2-body .gc-phase-card span {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gc-v2-body .gc-phase-card em {
+    font-style: normal;
+    font-size: 12px;
+    color: #b7c9e9;
+}
+
+.gc-v2-body .gc-summary-card,
+.gc-v2-body .gc-bitacora-card {
+    width: 100%;
+}
+
+.gc-v2-body .gc-card-note {
+    margin-bottom: 12px;
+    color: #a9bce0;
+    font-size: 13px;
+}
+
+.gc-v2-body .gc-central-fases {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.gc-v2-body .gc-central-fase-card {
+    width: 100%;
+}
+
+.gc-v2-body .gc-inline-field {
+    max-width: 260px;
+    margin-top: 10px;
+}
+
+.gc-v2-body .gc-result-block {
+    min-height: 42px;
+}
+
+@media (max-width: 1100px) {
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .gc-v2-body .gc-integral-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .gc-v2-body .gc-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .gc-v2-body .gc-top-nav {
+        justify-content: flex-start;
+    }
+}
+
+/* === GC V2 FIX LAYOUT FULL WIDTH + SCROLL + COLLAPSE === */
+
+html,
+body.gc-v2-body {
+    width: 100%;
+    height: 100%;
+}
+
+body.gc-v2-body {
+    margin: 0;
+    overflow: hidden;
+}
+
+/* Ocupa casi todo el ancho disponible, como Integral */
+.gc-v2-body .gc-integral-shell {
+    width: calc(100vw - 28px) !important;
+    max-width: none !important;
+    min-width: 0;
+    height: calc(100vh - 16px);
+    margin: 8px auto !important;
+    padding: 0 0 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    overflow: hidden;
+}
+
+/* Header horizontal */
+.gc-v2-body .gc-topbar {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 76px;
+}
+
+/* Menú superior con formato botón */
+.gc-v2-body .gc-top-nav a {
+    text-decoration: none !important;
+    color: #eaf4ff;
+    border: 1px solid rgba(118, 164, 230, 0.35);
+    background: rgba(7, 15, 32, 0.9);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.gc-v2-body .gc-top-nav a:hover,
+.gc-v2-body .gc-top-nav a.active {
+    color: #00e5ff;
+    border-color: rgba(0, 229, 255, 0.8);
+    box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.15);
+}
+
+/* Barra contexto */
+.gc-v2-body .gc-context-card {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.gc-v2-body .gc-context-grid {
+    grid-template-columns:
+        minmax(260px, 1.35fr)
+        minmax(280px, 0.9fr)
+        minmax(150px, 0.45fr)
+        minmax(210px, 0.55fr) !important;
+}
+
+/* Layout principal con altura calculada */
+.gc-v2-body .gc-integral-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    display: grid !important;
+    grid-template-columns: 340px minmax(0, 1fr) !important;
+    gap: 18px;
+    align-items: stretch !important;
+}
+
+/* Scroll interno */
+.gc-v2-body .gc-phase-sidebar,
+.gc-v2-body .gc-integral-main {
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    scrollbar-gutter: stable;
+}
+
+.gc-v2-body .gc-integral-main {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Mejor uso del ancho en tablas y tarjetas */
+.gc-v2-body .gc-summary-card,
+.gc-v2-body .gc-bitacora-card,
+.gc-v2-body .gc-central-fase-card {
+    width: 100%;
+    max-width: none;
+}
+
+.gc-v2-body .gc-result-block,
+.gc-v2-body .integral-central-fase-result {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Colapsables */
+.gc-v2-body .intv2-card.is-collapsed > .intv2-card-body {
+    display: none !important;
+}
+
+.gc-v2-body .intv2-phase-collapsible.is-collapsed > .integral-central-fase-body,
+.gc-v2-body .intv2-phase-collapsible.is-collapsed > .integral-central-fase-result {
+    display: none !important;
+}
+
+/* Estado central sincronizado */
+.gc-v2-body .gc-central-fase-card.done .integral-central-fase-status,
+.gc-v2-body .gc-central-fase-card.correcto .integral-central-fase-status {
+    color: #78ffae;
+}
+
+.gc-v2-body .gc-central-fase-card.review .integral-central-fase-status,
+.gc-v2-body .gc-central-fase-card.revisar .integral-central-fase-status {
+    color: #7fb7ff;
+}
+
+.gc-v2-body .gc-central-fase-card.error .integral-central-fase-status {
+    color: #ff8b8b;
+}
+
+.gc-v2-body .gc-central-fase-card.running .integral-central-fase-status {
+    color: #ffe27a;
+}
+
+.gc-v2-body .gc-central-fase-card.pending .integral-central-fase-status,
+.gc-v2-body .gc-central-fase-card.pendiente .integral-central-fase-status {
+    color: #ffe27a;
+}
+
+@media (max-width: 1200px) {
+    .gc-v2-body {
+        overflow: auto;
+    }
+
+    .gc-v2-body .gc-integral-shell {
+        height: auto;
+        overflow: visible;
+    }
+
+    .gc-v2-body .gc-integral-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .gc-phase-sidebar,
+    .gc-v2-body .gc-integral-main {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+/* === GC V2 POLISH NAVBAR PANEL CENTRAL === */
+
+/* Más cercano al ancho de Integral */
+.gc-v2-body .gc-integral-shell {
+    width: calc(100vw - 16px) !important;
+    height: calc(100vh - 10px) !important;
+    margin: 5px auto !important;
+    gap: 10px !important;
+}
+
+/* Header más limpio y menos pesado */
+.gc-v2-body .gc-topbar {
+    min-height: 66px !important;
+    padding: 12px 18px !important;
+    border-radius: 14px !important;
+    background: rgba(11, 20, 38, 0.96) !important;
+}
+
+.gc-v2-body .intv2-brand-icon {
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+}
+
+.gc-v2-body .intv2-brand h1 {
+    font-size: 28px;
+    line-height: 1.05;
+}
+
+.gc-v2-body .intv2-brand p {
+    font-size: 13px;
+    color: #a9c5ea;
+}
+
+/* Navbar tipo Integral */
+.gc-v2-body .gc-top-nav {
+    gap: 9px !important;
+    align-items: center;
+}
+
+.gc-v2-body .gc-top-nav a {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px !important;
+    border-radius: 11px !important;
+    font-size: 14px;
+    white-space: nowrap;
+    background: rgba(4, 9, 19, 0.76) !important;
+}
+
+/* Barra de contexto más compacta */
+.gc-v2-body .gc-context-card {
+    border-radius: 14px !important;
+}
+
+.gc-v2-body .gc-context-card .intv2-param-grid {
+    padding: 10px 14px !important;
+}
+
+.gc-v2-body .gc-context-grid {
+    gap: 12px !important;
+}
+
+.gc-v2-body .intv2-field label {
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.gc-v2-body #gcFechaProceso {
+    height: 40px;
+}
+
+/* Layout principal más parecido a Integral */
+.gc-v2-body .gc-integral-layout {
+    grid-template-columns: 330px minmax(0, 1fr) !important;
+    gap: 14px !important;
+}
+
+/* Sidebar más compacto */
+.gc-v2-body .gc-sidebar-card {
+    margin-bottom: 12px;
+}
+
+.gc-v2-body .gc-phase-card {
+    min-height: 44px;
+    padding: 8px 10px !important;
+}
+
+.gc-v2-body .gc-phase-card span {
+    font-size: 14px;
+}
+
+/* Panel central */
+.gc-v2-body .gc-integral-main {
+    gap: 12px !important;
+}
+
+.gc-v2-body .gc-summary-card,
+.gc-v2-body .gc-bitacora-card {
+    border-radius: 14px !important;
+}
+
+.gc-v2-body .gc-summary-card .intv2-card-body,
+.gc-v2-body .gc-bitacora-card .intv2-card-body {
+    padding: 14px !important;
+}
+
+/* La bitácora debe ocupar el espacio útil cuando está abierta */
+.gc-v2-body .gc-bitacora-card:not(.is-collapsed) {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.gc-v2-body .gc-bitacora-card:not(.is-collapsed) > .intv2-card-body {
+    min-height: 0;
+    overflow: visible;
+}
+
+/* Si tabla resumen está colapsada, que no deje cuerpo alto */
+.gc-v2-body .gc-summary-card.is-collapsed {
+    flex: 0 0 auto;
+}
+
+/* Cards de fase más compactas */
+.gc-v2-body .gc-central-fases {
+    gap: 12px !important;
+}
+
+.gc-v2-body .gc-central-fase-card {
+    border-radius: 14px !important;
+    overflow: hidden;
+}
+
+.gc-v2-body .integral-central-fase-head {
+    min-height: 50px !important;
+    padding: 0 18px !important;
+}
+
+.gc-v2-body .integral-central-fase-title {
+    font-size: 17px;
+}
+
+.gc-v2-body .integral-central-fase-status {
+    min-width: 88px;
+    text-align: center;
+    border-radius: 999px;
+    background: #020916;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.gc-v2-body .integral-central-fase-body {
+    padding: 18px 18px 12px !important;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.gc-v2-body .integral-central-fase-copy p {
+    margin-bottom: 0;
+}
+
+.gc-v2-body .integral-central-fase-result {
+    margin: 0 18px 16px !important;
+}
+
+/* Cuando el estado viene de localStorage pero no hay resultado cargado */
+.gc-v2-body .gc-result-soft-warning {
+    opacity: 0.8;
+    border-style: dashed !important;
+}
+
+/* Scroll más discreto */
+.gc-v2-body .gc-phase-sidebar::-webkit-scrollbar,
+.gc-v2-body .gc-integral-main::-webkit-scrollbar {
+    width: 8px;
+}
+
+.gc-v2-body .gc-phase-sidebar::-webkit-scrollbar-thumb,
+.gc-v2-body .gc-integral-main::-webkit-scrollbar-thumb {
+    background: rgba(79, 142, 220, 0.45);
+    border-radius: 999px;
+}
+
+.gc-v2-body .gc-phase-sidebar::-webkit-scrollbar-track,
+.gc-v2-body .gc-integral-main::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* === GC V2 FIX MES GESTION + ALIGNMENT === */
+
+/* Barra superior con Mes gestión, igual lógica visual que Integral */
+.gc-v2-body .gc-context-grid {
+    grid-template-columns:
+        minmax(220px, 1.05fr)
+        minmax(170px, 0.55fr)
+        minmax(300px, 0.95fr)
+        minmax(150px, 0.45fr)
+        minmax(220px, 0.55fr) !important;
+    align-items: end !important;
+}
+
+.gc-v2-body #gcMesGestion {
+    height: 40px;
+    cursor: default;
+    opacity: 0.96;
+    text-transform: lowercase;
+}
+
+/* Evita desfases por ancho interno del panel central */
+.gc-v2-body .gc-integral-layout {
+    grid-template-columns: 330px minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.gc-v2-body .gc-integral-main,
+.gc-v2-body .gc-bitacora-card,
+.gc-v2-body .gc-summary-card,
+.gc-v2-body .gc-central-fases,
+.gc-v2-body .gc-central-fase-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+
+/* Panel central con scroll más estable */
+.gc-v2-body .gc-integral-main {
+    height: 100% !important;
+    padding-right: 6px !important;
+    box-sizing: border-box !important;
+}
+
+/* Evita que los cuerpos colapsados dejen sombra/espacio visual raro */
+.gc-v2-body .intv2-card.is-collapsed > .intv2-card-body {
+    display: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Bitácora ocupa bien el alto disponible */
+.gc-v2-body .gc-bitacora-card:not(.is-collapsed) {
+    flex: 1 1 auto !important;
+}
+
+.gc-v2-body .gc-bitacora-card:not(.is-collapsed) .intv2-card-body {
+    padding-bottom: 18px !important;
+}
+
+/* Tarjetas centrales: sin desborde horizontal */
+.gc-v2-body .integral-central-fase-body {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, auto) !important;
+}
+
+.gc-v2-body .integral-central-fase-copy {
+    min-width: 0 !important;
+}
+
+.gc-v2-body .integral-central-fase-actions {
+    justify-self: end;
+}
+
+/* La nota ya no debe parecer alerta de error/advertencia */
+.gc-v2-body .gc-result-soft-info {
+    opacity: 0.9;
+    border: 1px dashed rgba(116, 168, 230, 0.45) !important;
+    color: #bcd4f5 !important;
+    background: rgba(10, 18, 35, 0.72) !important;
+}
+
+/* Sidebar sin cortar los últimos elementos */
+.gc-v2-body .gc-phase-sidebar {
+    padding-bottom: 20px !important;
+}
+
+@media (max-width: 1350px) {
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr 1fr 1fr !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .integral-central-fase-body {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .integral-central-fase-actions {
+        justify-self: start;
+    }
+}
+
+/* === GC V2 RESPONSIVE FINAL STABLE DESKTOP === */
+
+/* Mantener comportamiento escritorio parecido a Integral */
+.gc-v2-body .gc-integral-shell {
+    width: calc(100vw - 12px) !important;
+    max-width: none !important;
+}
+
+/* Header: logo izquierda, botones derecha, sin romperse prematuramente */
+.gc-v2-body .gc-topbar {
+    display: grid !important;
+    grid-template-columns: minmax(420px, 1fr) auto !important;
+    align-items: center !important;
+}
+
+.gc-v2-body .gc-top-nav {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+}
+
+.gc-v2-body .gc-top-nav a {
+    min-width: 120px;
+}
+
+.gc-v2-body .gc-top-nav a:nth-child(2) {
+    min-width: 155px;
+}
+
+.gc-v2-body .gc-top-nav a:nth-child(3) {
+    min-width: 145px;
+}
+
+/* Barra de parámetros: mantener 5 columnas en escritorio */
+.gc-v2-body .gc-context-grid {
+    display: grid !important;
+    grid-template-columns:
+        minmax(260px, 1.2fr)
+        minmax(170px, 0.7fr)
+        minmax(310px, 0.9fr)
+        minmax(150px, 0.45fr)
+        minmax(230px, 0.55fr) !important;
+    gap: 12px !important;
+    align-items: end !important;
+}
+
+/* Evitar que acciones baje de fila en escritorio */
+.gc-v2-body .gc-actions-field {
+    min-width: 220px;
+}
+
+.gc-v2-body .gc-actions-field .gc-btn {
+    width: 100%;
+    white-space: nowrap;
+}
+
+/* Layout principal estable */
+.gc-v2-body .gc-integral-layout {
+    grid-template-columns: 320px minmax(0, 1fr) !important;
+    gap: 14px !important;
+}
+
+/* Sidebar estable */
+.gc-v2-body .gc-phase-sidebar {
+    width: 320px !important;
+    min-width: 320px !important;
+}
+
+/* Panel central toma todo el espacio restante */
+.gc-v2-body .gc-integral-main {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+/* Evitar cortes feos dentro de cards */
+.gc-v2-body .gc-phase-card {
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+}
+
+.gc-v2-body .gc-phase-card span {
+    min-width: 0;
+}
+
+/* La bitácora no debe separarse del ancho del resumen */
+.gc-v2-body .gc-summary-card,
+.gc-v2-body .gc-bitacora-card {
+    width: 100% !important;
+}
+
+/* Mensaje informativo más discreto */
+.gc-v2-body .gc-result-soft-info {
+    font-size: 13px !important;
+    padding: 10px 12px !important;
+    opacity: 0.82 !important;
+}
+
+/* Reglas responsive reales: recién cambiar a modo reducido bajo 1050px */
+@media (max-width: 1050px) {
+    .gc-v2-body {
+        overflow: auto !important;
+    }
+
+    .gc-v2-body .gc-integral-shell {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .gc-v2-body .gc-topbar {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .gc-top-nav {
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+    }
+
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .gc-v2-body .gc-integral-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .gc-phase-sidebar {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .gc-v2-body .gc-phase-sidebar,
+    .gc-v2-body .gc-integral-main {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+@media (max-width: 720px) {
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* === GC V2 FIX SUMMARY PANEL HEIGHT === */
+
+/* El resumen SQL nunca debe comprimirse dentro del panel central */
+.gc-v2-body .gc-summary-card {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
+/* Header normal */
+.gc-v2-body .gc-summary-card > .intv2-card-head {
+    min-height: 48px !important;
+    flex: 0 0 auto !important;
+}
+
+/* Cuerpo visible y con altura automática */
+.gc-v2-body .gc-summary-card:not(.is-collapsed) > .intv2-card-body {
+    display: block !important;
+    height: auto !important;
+    min-height: 92px !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 14px 16px !important;
+    box-sizing: border-box !important;
+}
+
+/* Contenedor del resultado */
+.gc-v2-body #gcResumenSql {
+    display: block !important;
+    height: auto !important;
+    min-height: 46px !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Si hay tabla, debe ocupar el ancho completo sin romper el panel */
+.gc-v2-body #gcResumenSql .gc-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+}
+
+/* Mensaje inicial o errores dentro del resumen */
+.gc-v2-body #gcResumenSql .log-line,
+.gc-v2-body #gcResumenSql .gc-card-error {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* La nota del resumen no debe cortarse */
+.gc-v2-body .gc-summary-card .gc-card-note {
+    display: block !important;
+    height: auto !important;
+    min-height: 18px !important;
+    margin-bottom: 10px !important;
+    overflow: visible !important;
+    white-space: normal !important;
+}
+
+/* Si está colapsado, sí debe cerrar completamente */
+.gc-v2-body .gc-summary-card.is-collapsed > .intv2-card-body {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* La bitácora debe ocupar lo restante, sin aplastar al resumen */
+.gc-v2-body .gc-bitacora-card {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+
+/* Ajuste general del main para que el scroll sea del panel central */
+.gc-v2-body .gc-integral-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0 !important;
+}
+
+/* === GC V2 ESTADO VISUAL COMO INTEGRAL === */
+
+/* Sidebar igual a Integral: estado textual limpio */
+.gc-v2-body .gc-phase-card {
+    min-height: 42px !important;
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+}
+
+.gc-v2-body .gc-phase-card span {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+
+.gc-v2-body .gc-phase-card em {
+    font-style: normal !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+}
+
+/* Colores de estado */
+.gc-v2-body .gc-phase-card.pending em,
+.gc-v2-body .gc-phase-card.pendiente em {
+    color: #ffe600 !important;
+}
+
+.gc-v2-body .gc-phase-card.done em,
+.gc-v2-body .gc-phase-card.correcto em {
+    color: #65ff99 !important;
+}
+
+.gc-v2-body .gc-phase-card.review em,
+.gc-v2-body .gc-phase-card.revisar em {
+    color: #7fb7ff !important;
+}
+
+.gc-v2-body .gc-phase-card.error em {
+    color: #ff8b8b !important;
+}
+
+.gc-v2-body .gc-phase-card.running em {
+    color: #ffd36b !important;
+}
+
+/* Estado central igual: badge simple */
+.gc-v2-body .integral-central-fase-status {
+    min-width: 88px !important;
+    color: #ffe600;
+}
+
+.gc-v2-body .gc-central-fase-card.pending .integral-central-fase-status,
+.gc-v2-body .gc-central-fase-card.pendiente .integral-central-fase-status {
+    color: #ffe600 !important;
+}
+
+.gc-v2-body .gc-central-fase-card.done .integral-central-fase-status,
+.gc-v2-body .gc-central-fase-card.correcto .integral-central-fase-status {
+    color: #65ff99 !important;
+}
+
+.gc-v2-body .gc-central-fase-card.review .integral-central-fase-status,
+.gc-v2-body .gc-central-fase-card.revisar .integral-central-fase-status {
+    color: #7fb7ff !important;
+}
+
+/* Resultado pendiente sin warning */
+.gc-v2-body .gc-result-pending {
+    border: 1px dashed rgba(92, 144, 210, 0.38);
+    border-radius: 10px;
+    background: rgba(8, 15, 29, 0.55);
+    color: #b9c9e6;
+    padding: 12px 14px;
+    font-size: 13px;
+}
+
+/* Quita apariencia de alerta amarilla en resultados iniciales */
+.gc-v2-body .integral-central-fase-result .log-line.warning {
+    color: #b9c9e6 !important;
+    border-color: rgba(92, 144, 210, 0.38) !important;
+    background: rgba(8, 15, 29, 0.55) !important;
+}
+
+/* === GC V2 FIX SCROLL CENTRAL + RESULT BORDER === */
+
+/* La página no debe crecer; el scroll debe estar dentro del panel central */
+html,
+body.gc-v2-body {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* Shell principal con altura fija de ventana */
+.gc-v2-body .gc-integral-shell {
+    height: calc(100vh - 8px) !important;
+    max-height: calc(100vh - 8px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Header y barra de contexto no deben consumir scroll */
+.gc-v2-body .gc-topbar,
+.gc-v2-body .gc-context-card {
+    flex: 0 0 auto !important;
+}
+
+/* Layout principal ocupa el espacio restante */
+.gc-v2-body .gc-integral-layout {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-columns: 320px minmax(0, 1fr) !important;
+}
+
+/* Sidebar con su propio scroll */
+.gc-v2-body .gc-phase-sidebar {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 80px !important;
+    box-sizing: border-box !important;
+}
+
+/* Panel central con scroll real */
+.gc-v2-body .gc-integral-main {
+    display: block !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px !important;
+    padding-bottom: 90px !important;
+    box-sizing: border-box !important;
+}
+
+/* Las tarjetas dentro del panel central deben crecer naturalmente */
+.gc-v2-body .gc-summary-card,
+.gc-v2-body .gc-bitacora-card,
+.gc-v2-body .gc-central-fase-card {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+}
+
+/* El cuerpo de la bitácora debe mostrar todo el contenido; el scroll lo maneja el panel central */
+.gc-v2-body .gc-bitacora-card > .intv2-card-body {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Contenedor de fases sin scroll propio */
+.gc-v2-body .gc-central-fases {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* El resultado no debe tener doble borde */
+.gc-v2-body .integral-central-fase-result {
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 12px 18px 16px !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+/* Solo el mensaje interno conserva un borde punteado limpio */
+.gc-v2-body .integral-central-fase-result .gc-result-pending,
+.gc-v2-body .integral-central-fase-result .gc-result-soft-info {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    border: 1px dashed rgba(92, 144, 210, 0.42) !important;
+    border-radius: 10px !important;
+    background: rgba(8, 15, 29, 0.55) !important;
+    color: #b9c9e6 !important;
+    padding: 11px 14px !important;
+    overflow-wrap: anywhere !important;
+}
+
+/* Evita que el botón empuje o corte la tarjeta */
+.gc-v2-body .integral-central-fase-body {
+    align-items: center !important;
+}
+
+/* Scroll visual discreto */
+.gc-v2-body .gc-integral-main::-webkit-scrollbar,
+.gc-v2-body .gc-phase-sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.gc-v2-body .gc-integral-main::-webkit-scrollbar-thumb,
+.gc-v2-body .gc-phase-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(78, 139, 215, 0.48);
+    border-radius: 999px;
+}
+
+.gc-v2-body .gc-integral-main::-webkit-scrollbar-track,
+.gc-v2-body .gc-phase-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* === GC V2 RESET BACKEND STATE BUTTON === */
+
+.gc-v2-body .gc-actions-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+}
+
+.gc-v2-body .gc-actions-buttons .gc-btn {
+    white-space: nowrap;
+}
+
+.gc-v2-body .gc-btn-reset {
+    background: rgba(35, 48, 70, 0.96) !important;
+    border: 1px solid rgba(125, 158, 205, 0.45) !important;
+    color: #d8e8ff !important;
+}
+
+.gc-v2-body .gc-btn-reset:hover {
+    border-color: rgba(255, 217, 102, 0.8) !important;
+    color: #ffe27a !important;
+}
+
+/* === GC V2 FIX ACTIONS VISIBLE + SIDEBAR SCROLL === */
+
+/* Barra de parámetros más compacta para que entren ambos botones */
+.gc-v2-body .gc-context-grid {
+    grid-template-columns:
+        minmax(180px, 0.9fr)
+        minmax(120px, 0.45fr)
+        minmax(260px, 0.8fr)
+        minmax(120px, 0.35fr)
+        minmax(360px, 0.85fr) !important;
+    gap: 10px !important;
+    align-items: end !important;
+}
+
+/* Reducir ancho visual de Fecha y Mes gestión */
+.gc-v2-body #gcFechaProceso,
+.gc-v2-body #gcMesGestion {
+    height: 38px !important;
+    font-size: 16px !important;
+    padding: 0 14px !important;
+}
+
+/* Área de acciones visible */
+.gc-v2-body .gc-actions-field {
+    min-width: 360px !important;
+    max-width: 430px !important;
+}
+
+.gc-v2-body .gc-actions-buttons {
+    display: grid !important;
+    grid-template-columns: minmax(190px, 1fr) minmax(130px, auto);
+    gap: 8px !important;
+    width: 100% !important;
+    align-items: center !important;
+}
+
+.gc-v2-body .gc-actions-buttons .gc-btn {
+    width: 100% !important;
+    min-height: 38px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+    white-space: nowrap !important;
+}
+
+/* Botón reiniciar más compacto */
+.gc-v2-body .gc-btn-reset {
+    min-width: 130px !important;
+}
+
+/* Sidebar: el panel Estado de fases debe tener scroll propio */
+.gc-v2-body .gc-phase-sidebar {
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+}
+
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] {
+    max-height: calc(100vh - 250px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] > .intv2-card-head {
+    flex: 0 0 auto !important;
+}
+
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] > .intv2-card-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px !important;
+}
+
+/* Mantener las filas del sidebar compactas */
+.gc-v2-body .gc-phase-grid {
+    gap: 8px !important;
+}
+
+.gc-v2-body .gc-phase-card {
+    min-height: 40px !important;
+    padding: 8px 10px !important;
+}
+
+.gc-v2-body .gc-phase-card b {
+    width: 28px !important;
+    height: 28px !important;
+}
+
+.gc-v2-body .gc-phase-card span {
+    font-size: 13px !important;
+}
+
+.gc-v2-body .gc-phase-card em {
+    font-size: 12px !important;
+}
+
+/* Scroll discreto para Estado de fases */
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] > .intv2-card-body::-webkit-scrollbar {
+    width: 7px;
+}
+
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] > .intv2-card-body::-webkit-scrollbar-thumb {
+    background: rgba(78, 139, 215, 0.45);
+    border-radius: 999px;
+}
+
+.gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] > .intv2-card-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Responsive: debajo de 1400px permitir que acciones baje a otra línea sin salirse */
+@media (max-width: 1400px) {
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns:
+            minmax(180px, 1fr)
+            minmax(120px, 0.6fr)
+            minmax(260px, 1fr)
+            minmax(120px, 0.5fr) !important;
+    }
+
+    .gc-v2-body .gc-actions-field {
+        grid-column: 1 / -1;
+        max-width: 520px !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .gc-v2-body .gc-context-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .gc-actions-field {
+        min-width: 0 !important;
+        max-width: none !important;
+    }
+
+    .gc-v2-body .gc-actions-buttons {
+        grid-template-columns: 1fr !important;
+    }
+
+    .gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] {
+        max-height: none !important;
+    }
+
+    .gc-v2-body .gc-sidebar-card[data-collapse-key="gc-sidebar-fases"] > .intv2-card-body {
+        max-height: 360px !important;
+    }
+}

@@ -1,0 +1,14 @@
+<section class="intv2-card intv2-collapsible intv2-bitacora-card gc-bitacora-card" data-collapse-key="gc-bitacora">
+    <button type="button" class="intv2-card-head">
+        <span>📊 Bitácora de ejecución Consolidar Gestión</span>
+        <b>▾</b>
+    </button>
+
+    <div class="intv2-card-body">
+        <div class="integral-central-fases-orion gc-central-fases">
+            {% for fase in gc_fases %}
+                {% include "gestion_consolidada/partials/_fase_card.html" %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
