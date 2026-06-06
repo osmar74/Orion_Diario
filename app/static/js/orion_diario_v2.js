@@ -917,8 +917,23 @@
         const textLower = text.toLowerCase();
         const tables = odv2ProcTableRows(html);
 
-        const ok = textLower.includes("procesado correctamente") ||
-                   textLower.includes("procesados correctamente");
+        let ok = textLower.includes("procesado correctamente") ||
+         textLower.includes("procesados correctamente");
+
+if (actionName === "comparar.lotes") {
+    const tieneExitoComparacion =
+        textLower.includes("todos los lotes coinciden") ||
+        textLower.includes("lotes coinciden") ||
+        textLower.includes("resumen excel generado");
+
+    const tieneFalloComparacion =
+        textLower.includes("no coinciden") ||
+        textLower.includes("diferencias") ||
+        textLower.includes("error") ||
+        textLower.includes("no existe");
+
+    ok = tieneExitoComparacion && !tieneFalloComparacion;
+}
 
         const parsed = {
             actionName,
@@ -1174,7 +1189,7 @@
             const parsed = odv2ProcExtract(actionName, html, response.status);
 
             setPhaseResult(actionName, odv2ProcResultHtml(parsed));
-            setPhaseStatus(actionName, parsed.ok ? "success" : "error", parsed.ok ? "Completado" : "Revisar");
+            const labelOk = actionName === "comparar.lotes" ? "Correcto" : "Completado";setPhaseStatus(actionName, parsed.ok ? "success" : "error", parsed.ok ? labelOk : "Revisar");
 
             debug(
                 parsed.ok
@@ -1319,16 +1334,34 @@
     }
 
     function odv2CargaOkHtml(html) {
-        const text = odv2CargaText(html).toLowerCase();
+    const text = odv2CargaText(html).toLowerCase();
 
-        if (text.includes("❌") || text.includes("error")) return false;
+    const tieneFallo =
+        text.includes("❌") ||
+        text.includes("traceback") ||
+        text.includes("exception") ||
+        text.includes("error sql") ||
+        text.includes("error de conexión") ||
+        text.includes("error de conexion") ||
+        text.includes("no existe el archivo") ||
+        text.includes("archivo no encontrado") ||
+        text.includes("faltan columnas") ||
+        text.includes("no se pudo");
 
-        return text.includes("correctamente") ||
-               text.includes("ok") ||
-               text.includes("validado") ||
-               text.includes("insertado") ||
-               text.includes("cargado");
-    }
+    const tieneExito =
+        text.includes("puede continuar") ||
+        text.includes("archivo encontrado") ||
+        text.includes("verificación de") ||
+        text.includes("verificacion de") ||
+        text.includes("no se encontraron registros previos") ||
+        text.includes("insertado") ||
+        text.includes("insertados") ||
+        text.includes("inserción") ||
+        text.includes("insercion") ||
+        text.includes("carga completada");
+
+    return tieneExito && !tieneFallo;
+}
 
     async function odv2CargaPrecheck(tipo) {
         const params = new URLSearchParams();
