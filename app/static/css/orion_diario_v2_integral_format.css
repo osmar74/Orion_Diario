@@ -1,0 +1,1122 @@
+/* === ORION DIARIO V2 — CAPA VISUAL LIMPIA TIPO INTEGRAL === */
+/* No modifica lógica JS ni endpoints. Solo layout, scroll y forma visual. */
+
+html,
+body {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    overflow: hidden;
+    background: #05080d;
+}
+
+/* Shell general */
+.odv2-shell {
+    width: calc(100vw - 12px) !important;
+    height: calc(100vh - 10px) !important;
+    max-width: none !important;
+    max-height: calc(100vh - 10px) !important;
+    margin: 5px auto !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Header superior */
+.odv2-shell > header,
+.odv2-header,
+.odv2-topbar {
+    flex: 0 0 auto !important;
+    min-height: 66px !important;
+    display: grid !important;
+    grid-template-columns: minmax(420px, 1fr) auto !important;
+    align-items: center !important;
+    gap: 16px !important;
+    padding: 12px 18px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    background: rgba(11, 20, 38, 0.96) !important;
+    border: 1px solid rgba(93, 143, 210, 0.28) !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-brand {
+    min-width: 0 !important;
+}
+
+.odv2-brand h1,
+.odv2-brand-title {
+    margin: 0 !important;
+    font-size: 28px !important;
+    line-height: 1.05 !important;
+}
+
+.odv2-brand p,
+.odv2-brand-subtitle {
+    margin: 4px 0 0 !important;
+    font-size: 13px !important;
+    color: #a9c5ea !important;
+}
+
+/* Navbar */
+.odv2-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 9px !important;
+}
+
+.odv2-tabs a,
+.odv2-tabs button {
+    min-height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 16px !important;
+    border-radius: 11px !important;
+    white-space: nowrap !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+}
+
+/* Barra de contexto */
+.odv2-param-card,
+.odv2-context-card,
+.odv2-context,
+.odv2-shell > .odv2-card:not(.odv2-layout) {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-context-grid,
+.odv2-param-grid {
+    display: grid !important;
+    grid-template-columns:
+        minmax(180px, 0.85fr)
+        minmax(140px, 0.55fr)
+        minmax(260px, 0.95fr)
+        minmax(180px, 0.65fr) !important;
+    gap: 10px !important;
+    align-items: end !important;
+}
+
+/* Layout principal */
+.odv2-layout {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 330px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Sidebar y main con scroll propio */
+.odv2-sidebar,
+.odv2-main {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    scrollbar-gutter: stable !important;
+}
+
+.odv2-sidebar {
+    width: 330px !important;
+    min-width: 330px !important;
+    max-width: 330px !important;
+    padding-right: 4px !important;
+    padding-bottom: 80px !important;
+}
+
+.odv2-main {
+    width: 100% !important;
+    padding-right: 8px !important;
+    padding-bottom: 110px !important;
+}
+
+/* Cards generales */
+.odv2-card {
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-card + .odv2-card {
+    margin-top: 12px !important;
+}
+
+.odv2-card-head {
+    width: 100% !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin: 0 !important;
+    padding: 0 16px !important;
+    border-radius: 14px 14px 0 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-card-body {
+    display: block !important;
+    padding: 14px !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-collapsed > .odv2-card-body {
+    display: none !important;
+}
+
+.odv2-collapsed > .odv2-card-head {
+    border-radius: 14px !important;
+}
+
+/* Primer panel sidebar: Estado de fases con scroll */
+.odv2-sidebar .odv2-card:first-child {
+    max-height: calc(100vh - 250px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.odv2-sidebar .odv2-card:first-child > .odv2-card-head {
+    flex: 0 0 auto !important;
+}
+
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px 12px !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+#odv2-sidebar-phases {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Sidebar fases: compatible con HTML original o parcheado */
+.odv2-phase-mini {
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) 96px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-height: 44px !important;
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* Código/círculo */
+.odv2-phase-mini > b,
+.odv2-phase-mini .odv2-phase-letter {
+    position: static !important;
+    transform: none !important;
+    grid-column: 1 !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: #2467df !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+}
+
+/* Nombre */
+.odv2-phase-mini > span:not(.odv2-badge):not(.odv2-phase-status),
+.odv2-phase-mini .odv2-phase-name {
+    grid-column: 2 !important;
+    display: block !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: #cfe0ff !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+}
+
+/* Estado */
+.odv2-phase-mini > em,
+.odv2-phase-mini .odv2-badge,
+.odv2-phase-mini .odv2-phase-status {
+    position: static !important;
+    transform: none !important;
+    grid-column: 3 !important;
+    justify-self: end !important;
+    width: 92px !important;
+    min-width: 92px !important;
+    max-width: 92px !important;
+    height: 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 6px !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: #020916 !important;
+    color: #ffe600 !important;
+    font-size: 11px !important;
+    font-style: normal !important;
+    font-weight: 900 !important;
+    line-height: 24px !important;
+    white-space: nowrap !important;
+}
+
+/* Cards del panel central */
+.odv2-main > * {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-main .odv2-card,
+.odv2-main .odv2-phase {
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Cabeceras del panel central */
+.odv2-main .odv2-card > .odv2-card-head,
+.odv2-main .odv2-phase > .odv2-phase-head {
+    width: 100% !important;
+    min-height: 50px !important;
+    margin: 0 !important;
+    border-radius: 14px 14px 0 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Si está colapsado, cabecera con cuatro esquinas */
+.odv2-main .odv2-card.odv2-collapsed > .odv2-card-head {
+    border-radius: 14px !important;
+}
+
+/* Fases centrales */
+.odv2-phase {
+    border: 1px solid rgba(75, 125, 190, 0.45) !important;
+    background: rgba(8, 15, 29, 0.92) !important;
+}
+
+.odv2-phase-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 18px !important;
+}
+
+.odv2-phase-body {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, auto) !important;
+    gap: 16px !important;
+    align-items: center !important;
+    padding: 16px 18px 12px !important;
+}
+
+.odv2-phase-result {
+    width: auto !important;
+    max-width: none !important;
+    margin: 12px 18px 16px !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    box-sizing: border-box !important;
+}
+
+/* Quitar bordes punteados externos grandes del tablero */
+#odv2-phase-board,
+.odv2-phase-board,
+#odv2-fases,
+#odv2-fases-root {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Badges centrales */
+.odv2-phase-status,
+.odv2-badge {
+    min-width: 88px !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border-radius: 999px !important;
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    background: #020916 !important;
+}
+
+.odv2-phase-status.pending,
+.odv2-badge.pending {
+    color: #ffe600 !important;
+}
+
+.odv2-phase-status.success,
+.odv2-badge.success {
+    color: #65ff99 !important;
+}
+
+.odv2-phase-status.error,
+.odv2-badge.error {
+    color: #ff8b8b !important;
+}
+
+.odv2-phase-status.warning,
+.odv2-badge.warning {
+    color: #7fb7ff !important;
+}
+
+.odv2-phase-status.running,
+.odv2-badge.running {
+    color: #ffd36b !important;
+}
+
+/* Scrollbars */
+.odv2-sidebar::-webkit-scrollbar,
+.odv2-main::-webkit-scrollbar,
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body::-webkit-scrollbar,
+.odv2-phase-result::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.odv2-sidebar::-webkit-scrollbar-thumb,
+.odv2-main::-webkit-scrollbar-thumb,
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body::-webkit-scrollbar-thumb,
+.odv2-phase-result::-webkit-scrollbar-thumb {
+    background: rgba(78, 139, 215, 0.48);
+    border-radius: 999px;
+}
+
+.odv2-sidebar::-webkit-scrollbar-track,
+.odv2-main::-webkit-scrollbar-track,
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body::-webkit-scrollbar-track,
+.odv2-phase-result::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    html,
+    body {
+        height: auto !important;
+        max-height: none !important;
+        overflow: auto !important;
+    }
+
+    .odv2-shell {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .odv2-shell > header,
+    .odv2-header,
+    .odv2-topbar {
+        grid-template-columns: 1fr !important;
+    }
+
+    .odv2-tabs {
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+    }
+
+    .odv2-layout {
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+    }
+
+    .odv2-sidebar,
+    .odv2-main {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .odv2-sidebar .odv2-card:first-child > .odv2-card-body {
+        max-height: 360px !important;
+    }
+
+    .odv2-context-grid,
+    .odv2-param-grid,
+    .odv2-phase-body {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* === ORION V2 SIDEBAR LEFT + CENTRAL PANELS FINAL === */
+
+/* El contenedor del sidebar sigue teniendo clase odv2-empty; neutralizar centrado */
+#odv2-sidebar-phases,
+#odv2-sidebar-phases.odv2-empty {
+    display: block !important;
+    place-items: initial !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    text-align: left !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Estado de fases: cada item pegado a la izquierda */
+#odv2-sidebar-phases .odv2-phase-mini {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) 98px !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    gap: 8px !important;
+    min-height: 42px !important;
+    padding: 7px 10px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+}
+
+/* Código A, B, C... a la izquierda */
+#odv2-sidebar-phases .odv2-phase-mini > b,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-letter {
+    grid-column: 1 !important;
+    justify-self: start !important;
+    align-self: center !important;
+    position: static !important;
+    transform: none !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: #2467df !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+}
+
+/* Nombre de fase al lado de la letra */
+#odv2-sidebar-phases .odv2-phase-mini > span:not(.odv2-badge):not(.odv2-phase-status),
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-name {
+    grid-column: 2 !important;
+    justify-self: stretch !important;
+    align-self: center !important;
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    color: #cfe0ff !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Estado a la derecha */
+#odv2-sidebar-phases .odv2-phase-mini > em,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-badge,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-status {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    position: static !important;
+    transform: none !important;
+    width: 96px !important;
+    min-width: 96px !important;
+    max-width: 96px !important;
+    height: 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 6px !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: #020916 !important;
+    color: #ffe600 !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    line-height: 24px !important;
+    white-space: nowrap !important;
+}
+
+/* Panel Estado de fases con scroll, pero sin comprimir */
+.odv2-sidebar .odv2-card:first-child {
+    max-height: calc(100vh - 245px) !important;
+    overflow: hidden !important;
+}
+
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px 12px !important;
+}
+
+/* Paneles centrales: estructura limpia */
+.odv2-main .odv2-card {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    margin: 0 0 12px 0 !important;
+    background: rgba(8, 15, 29, 0.92) !important;
+    border: 1px solid rgba(75, 125, 190, 0.36) !important;
+    box-sizing: border-box !important;
+}
+
+/* Header de panel: redondeado real */
+.odv2-main .odv2-card > .odv2-card-head {
+    height: 48px !important;
+    min-height: 48px !important;
+    border-radius: 14px 14px 0 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 16px !important;
+    background: rgba(18, 56, 87, 0.86) !important;
+    box-sizing: border-box !important;
+}
+
+/* Panel colapsado: header con cuatro esquinas y sin cuerpo visible */
+.odv2-main .odv2-card.odv2-collapsed {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.odv2-main .odv2-card.odv2-collapsed > .odv2-card-head {
+    border-radius: 14px !important;
+}
+
+.odv2-main .odv2-card.odv2-collapsed > .odv2-card-body {
+    display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Panel expandido: cuerpo normal */
+.odv2-main .odv2-card:not(.odv2-collapsed) > .odv2-card-body {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 14px !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+}
+
+/* Contenedor del tablero: sin clase empty visual */
+#odv2-phase-board,
+#odv2-phase-board.odv2-empty {
+    display: block !important;
+    place-items: initial !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Fases centrales: redondeadas y sin aristas */
+#odv2-phase-board .odv2-phase,
+.odv2-main .odv2-phase {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    margin: 0 0 12px 0 !important;
+    border: 1px solid rgba(75, 125, 190, 0.45) !important;
+    background: rgba(8, 15, 29, 0.92) !important;
+    box-sizing: border-box !important;
+}
+
+/* Header turquesa debe quedar dentro del card */
+#odv2-phase-board .odv2-phase > .odv2-phase-head,
+.odv2-main .odv2-phase > .odv2-phase-head {
+    width: 100% !important;
+    min-height: 50px !important;
+    border-radius: 14px 14px 0 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 18px !important;
+    box-sizing: border-box !important;
+}
+
+/* Resultado pendiente mantiene solo su borde interno */
+#odv2-phase-board .odv2-phase-result,
+.odv2-main .odv2-phase-result {
+    margin: 12px 18px 16px !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+}
+
+/* Evitar que las barras finas queden con aristas raras */
+.odv2-main .odv2-progress,
+.odv2-main .odv2-progress-bar,
+.odv2-main .odv2-metric-bar,
+.odv2-main .odv2-separator-bar {
+    border-radius: 999px !important;
+    overflow: hidden !important;
+}
+
+/* Scroll central */
+.odv2-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 110px !important;
+}
+
+/* === ORION V2 LAYOUT STABLE FINAL === */
+
+/* 1) El main NO debe comprimir cards cuando una fase se expande */
+.odv2-main {
+    display: block !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px !important;
+    padding-bottom: 120px !important;
+    box-sizing: border-box !important;
+}
+
+/* Cada card del main conserva su alto natural */
+.odv2-main > .odv2-card,
+.odv2-main .odv2-card,
+.odv2-main .odv2-phase {
+    flex: none !important;
+    flex-shrink: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+}
+
+/* Headers colapsados nunca deben quedar como barras finas */
+.odv2-main .odv2-card > .odv2-card-head {
+    display: flex !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-radius: 14px 14px 0 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.odv2-main .odv2-card.odv2-collapsed {
+    height: auto !important;
+    min-height: 52px !important;
+    max-height: none !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.odv2-main .odv2-card.odv2-collapsed > .odv2-card-head {
+    border-radius: 14px !important;
+}
+
+.odv2-main .odv2-card.odv2-collapsed > .odv2-card-body {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Card expandido normal */
+.odv2-main .odv2-card:not(.odv2-collapsed) > .odv2-card-body {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 14px !important;
+    overflow: visible !important;
+}
+
+/* 2) Sidebar Estado de fases: reducir espacio izquierdo y alinear en fila */
+#odv2-sidebar-phases,
+#odv2-sidebar-phases.odv2-empty {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    text-align: left !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Fila de fase compacta */
+#odv2-sidebar-phases .odv2-phase-mini {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    padding: 8px 104px 8px 44px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+    overflow: hidden !important;
+}
+
+/* Círculo/código más a la izquierda */
+#odv2-sidebar-phases .odv2-phase-mini > b,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-letter {
+    position: absolute !important;
+    left: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: #2467df !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+}
+
+/* Nombre de fase al lado del círculo */
+#odv2-sidebar-phases .odv2-phase-mini > span:not(.odv2-badge):not(.odv2-phase-status),
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-name {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    margin: 0 !important;
+    color: #cfe0ff !important;
+    font-size: 12px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Estado fijo a la derecha */
+#odv2-sidebar-phases .odv2-phase-mini > em,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-badge,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-status {
+    position: absolute !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 92px !important;
+    min-width: 92px !important;
+    max-width: 92px !important;
+    height: 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 6px !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: #020916 !important;
+    color: #ffe600 !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    line-height: 24px !important;
+    white-space: nowrap !important;
+}
+
+/* Estado de fases con scroll interno */
+.odv2-sidebar .odv2-card:first-child {
+    max-height: calc(100vh - 245px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px 12px !important;
+}
+
+/* 3) Fases centrales: redondeado estable */
+#odv2-phase-board,
+#odv2-phase-board.odv2-empty {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+#odv2-phase-board .odv2-phase,
+.odv2-main .odv2-phase {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    margin: 0 0 12px 0 !important;
+    border: 1px solid rgba(75, 125, 190, 0.45) !important;
+    background: rgba(8, 15, 29, 0.92) !important;
+    box-sizing: border-box !important;
+}
+
+#odv2-phase-board .odv2-phase > .odv2-phase-head,
+.odv2-main .odv2-phase > .odv2-phase-head {
+    width: 100% !important;
+    min-height: 50px !important;
+    height: 50px !important;
+    border-radius: 14px 14px 0 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 18px !important;
+    box-sizing: border-box !important;
+}
+
+/* Resultado interno */
+#odv2-phase-board .odv2-phase-result,
+.odv2-main .odv2-phase-result {
+    margin: 12px 18px 16px !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+}
+
+/* === ORION V2 SIDEBAR LEFT SPACING FINAL === */
+
+/* Reducir espacio interno del cuerpo del panel Estado de fases */
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body {
+    padding: 8px 8px !important;
+}
+
+/* Fila compacta: círculo más a la izquierda y más espacio para texto */
+#odv2-sidebar-phases .odv2-phase-mini {
+    min-height: 42px !important;
+    padding: 7px 92px 7px 36px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 12px !important;
+}
+
+/* Círculo azul casi pegado al borde izquierdo del item */
+#odv2-sidebar-phases .odv2-phase-mini > b,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-letter {
+    left: 7px !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    font-size: 11px !important;
+}
+
+/* Nombre con más espacio útil */
+#odv2-sidebar-phases .odv2-phase-mini > span:not(.odv2-badge):not(.odv2-phase-status),
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-name {
+    height: 26px !important;
+    line-height: 26px !important;
+    font-size: 12px !important;
+    padding-left: 0 !important;
+}
+
+/* Estado un poco más compacto para liberar ancho */
+#odv2-sidebar-phases .odv2-phase-mini > em,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-badge,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-status {
+    right: 7px !important;
+    width: 84px !important;
+    min-width: 84px !important;
+    max-width: 84px !important;
+    height: 24px !important;
+    font-size: 10.8px !important;
+}
+
+/* El panel completo mantiene scroll, pero sin relleno excesivo */
+.odv2-sidebar .odv2-card:first-child {
+    max-height: calc(100vh - 245px) !important;
+}
+
+/* Evitar que el último item quede cortado por el borde inferior */
+#odv2-sidebar-phases {
+    padding-bottom: 8px !important;
+}
+
+/* === ORION V2 FINAL SPACING TUNING === */
+
+/* Acercar todavía más los círculos al borde izquierdo */
+.odv2-sidebar .odv2-card:first-child > .odv2-card-body {
+    padding: 8px 6px !important;
+}
+
+#odv2-sidebar-phases .odv2-phase-mini {
+    padding: 7px 88px 7px 30px !important;
+    min-height: 42px !important;
+}
+
+/* Círculo/código más pegado a la izquierda */
+#odv2-sidebar-phases .odv2-phase-mini > b,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-letter {
+    left: 4px !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    font-size: 11px !important;
+}
+
+/* Texto gana un poco más de ancho */
+#odv2-sidebar-phases .odv2-phase-mini > span:not(.odv2-badge):not(.odv2-phase-status),
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-name {
+    height: 26px !important;
+    line-height: 26px !important;
+    font-size: 12px !important;
+}
+
+/* Estado más compacto para dar espacio a nombres largos como G */
+#odv2-sidebar-phases .odv2-phase-mini > em,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-badge,
+#odv2-sidebar-phases .odv2-phase-mini .odv2-phase-status {
+    right: 5px !important;
+    width: 82px !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+    font-size: 10.5px !important;
+}
+
+/* Reducir separación entre cards centrales */
+.odv2-main > .odv2-card,
+.odv2-main .odv2-card {
+    margin-bottom: 10px !important;
+}
+
+.odv2-main > .odv2-card + .odv2-card {
+    margin-top: 0 !important;
+}
+
+/* Monitor y paneles superiores más compactos */
+.odv2-main > .odv2-card:first-child {
+    margin-bottom: 10px !important;
+}
+
+/* Barras separadoras finas: menos margen vertical */
+.odv2-main .odv2-progress,
+.odv2-main .odv2-progress-bar,
+.odv2-main .odv2-metric-bar,
+.odv2-main .odv2-separator-bar {
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+}
+
+/* Mantener estabilidad de panel central */
+.odv2-main {
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 110px !important;
+}
+
+/* === ORION V2 MONITOR PANEL GAP FINAL === */
+
+/* Separación fina entre Monitor de Ejecución Orion y el siguiente panel */
+.odv2-main > .odv2-card:first-child {
+    margin-bottom: 12px !important;
+}
+
+/* Evitar que el segundo panel se pegue visualmente al monitor */
+.odv2-main > .odv2-card:first-child + .odv2-card {
+    margin-top: 0 !important;
+}
+
+/* Mantener separación normal entre el resto de paneles */
+.odv2-main > .odv2-card:not(:first-child) {
+    margin-bottom: 12px !important;
+}
+
+/* Las fases internas mantienen su propio espaciado */
+#odv2-phase-board .odv2-phase,
+.odv2-main .odv2-phase {
+    margin-bottom: 12px !important;
+}
+
+/* === ORION V2 REMOVE MONITOR PANEL FINAL === */
+
+/* Al remover Monitor, el primer panel visible debe quedar estable */
+.odv2-main > .odv2-card:first-child {
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+}
+
+/* Separación normal entre paneles restantes */
+.odv2-main > .odv2-card + .odv2-card {
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+}
+
+/* Evitar reglas heredadas pensadas para el antiguo Monitor */
+.odv2-main .odv2-card {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    flex: none !important;
+    flex-shrink: 0 !important;
+}
+
+/* Panel colapsado mantiene altura normal */
+.odv2-main .odv2-card.odv2-collapsed {
+    min-height: 52px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.odv2-main .odv2-card.odv2-collapsed > .odv2-card-head {
+    height: 52px !important;
+    min-height: 52px !important;
+    border-radius: 14px !important;
+}

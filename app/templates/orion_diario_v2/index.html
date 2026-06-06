@@ -5,6 +5,7 @@
     <title>Gestión Diaria Orion v2</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/orion_diario_v2.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orion_diario_v2_integral_format.css') }}">
 </head>
 <body>
     {% include "orion_diario_v2/partials/_header.html" %}
@@ -19,7 +20,7 @@
             </aside>
 
             <section class="odv2-main">
-                {% include "orion_diario_v2/partials/_title_panel.html" %}
+                {# Monitor removido: _title_panel.html #}
                 {% include "orion_diario_v2/partials/_metrics_panel.html" %}
                 {% include "orion_diario_v2/partials/_connections_panel.html" %}
                 {% include "orion_diario_v2/partials/_phase_board.html" %}
